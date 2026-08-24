@@ -33,23 +33,36 @@ concurrency:
 jobs:
   settle:
     runs-on: ubuntu-latest
+    # Surface the mailbox secret at job level so steps can gate on it. The bot reads
+    # a mailbox over IMAP, so it can't do anything useful until GMAIL_USER is set —
+    # skip (green) rather than fail (red) while the experiment is unconfigured.
+    env:
+      GMAIL_USER: ${{ secrets.GMAIL_USER }}
     steps:
+      - name: Check mailbox is configured
+        if: env.GMAIL_USER == ''
+        run: |
+          echo "::notice title=Settlement bot skipped::GMAIL_USER / GMAIL_APP_PASSWORD repo secrets are not set, so there is no mailbox to read. Add them (Settings → Secrets and variables → Actions) to enable the daily run — see .github/workflows/settle.yml."
       - uses: actions/checkout@v4
+        if: env.GMAIL_USER != ''
       - uses: pnpm/action-setup@v4
+        if: env.GMAIL_USER != ''
         with:
           version: 8
       - uses: actions/setup-node@v4
+        if: env.GMAIL_USER != ''
         with:
           node-version: 22
           cache: pnpm
           cache-dependency-path: app/pnpm-lock.yaml
       - name: Install
+        if: env.GMAIL_USER != ''
         working-directory: app
         run: pnpm install --frozen-lockfile
       - name: Run settlement bot
+        if: env.GMAIL_USER != ''
         working-directory: app
         env:
-          GMAIL_USER: ${{ secrets.GMAIL_USER }}
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
           PRIVATE_KEY: ${{ inputs.dry_run == true && '' || secrets.PRIVATE_KEY }}
           RPC_OVERRIDE: ${{ secrets.RPC_OVERRIDE }}
@@ -59,7 +72,7 @@ jobs:
             --since "${{ inputs.since || '2d' }}" \
             --out settle-report.json
       - uses: actions/upload-artifact@v4
-        if: always()
+        if: always() && env.GMAIL_USER != ''
         with:
           name: settle-report-${{ github.run_id }}
           path: app/settle-report.json
