@@ -6,22 +6,101 @@ import {
   createPublicClient,
   createWalletClient,
   custom,
+  fallback,
   http,
+  numberToHex,
   publicActions,
   type Abi,
   type Address,
   type PublicClient,
+  type Transport,
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { useQueryClient } from "@tanstack/react-query";
-import { chain, DEV_ACCOUNTS, IS_LOCAL, RPC_URL } from "../config";
+import { chain, CHAIN_ID, DEV_ACCOUNTS, IS_LOCAL, RPC_URL } from "../config";
+
+// Reads never go through the user's wallet: the site must work for someone who has
+// never connected one, so it talks to public RPCs directly.
+//
+// Those public RPCs disagree wildly about eth_getLogs. Our scans start at the
+// deployment block — a window that grows every day — and publicnode rejects ranges
+// over 50k blocks on some pool nodes and 10k on others, drpc caps at 10k, 1rpc at 50.
+// So: try several providers in order, and split every oversized eth_getLogs into
+// windows small enough that any of them will serve it. HTTP batching folds the
+// windows back into roughly one round trip, so the extra calls are close to free.
+const MAX_LOG_RANGE = 9_000n;
+
+/** Read endpoints per chain, best-first (VITE_RPC_URL overrides). */
+const READ_RPCS: Record<number, string[]> = {
+  // no getLogs range cap, serves batched requests
+  100: ["https://rpc.gnosischain.com", "https://gnosis-rpc.publicnode.com"],
+  // publicnode last: it answers Sepolia log scans with an empty set rather than an error
+  11155111: [
+    "https://rpc.sepolia.ethpandaops.io",
+    "https://sepolia.gateway.tenderly.co",
+    "https://ethereum-sepolia-rpc.publicnode.com",
+  ],
+};
+
+function readUrls(): string[] {
+  const override = import.meta.env.VITE_RPC_URL as string | undefined;
+  if (override) return [override];
+  return READ_RPCS[CHAIN_ID] ?? [RPC_URL];
+}
+
+function asBlockNumber(v: unknown): bigint | null {
+  if (typeof v === "bigint") return v;
+  if (typeof v === "string" && v.startsWith("0x")) return BigInt(v);
+  if (v === "earliest") return 0n;
+  return null; // "latest"/"pending"/undefined — resolved by the caller
+}
+
+/** Splits oversized eth_getLogs into MAX_LOG_RANGE windows; passes everything else through. */
+function withChunkedLogs(inner: Transport): Transport {
+  return (opts) => {
+    const t = inner(opts);
+    const request = async (args: { method: string; params?: unknown }, reqOpts?: unknown) => {
+      const call = (a: unknown) => (t.request as (a: unknown, o?: unknown) => Promise<unknown>)(a, reqOpts);
+      if (args.method !== "eth_getLogs") return call(args);
+
+      const filter = ((args.params as Record<string, unknown>[]) ?? [])[0] ?? {};
+      const from = asBlockNumber(filter.fromBlock);
+      if (from === null) return call(args); // no explicit start — leave it to the node
+      const to = asBlockNumber(filter.toBlock) ?? BigInt((await call({ method: "eth_blockNumber" })) as string);
+      if (to <= from + MAX_LOG_RANGE) return call(args);
+
+      const windows: Array<[bigint, bigint]> = [];
+      for (let start = from; start <= to; start += MAX_LOG_RANGE + 1n) {
+        const end = start + MAX_LOG_RANGE > to ? to : start + MAX_LOG_RANGE;
+        windows.push([start, end]);
+      }
+      // HTTP batching folds these into a single round trip
+      const parts = await Promise.all(
+        windows.map(([start, end]) =>
+          call({ ...args, params: [{ ...filter, fromBlock: numberToHex(start), toBlock: numberToHex(end) }] }),
+        ),
+      );
+      return (parts as unknown[][]).flat();
+    };
+    return { ...t, request: request as typeof t.request };
+  };
+}
+
+const readTransport = withChunkedLogs(
+  IS_LOCAL
+    ? http(RPC_URL, { batch: { batchSize: 20, wait: 16 } })
+    : fallback(
+        readUrls().map((url) => http(url, { batch: { batchSize: 20, wait: 16 } })),
+        { rank: false, retryCount: 1 },
+      ),
+);
 
 // JSON-RPC batching (HTTP batch + auto-multicall aggregation) keeps the request
 // count sane with dozens of markets on a public rate-limited RPC.
 export const publicClient: PublicClient = createPublicClient({
   chain,
   batch: { multicall: { wait: 16 } },
-  transport: http(RPC_URL, { batch: { batchSize: 20, wait: 16 } }),
+  transport: readTransport,
 });
 
 type Eip1193 = { request(args: { method: string; params?: unknown[] }): Promise<unknown> };

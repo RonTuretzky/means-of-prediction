@@ -5,6 +5,7 @@ import { MarketCard } from "../components/MarketCard";
 import { MarketCardSkeleton } from "../components/Skeleton";
 import { Resolution, useMarkets } from "../hooks/useMarkets";
 import { CATEGORIES, parseCategory, type Category } from "../data/categories";
+import { CHAIN_LABEL, IS_LOCAL } from "../config";
 
 type Sort = "newest" | "volume" | "liquidity" | "ending";
 type Filter = "all" | "live" | "resolved";
@@ -107,7 +108,12 @@ export function MarketsPage() {
 
       {error && (
         <div className="bread-card border-system-red p-4 text-system-red">
-          Could not reach the chain. Is anvil running and are the contracts deployed? ({String(error)})
+          <p className="font-bold">
+            {IS_LOCAL
+              ? "Could not reach the chain. Is anvil running and are the contracts deployed?"
+              : `Could not load markets from ${CHAIN_LABEL}. The public RPC is unreachable or rate-limiting; retrying automatically.`}
+          </p>
+          <p className="mt-1 break-all text-caption">{String(error)}</p>
         </div>
       )}
       {isLoading && (
