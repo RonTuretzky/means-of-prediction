@@ -1,0 +1,12 @@
+{
+  "activeDirectory": "/Users/wk/.local/share/means-of-prediction/slides/qwen-consistency-diagnostic-20260913",
+  "archivalOnly": true,
+  "note": "Exact original source and protocol bytes preserved. These scripts derive their input/output directories from __file__; relocation changes that relationship. Do not run the archived main function. Use the active directory with its pinned inputs and immutable original result; never rerun it to overwrite the result. Pure unit tests may be run from this archive.",
+  "files": {
+    "aggregate-results.json": "5a5c28e689fef57f9f49d81c2cbfda1b48fb474ad41dc21f2d3cbdac0af5c7bc",
+    "diagnostic.py": "e320acd6fff6fa804f4d1c848a7216fe85668d76517654237329ff810ddeaadf",
+    "protocol.json": "eb6150b53ecc083ecee2a275e765de3b6a5f4666047b9e28c6d5f8f3ee6ae8fa",
+    "test_diagnostic.py": "e1e71f3cb5c1ceb97dbc79da0b96571537536e5686cf5b12498157eeac58ecb7"
+  },
+  "privateRecordsIncluded": false
+}
