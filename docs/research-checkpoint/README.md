@@ -16,5 +16,5 @@ the private artifacts separately through private storage, verify all seals, and
 record a relocation amendment before changing any path-sensitive procedure.
 
 The snapshots include the quote-order probe, the strict-only split-predicate
-probe, the supplemental natural-email evaluator, and the offline development
+probe, the later evidence-basis probe, the supplemental natural-email evaluator, and the offline development
 comparator. The shared main harness lives in `app/scripts/research/blind/`.

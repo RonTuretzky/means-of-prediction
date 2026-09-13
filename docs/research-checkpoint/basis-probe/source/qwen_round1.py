@@ -700,9 +700,6 @@ def audit():
         for method,lessons in job['input']['feedbackLessons'].items():
             expected=[load('feedback/'+method+'/'+str(i)+'/teacher-effective.json')['output'] for i in range(load('feedback/'+method+'/manifest.json')['shards'])]
             if lessons!=expected:raise RuntimeError('Optimizer omitted teacher lesson')
-        if 'hierarchicalFeedback' in job['input']:
-            import qwen_hierarchical_optimizer as hierarchy
-            hierarchy.verify_optimizer_lineage(job,d)
     result={'auditedAt':r.now(),'methods':methods,'fixtureContentsRead':False,'dataManifestSha256':r.digest(ROOT/ITEMS),
         'inputManifestCompleteEmails':len(load('development-items-seal.json')['completeEmailIds']),'runtimeSha256':r.digest(ROOT/'runtime.json')}
     r.save(ROOT/('final-training-audit.json' if (ROOT/'selection.json').exists() else 'training-audit.json'),result);return result

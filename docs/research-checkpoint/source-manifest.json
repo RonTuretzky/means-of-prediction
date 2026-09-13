@@ -245,6 +245,101 @@
       "source": "/Users/wk/.local/share/means-of-prediction/slides/parallel-track-review-20260913/compare_methods.py",
       "copy": "compare_methods.py",
       "sha256": "cf6f079605d4d3d791570863d754a403345b9380a8f23ecbcedf6447ce18d1a1"
+    },
+    {
+      "source": "/Users/wk/.local/share/means-of-prediction/slides/qwen-basis-probe-20260913/README.md",
+      "copy": "basis-probe/README.md",
+      "sha256": "45dfcb71ae28e0328d84d4b11abb804caea5cbc5ae16a0553fbe9ac67852d08e"
+    },
+    {
+      "source": "/Users/wk/.local/share/means-of-prediction/slides/qwen-basis-probe-20260913/probe.py",
+      "copy": "basis-probe/probe.py",
+      "sha256": "ce489684b09a5e7b1701b9a39c7715b2f573ce644c9a055cae5ac61591fd4b59"
+    },
+    {
+      "source": "/Users/wk/.local/share/means-of-prediction/slides/qwen-basis-probe-20260913/order_support.py",
+      "copy": "basis-probe/order_support.py",
+      "sha256": "6bf90302023aa3c8c9c5b711bd367f8d20c305740dde897a8ce66a26e4e6a054"
+    },
+    {
+      "source": "/Users/wk/.local/share/means-of-prediction/slides/qwen-basis-probe-20260913/prepare.py",
+      "copy": "basis-probe/prepare.py",
+      "sha256": "d298b7399b8ea60cb8c34daa516b536ba53027619d523d72fc3b4656d04c7fb8"
+    },
+    {
+      "source": "/Users/wk/.local/share/means-of-prediction/slides/qwen-basis-probe-20260913/test_probe.py",
+      "copy": "basis-probe/test_probe.py",
+      "sha256": "a0398f13430f7e1ea1c599b5db2e90a0518c5f65de747349ed4736a4b9f56778"
+    },
+    {
+      "source": "/Users/wk/.local/share/means-of-prediction/slides/qwen-basis-probe-20260913/protocol.json",
+      "copy": "basis-probe/protocol.json",
+      "sha256": "03ed2277a3c3f993998a25923cb55818f2b1a3f8af6e7ee7e1fb92623a5afd10"
+    },
+    {
+      "source": "/Users/wk/.local/share/means-of-prediction/slides/qwen-basis-probe-20260913/source/astra_transport.py",
+      "copy": "basis-probe/source/astra_transport.py",
+      "sha256": "d80cb3a50c0ecafb455f696a593003b479ce96d39cea154803dde03a52ec3fe1"
+    },
+    {
+      "source": "/Users/wk/.local/share/means-of-prediction/slides/qwen-basis-probe-20260913/source/experiment.py",
+      "copy": "basis-probe/source/experiment.py",
+      "sha256": "08578175def5e8b7792238dff371a57ed072a25f99d7fd3d816a9c3012f39f0b"
+    },
+    {
+      "source": "/Users/wk/.local/share/means-of-prediction/slides/qwen-basis-probe-20260913/source/improve.py",
+      "copy": "basis-probe/source/improve.py",
+      "sha256": "230471f99c34e478c7b6ed452f4a038012cef74aed87c77f46c56e661616558f"
+    },
+    {
+      "source": "/Users/wk/.local/share/means-of-prediction/slides/qwen-basis-probe-20260913/source/matcher.py",
+      "copy": "basis-probe/source/matcher.py",
+      "sha256": "e992a1a1be5df9425ce95880977a1654f4672987218da4c783890be3ac6d69f9"
+    },
+    {
+      "source": "/Users/wk/.local/share/means-of-prediction/slides/qwen-basis-probe-20260913/source/prepare_dataset.py",
+      "copy": "basis-probe/source/prepare_dataset.py",
+      "sha256": "72c4a3cb9cc207f9bf3d628875c8063baf59c265d7c3a9186ec068313e9a4ab9"
+    },
+    {
+      "source": "/Users/wk/.local/share/means-of-prediction/slides/qwen-basis-probe-20260913/source/qwen_preflight.mjs",
+      "copy": "basis-probe/source/qwen_preflight.mjs",
+      "sha256": "188c8d42055c9c3055dd3a4b687a9cd9071555cd63d60a7ecbe9070d67e82dfe"
+    },
+    {
+      "source": "/Users/wk/.local/share/means-of-prediction/slides/qwen-basis-probe-20260913/source/qwen_round1.py",
+      "copy": "basis-probe/source/qwen_round1.py",
+      "sha256": "7f9e157e5efda22b593a1962fe7fb3a896e56ad5eb7a481cb7ef4865c7ab2f8c"
+    },
+    {
+      "source": "/Users/wk/.local/share/means-of-prediction/slides/qwen-basis-probe-20260913/source/qwen_semantic.py",
+      "copy": "basis-probe/source/qwen_semantic.py",
+      "sha256": "8f9e13ae567227b9fecfcce7006f2fad3a414fee169939fdcdec378bedf3c38d"
+    },
+    {
+      "source": "/Users/wk/.local/share/means-of-prediction/slides/qwen-basis-probe-20260913/source/round2.py",
+      "copy": "basis-probe/source/round2.py",
+      "sha256": "e7a228db2ffbc69e6ee8a60f51842460c2d377bb7cf50303b756afa63fabacaf"
+    },
+    {
+      "source": "/Users/wk/.local/share/means-of-prediction/slides/qwen-basis-probe-20260913/source/round2_matcher.py",
+      "copy": "basis-probe/source/round2_matcher.py",
+      "sha256": "b7dcd9414d2d932d167b370fe4678ac28b5bfc2ba50f2b1c2cc99210fcbe8a6a"
+    },
+    {
+      "source": "/Users/wk/.local/share/means-of-prediction/slides/qwen-basis-probe-20260913/source/round3.py",
+      "copy": "basis-probe/source/round3.py",
+      "sha256": "23002deda8f5adec37d7c980581bee70bbb51f5bc65a6e5d43e7539c6e851beb"
+    },
+    {
+      "source": "/Users/wk/.local/share/means-of-prediction/slides/qwen-basis-probe-20260913/source/round4.py",
+      "copy": "basis-probe/source/round4.py",
+      "sha256": "507af5a9e03649896d82ff9ee6259c7701e2a8671ba82a830e103fc28f0a3476"
+    },
+    {
+      "source": "/Users/wk/.local/share/means-of-prediction/slides/qwen-basis-probe-20260913/source/witness.py",
+      "copy": "basis-probe/source/witness.py",
+      "sha256": "9f6b248ed39cee2beb46b2e432ccc2eae46b3a1f9b435704ad38583d7d591111"
     }
   ]
 }

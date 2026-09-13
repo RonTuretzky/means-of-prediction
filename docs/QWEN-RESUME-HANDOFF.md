@@ -1,5 +1,63 @@
 # Qwen research checkpoint and continuation
 
+## Continuation update — 2026-09-13 19:25 UTC
+
+The user subsequently authorized pushing the checkpoint and continuing the
+experiment until the usage limit. Commit `7f2b52ba733018013a3fc0e781e280a430a07afa`
+was pushed and verified on `mop/checkpoint/qwen-research-2026-09-13`. The earlier
+local-only publication restriction below is historical; deployment and live
+settlement remain outside this research continuation.
+
+V2 is finished: 1,914 successful judgments and one preserved output-cap failure.
+Both root and child independently reconciled all 1,915 raw responses and input
+token counts. On 1,754 common completed cases, grounded factual passes fell
+55 → 43, strict positive controls fell 446 → 284, and negative false claims fell
+14 → 2. V2 fails the paired nonregression gate; baseline remains the provisional
+leader. These are development results, not population settlement coverage.
+
+Both frozen probes are also finished and audited. On the selected panel, original
+and quote-first each passed 5/6 positive controls with 2/4 negative false claims;
+quote-first lost two exact quotes. Separate predicate calls passed 1/6 positives
+with 0/4 negative false claims at roughly twice the input cost. Neither procedure
+is adopted. Do not rerun the write-once probe commands below.
+
+Hosted Astra capacity became available again without an account change or reset.
+The recovery helper preserves the nine prior usage-limit failures and permits a
+single new attempt per unfinished feedback job, stopping persistently on any
+fresh usage-limit response. All 78 V2 full-body feedback shards are complete.
+The direct V3 optimizer packet would exceed the configured context: its known
+text/schema count is 448,726 tokens. It is preserved privately. Nine reviewed
+second-level summarization jobs cover all 235 earlier lessons and all 12 complete
+diagnostic cases with 48 responses. Three of nine are complete at this snapshot;
+the largest job has 102,848 known input tokens. These summaries are explicitly
+lossy abstractions, and the final optimizer retains their complete lineage.
+The final V3 optimizer packet and replacement prompts require separate review.
+
+The local model is idle after the probes. A third diagnostic, under
+`slides/qwen-basis-probe-20260913`, is frozen and independently reviewed with 16
+synthetic tests. It adds a compact entity/value/comparison record before the
+original five outputs, without repairing final answers from that record. It
+must run only after V3 completion and verified local-model quiescence. Its input
+freeze is `570a5243f3622ca3cc3f8fe74103d14f75cf474dc9ace7705b190ab2a35f0436`;
+the failed-response reporting amendment is
+`8854a9b8ea98a1daf9c25caf76211a2bef221693b937dc810be079c110ab0a13`.
+Source-only archival copies are included in `docs/research-checkpoint/basis-probe`.
+
+`qwen_hierarchical_optimizer.py` owns the current nine-job summarization and
+separate final-optimizer gates. `qwen_guarded_rules.py` prepares a bounded
+public-only feeder after exact prompt review, with at most ten requests in
+flight and a persistent stop on the first usage-limit error. Its code is reviewed;
+no V3 rules have been dispatched. Do not run the older eager generation command
+for V3. Inspect current processes and private artifacts before resuming; this
+paragraph is a timestamped snapshot.
+
+New private root reviews are `v2-and-order-probe-review.private.json` and
+`predicate-probe-review.private.json` in `slides/parallel-track-review-20260913`.
+All reserved evaluations remain sealed. The remainder of this document preserves
+the earlier checkpoint and procedure; completed steps are historical.
+
+## Original checkpoint
+
 Checkpoint requested by the user on 2026-09-13, before further experiment work.
 This document supersedes the old no-commit instruction for a **local checkpoint**.
 Publishing, deployment, live prompt promotion, and real-email settlement remain on
