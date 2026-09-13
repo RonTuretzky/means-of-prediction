@@ -1,6 +1,6 @@
 # Qwen research checkpoint and continuation
 
-## Continuation update — 2026-09-13 19:41 UTC
+## Continuation update — 2026-09-13 19:53 UTC
 
 The user subsequently authorized pushing the checkpoint and continuing the
 experiment until the usage limit. Commit `7f2b52ba733018013a3fc0e781e280a430a07afa`
@@ -33,9 +33,13 @@ audited; they consumed 507,031 input and 38,388 output tokens. These summaries
 are explicitly lossy abstractions, and the final optimizer retains their complete
 lineage. The final V3 packet has 78,498 known input tokens and SHA-256
 `feed9abb19de89c1df6c2c7b2d5a9e2706aacd3f9c2370fc23640ce2615fe82e`.
-Root approved its exact structural, lineage and context review; one optimizer
-attempt is now authorized. Replacement prompts still require full review before
-public rule generation.
+Root approved its exact structural, lineage and context review. The single
+optimizer attempt completed, and both resulting prompts were read in full and
+approved before rule generation. The generator is 4,856 characters, SHA-256
+`8b3d73e41de936283b19b77d1a254f56a13954d130a8973816b41961ca3578ca`;
+the judge is 4,927 characters, SHA-256
+`38fd8e474870deb938f8c3785e12d3956dffe92ef26ef22d546ae6229004747a`.
+This remains the same full-email, single-call, five-field judgment procedure.
 
 The local model is idle after the probes. A third diagnostic, under
 `slides/qwen-basis-probe-20260913`, is frozen and independently reviewed with 16
@@ -47,13 +51,30 @@ the failed-response reporting amendment is
 `8854a9b8ea98a1daf9c25caf76211a2bef221693b937dc810be079c110ab0a13`.
 Source-only archival copies are included in `docs/research-checkpoint/basis-probe`.
 
-`qwen_hierarchical_optimizer.py` owns the current nine-job summarization and
+`qwen_hierarchical_optimizer.py` owns the nine-job summarization and
 separate final-optimizer gates. `qwen_guarded_rules.py` prepares a bounded
 public-only feeder after exact prompt review, with at most ten requests in
-flight and a persistent stop on the first usage-limit error. Its code is reviewed;
-no V3 rules have been dispatched. Do not run the older eager generation command
-for V3. Inspect current processes and private artifacts before resuming; this
-paragraph is a timestamped snapshot.
+flight and a persistent stop on the first usage-limit error. The exact plan
+`431bc0902a70b5bb9b53e78093eaabcb59e338c5417bb2d4b80bf79725f056e5`
+and source/runtime-bound `v3-loop-launch-protocol.json` were independently
+reviewed. The V3 coordinator PID 86209 launched at 19:45:40 UTC; 192/241 rules
+were complete at this snapshot, with no fresh usage stop. It proceeds through
+rule audit, exact full-input token preflight, four-worker local judging and
+serial full-body Astra feedback. The explicit `v3-local-released.json` marker
+permits root's later diagnostic while remaining remote feedback completes.
+Do not run the older eager generation command for V3. Inspect current processes
+and private artifacts before resuming; this paragraph is a timestamped snapshot.
+
+A fourth diagnostic, `slides/qwen-crossed-probe-20260913`, crosses baseline/V3
+rules and judge prompts on the same twelve old-development cases. Its panel and
+cyclic order are already frozen, and the code passed independent review and nine
+tests. Exact requests are prepared only after all V3 rule records are frozen;
+preparation never reads V3 judgments. Actual inference must follow full V3
+completion, local release, basis-probe completion and a separate execution gate.
+All 48 planned rows remain in reporting, including unavailable rules without
+replacement calls. Original baseline and V3 replays help qualify observed
+differences. This diagnostic has no automatic selection eligibility. Source-only
+copies are archived under `docs/research-checkpoint/crossed-probe`.
 
 New private root reviews are `v2-and-order-probe-review.private.json` and
 `predicate-probe-review.private.json` in `slides/parallel-track-review-20260913`.

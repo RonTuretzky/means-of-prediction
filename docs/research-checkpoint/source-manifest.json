@@ -340,6 +340,96 @@
       "source": "/Users/wk/.local/share/means-of-prediction/slides/qwen-basis-probe-20260913/source/witness.py",
       "copy": "basis-probe/source/witness.py",
       "sha256": "9f6b248ed39cee2beb46b2e432ccc2eae46b3a1f9b435704ad38583d7d591111"
+    },
+    {
+      "source": "/Users/wk/.local/share/means-of-prediction/slides/qwen-crossed-probe-20260913/README.md",
+      "copy": "crossed-probe/README.md",
+      "sha256": "e0cbc0750d1286028f0c9f765746c90aaf5b43587cd7a7284ce211469c4bafd0"
+    },
+    {
+      "source": "/Users/wk/.local/share/means-of-prediction/slides/qwen-crossed-probe-20260913/probe.py",
+      "copy": "crossed-probe/probe.py",
+      "sha256": "9933339bfc0e1509ab2b1c56580f13e7d36c98dc2c14020bea9539351bf6e319"
+    },
+    {
+      "source": "/Users/wk/.local/share/means-of-prediction/slides/qwen-crossed-probe-20260913/test_probe.py",
+      "copy": "crossed-probe/test_probe.py",
+      "sha256": "32d2a93e86e48ee7ae3372b857fbde12c66b1f564eccaea07d8c09e067f6aeb4"
+    },
+    {
+      "source": "/Users/wk/.local/share/means-of-prediction/slides/qwen-crossed-probe-20260913/order_support.py",
+      "copy": "crossed-probe/order_support.py",
+      "sha256": "6bf90302023aa3c8c9c5b711bd367f8d20c305740dde897a8ce66a26e4e6a054"
+    },
+    {
+      "source": "/Users/wk/.local/share/means-of-prediction/slides/qwen-crossed-probe-20260913/basis_audit_support.py",
+      "copy": "crossed-probe/basis_audit_support.py",
+      "sha256": "ce489684b09a5e7b1701b9a39c7715b2f573ce644c9a055cae5ac61591fd4b59"
+    },
+    {
+      "source": "/Users/wk/.local/share/means-of-prediction/slides/qwen-crossed-probe-20260913/source/astra_transport.py",
+      "copy": "crossed-probe/source/astra_transport.py",
+      "sha256": "d80cb3a50c0ecafb455f696a593003b479ce96d39cea154803dde03a52ec3fe1"
+    },
+    {
+      "source": "/Users/wk/.local/share/means-of-prediction/slides/qwen-crossed-probe-20260913/source/experiment.py",
+      "copy": "crossed-probe/source/experiment.py",
+      "sha256": "08578175def5e8b7792238dff371a57ed072a25f99d7fd3d816a9c3012f39f0b"
+    },
+    {
+      "source": "/Users/wk/.local/share/means-of-prediction/slides/qwen-crossed-probe-20260913/source/improve.py",
+      "copy": "crossed-probe/source/improve.py",
+      "sha256": "230471f99c34e478c7b6ed452f4a038012cef74aed87c77f46c56e661616558f"
+    },
+    {
+      "source": "/Users/wk/.local/share/means-of-prediction/slides/qwen-crossed-probe-20260913/source/matcher.py",
+      "copy": "crossed-probe/source/matcher.py",
+      "sha256": "e992a1a1be5df9425ce95880977a1654f4672987218da4c783890be3ac6d69f9"
+    },
+    {
+      "source": "/Users/wk/.local/share/means-of-prediction/slides/qwen-crossed-probe-20260913/source/prepare_dataset.py",
+      "copy": "crossed-probe/source/prepare_dataset.py",
+      "sha256": "72c4a3cb9cc207f9bf3d628875c8063baf59c265d7c3a9186ec068313e9a4ab9"
+    },
+    {
+      "source": "/Users/wk/.local/share/means-of-prediction/slides/qwen-crossed-probe-20260913/source/qwen_preflight.mjs",
+      "copy": "crossed-probe/source/qwen_preflight.mjs",
+      "sha256": "188c8d42055c9c3055dd3a4b687a9cd9071555cd63d60a7ecbe9070d67e82dfe"
+    },
+    {
+      "source": "/Users/wk/.local/share/means-of-prediction/slides/qwen-crossed-probe-20260913/source/qwen_round1.py",
+      "copy": "crossed-probe/source/qwen_round1.py",
+      "sha256": "7f9e157e5efda22b593a1962fe7fb3a896e56ad5eb7a481cb7ef4865c7ab2f8c"
+    },
+    {
+      "source": "/Users/wk/.local/share/means-of-prediction/slides/qwen-crossed-probe-20260913/source/qwen_semantic.py",
+      "copy": "crossed-probe/source/qwen_semantic.py",
+      "sha256": "8f9e13ae567227b9fecfcce7006f2fad3a414fee169939fdcdec378bedf3c38d"
+    },
+    {
+      "source": "/Users/wk/.local/share/means-of-prediction/slides/qwen-crossed-probe-20260913/source/round2.py",
+      "copy": "crossed-probe/source/round2.py",
+      "sha256": "e7a228db2ffbc69e6ee8a60f51842460c2d377bb7cf50303b756afa63fabacaf"
+    },
+    {
+      "source": "/Users/wk/.local/share/means-of-prediction/slides/qwen-crossed-probe-20260913/source/round2_matcher.py",
+      "copy": "crossed-probe/source/round2_matcher.py",
+      "sha256": "b7dcd9414d2d932d167b370fe4678ac28b5bfc2ba50f2b1c2cc99210fcbe8a6a"
+    },
+    {
+      "source": "/Users/wk/.local/share/means-of-prediction/slides/qwen-crossed-probe-20260913/source/round3.py",
+      "copy": "crossed-probe/source/round3.py",
+      "sha256": "23002deda8f5adec37d7c980581bee70bbb51f5bc65a6e5d43e7539c6e851beb"
+    },
+    {
+      "source": "/Users/wk/.local/share/means-of-prediction/slides/qwen-crossed-probe-20260913/source/round4.py",
+      "copy": "crossed-probe/source/round4.py",
+      "sha256": "507af5a9e03649896d82ff9ee6259c7701e2a8671ba82a830e103fc28f0a3476"
+    },
+    {
+      "source": "/Users/wk/.local/share/means-of-prediction/slides/qwen-crossed-probe-20260913/source/witness.py",
+      "copy": "crossed-probe/source/witness.py",
+      "sha256": "9f6b248ed39cee2beb46b2e432ccc2eae46b3a1f9b435704ad38583d7d591111"
     }
   ]
 }
