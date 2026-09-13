@@ -32,12 +32,17 @@ contract FPMM is ERC20, IERC1155Receiver {
         address indexed seller, uint256 returnAmount, uint256 feeAmount, uint256 outcomeIndex, uint256 tokensSold
     );
     event FeesWithdrawn(address indexed funder, uint256 amount);
+    event ProtocolFeesAccrued(uint256 amount);
+    event ProtocolFeesWithdrawn(address indexed recipient, uint256 amount);
 
     // Storage (not immutable): FPMMs are EIP-1167 clones of one implementation.
     ConditionalTokens public conditionalTokens;
     IERC20 public collateralToken;
     bytes32 public conditionId;
     uint256 public fee; // fraction of each trade, 1e18-scale (2e16 = 2%)
+    uint256 public protocolFee; // platform rate, additional to the LP fee
+    address public feeRecipient; // fixed for the lifetime of this pool
+    uint256 public protocolFeesAccrued;
     uint256 public yesPositionId;
     uint256 public noPositionId;
     bool private initialized;
@@ -55,12 +60,14 @@ contract FPMM is ERC20, IERC1155Receiver {
         initialized = true;
     }
 
-    function initialize(ConditionalTokens _conditionalTokens, IERC20 _collateralToken, bytes32 _conditionId, uint256 _fee)
+    function initialize(ConditionalTokens _conditionalTokens, IERC20 _collateralToken, bytes32 _conditionId, uint256 _fee,
+        uint256 _protocolFee, address _feeRecipient)
         external
     {
         require(!initialized, "FPMM: already initialized");
         initialized = true;
-        require(_fee < ONE, "FPMM: fee must be < 100%");
+        require(_fee < ONE && _protocolFee < ONE - _fee, "FPMM: fee must be < 100%");
+        require(_protocolFee == 0 || _feeRecipient != address(0), "FPMM: missing fee recipient");
         require(_conditionalTokens.getOutcomeSlotCount(_conditionId) == 2, "FPMM: binary conditions only");
         name = "Headline Market LP";
         symbol = "HMLP";
@@ -68,6 +75,8 @@ contract FPMM is ERC20, IERC1155Receiver {
         collateralToken = _collateralToken;
         conditionId = _conditionId;
         fee = _fee;
+        protocolFee = _protocolFee;
+        feeRecipient = _feeRecipient;
         yesPositionId =
             _conditionalTokens.getPositionId(_collateralToken, _conditionalTokens.getCollectionId(_conditionId, 1));
         noPositionId =
@@ -148,7 +157,7 @@ contract FPMM is ERC20, IERC1155Receiver {
     /// @notice Outcome tokens received for `investmentAmount` collateral, fee included.
     function calcBuyAmount(uint256 investmentAmount, uint256 outcomeIndex) public view returns (uint256) {
         require(outcomeIndex < 2, "FPMM: bad outcome index");
-        uint256 invMinusFee = investmentAmount - (investmentAmount * fee) / ONE;
+        uint256 invMinusFee = investmentAmount - (investmentAmount * totalFee()) / ONE;
         (uint256 yesBal, uint256 noBal) = poolBalances();
         (uint256 buyBal, uint256 otherBal) = outcomeIndex == 0 ? (yesBal, noBal) : (noBal, yesBal);
         require(buyBal > 0 && otherBal > 0, "FPMM: no liquidity");
@@ -160,7 +169,7 @@ contract FPMM is ERC20, IERC1155Receiver {
     /// @notice Outcome tokens that must be sold to receive `returnAmount` collateral.
     function calcSellAmount(uint256 returnAmount, uint256 outcomeIndex) public view returns (uint256) {
         require(outcomeIndex < 2, "FPMM: bad outcome index");
-        uint256 returnPlusFee = ceilDiv(returnAmount * ONE, ONE - fee);
+        uint256 returnPlusFee = ceilDiv(returnAmount * ONE, ONE - totalFee());
         (uint256 yesBal, uint256 noBal) = poolBalances();
         (uint256 sellBal, uint256 otherBal) = outcomeIndex == 0 ? (yesBal, noBal) : (noBal, yesBal);
         require(sellBal > 0 && otherBal > returnPlusFee, "FPMM: insufficient liquidity");
@@ -178,8 +187,8 @@ contract FPMM is ERC20, IERC1155Receiver {
         require(tokensBought >= minOutcomeTokensToBuy, "FPMM: max slippage exceeded");
 
         require(collateralToken.transferFrom(msg.sender, address(this), investmentAmount), "FPMM: transfer failed");
-        uint256 feeAmount = (investmentAmount * fee) / ONE;
-        _collectFee(feeAmount);
+        uint256 feeAmount = (investmentAmount * totalFee()) / ONE;
+        _collectTradeFees(investmentAmount, feeAmount);
         uint256 invMinusFee = investmentAmount - feeAmount;
         collateralToken.approve(address(conditionalTokens), invMinusFee);
         conditionalTokens.splitPosition(collateralToken, conditionId, invMinusFee);
@@ -202,9 +211,9 @@ contract FPMM is ERC20, IERC1155Receiver {
         conditionalTokens.safeTransferFrom(
             msg.sender, address(this), outcomeIndex == 0 ? yesPositionId : noPositionId, tokensSold, ""
         );
-        uint256 returnPlusFee = ceilDiv(returnAmount * ONE, ONE - fee);
+        uint256 returnPlusFee = ceilDiv(returnAmount * ONE, ONE - totalFee());
         conditionalTokens.mergePositions(collateralToken, conditionId, returnPlusFee);
-        _collectFee(returnPlusFee - returnAmount);
+        _collectTradeFees(returnPlusFee, returnPlusFee - returnAmount);
         require(collateralToken.transfer(msg.sender, returnAmount), "FPMM: transfer failed");
         emit Sell(msg.sender, returnAmount, returnPlusFee - returnAmount, outcomeIndex, tokensSold);
     }
@@ -292,5 +301,29 @@ contract FPMM is ERC20, IERC1155Receiver {
 
     function ceilDiv(uint256 a, uint256 b) private pure returns (uint256) {
         return a == 0 ? 0 : (a - 1) / b + 1;
+    }
+    function totalFee() public view returns (uint256) {
+        return fee + protocolFee;
+    }
+
+    /// @notice Anyone may trigger payment; collateral only goes to the fixed treasury.
+    function withdrawProtocolFees() external {
+        uint256 amount = protocolFeesAccrued;
+        protocolFeesAccrued = 0;
+        if (amount > 0) {
+            require(collateralToken.transfer(feeRecipient, amount), "FPMM: transfer failed");
+            emit ProtocolFeesWithdrawn(feeRecipient, amount);
+        }
+    }
+
+    function _collectTradeFees(uint256 gross, uint256 amount) private {
+        uint256 platformAmount = (gross * protocolFee) / ONE;
+        // With no LP fee, all rounding dust belongs to the platform.
+        if (fee == 0) platformAmount = amount;
+        if (platformAmount > 0) {
+            protocolFeesAccrued += platformAmount;
+            emit ProtocolFeesAccrued(platformAmount);
+        }
+        _collectFee(amount - platformAmount);
     }
 }

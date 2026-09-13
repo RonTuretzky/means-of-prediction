@@ -1,0 +1,15 @@
+[Unit]
+Description=Means of Prediction %i database backup and restore check
+[Service]
+Type=oneshot
+User=mop-%i
+WorkingDirectory=/opt/mop/current/app
+EnvironmentFile=/etc/mop/backup-%i.env
+ExecStart=/usr/local/bin/node --experimental-strip-types automation/backup.mjs
+UMask=0077
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateNetwork=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/var/lib/mop-%i

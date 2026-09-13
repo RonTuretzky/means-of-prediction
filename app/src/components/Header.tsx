@@ -60,7 +60,7 @@ export function Header() {
           </span>
           <Chip size="small">
             <span className="flex items-center gap-1">
-              <Newspaper size={12} /> {IS_LOCAL ? "zkEmail settled" : `on ${CHAIN_LABEL}`}
+              <Newspaper size={12} /> {IS_LOCAL ? "DKIM settled" : `on ${CHAIN_LABEL}`}
             </span>
           </Chip>
         </Link>

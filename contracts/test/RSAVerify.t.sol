@@ -2,7 +2,7 @@
 pragma solidity ^0.8.28;
 
 import {Test} from "forge-std/Test.sol";
-import {RSAVerify} from "../src/zkemail/RSAVerify.sol";
+import {RSAVerify} from "../src/dkim/RSAVerify.sol";
 
 /// @notice Proves the onchain RSA-SHA256 verification (modexp precompile) accepts a
 /// REAL RSA signature made by the committed dev key and rejects tampering — the same

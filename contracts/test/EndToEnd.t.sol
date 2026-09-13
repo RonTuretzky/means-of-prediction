@@ -5,7 +5,7 @@ import {MarketTestBase} from "./MarketTestBase.sol";
 import {HeadlineMarket} from "../src/market/HeadlineMarket.sol";
 import {MarketFactory} from "../src/market/MarketFactory.sol";
 import {FPMM} from "../src/market/FPMM.sol";
-import {EmailProof} from "../src/zkemail/IZKEmail.sol";
+import {EmailProof} from "../src/dkim/IDKIMVerifier.sol";
 import {ERC20} from "../src/tokens/ERC20.sol";
 
 contract TestUSDCLike is ERC20 {
@@ -17,7 +17,7 @@ contract TestUSDCLike is ERC20 {
 }
 
 /// @notice Full lifecycle: permissionless market creation -> trading -> permissionless
-/// zkEmail settlement -> redemption. Mirrors the Playwright e2e flows.
+/// DKIM settlement -> redemption. Mirrors the Playwright e2e flows.
 contract EndToEndTest is MarketTestBase {
     function test_FullLifecycle_YesResolution() public {
         // 1. Alice permissionlessly opens a market with 10k USDC liquidity, 2-of-3 sources.

@@ -6,7 +6,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 
 // All user flows, in one serial suite against a fresh chain (see global-setup):
 //   1. browse markets            5. permissionless market creation
-//   2. faucet + account switch   6. permissionless zkEmail settlement -> YES
+//   2. faucet + account switch   6. permissionless DKIM settlement -> YES
 //   3. buy YES / sell            7. redeem winnings, portfolio
 //   4. add liquidity + LP fees   8. permissionless NO resolution after deadline
 test.describe.configure({ mode: "serial" });
@@ -24,6 +24,7 @@ async function rpc(method: string, params: unknown[] = []) {
 }
 
 async function readCash(page: Page): Promise<number> {
+  await expect(page.getByTestId("cash-balance")).toHaveText(/\$[\d,]+\.\d+/);
   const text = await page.getByTestId("cash-balance").textContent();
   return parseFloat((text ?? "0").replace(/[$,]/g, ""));
 }
@@ -64,6 +65,7 @@ test("faucet mints cash and the account switcher switches users", async ({ page 
 test("buy YES moves the price and creates a position", async ({ page }) => {
   await page.goto("/#/market/0");
   await expect(page.getByTestId("market-question")).toContainText("Fed rate cut");
+  await expect(page.getByTestId("trade-fees")).toContainText("2% to liquidity providers + 1% platform (3% total)");
 
   // $2,000 into a $25k pool: enough to visibly move the price off 50¢
   await page.getByTestId("amount-input").fill("2000");
@@ -78,6 +80,9 @@ test("buy YES moves the price and creates a position", async ({ page }) => {
   await expect(page.getByTestId("pos-yes")).not.toHaveText("0.00");
   // price moved above 50¢
   await expect(page.getByTestId("headline-price")).not.toHaveText("50¢");
+  await expect(page.getByTestId("protocol-fees-accrued")).toHaveText("$20.00");
+  await page.getByTestId("collect-protocol-fees").click();
+  await expect(page.getByTestId("protocol-fees-accrued")).toHaveText("$0.00");
 });
 
 test("sell part of the YES position", async ({ page }) => {
@@ -156,7 +161,7 @@ test("anyone can create a market permissionlessly", async ({ page }) => {
   await expect(page.getByTestId("rules-panel")).toContainText("2 of 3 newspapers");
 });
 
-test("zkEmail settlement: non-matching email is rejected, 2-of-3 alerts resolve YES, winners redeem", async ({
+test("DKIM settlement: non-matching email is rejected, 2-of-3 alerts resolve YES, winners redeem", async ({
   page,
 }) => {
   await page.goto("/#/market/0");
@@ -213,4 +218,44 @@ test("after the deadline anyone can resolve NO", async ({ page }) => {
   await page.goto("/#/markets");
   await expect(page.getByTestId("market-card-0")).toContainText("Resolved YES");
   await expect(page.getByTestId("market-card-2")).toContainText("Resolved NO");
+});
+
+test("paginated body upload: create rule, reject altered email, settle and redeem", async ({page}) => {
+  await page.goto('/#/create');
+  await page.getByTestId('create-question').fill('Will the authenticated body report Foulkes winning the primary?');
+  await page.getByTestId('create-next').click();
+  await page.getByTestId('newspaper-jacobin.com').click();
+  await page.getByTestId('create-next').click();
+  await page.getByTestId('mode-advanced').click();
+  await expect(page.getByTestId('field-Body')).toBeEnabled();
+  await page.getByTestId('field-Body').click();
+  await page.getByTestId('create-regex').fill('^Foulkes won the Democratic primary$');
+  await expect(page.getByTestId('create-next')).toBeDisabled();
+  await page.getByTestId('create-regex').fill('Foulkes won the Democratic primary');
+  await page.getByTestId('create-next').click();
+  await page.getByTestId('create-liquidity').fill('200');
+  await page.getByTestId('create-submit').click();
+  await expect(page).toHaveURL(/#\/market\/4/,{timeout:30000});
+  await page.getByTestId('amount-input').fill('25');
+  await expect(page.getByTestId('quote-shares')).not.toHaveText('—');
+  await page.getByTestId('trade-submit').click();
+  await expect(page.getByTestId('pos-yes')).not.toHaveText('0.00');
+  const block=await (await fetch(RPC,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({jsonrpc:'2.0',id:1,method:'eth_getBlockByNumber',params:['latest',false]})})).json();
+  // @ts-expect-error Node-only signing fixture helper is plain JavaScript.
+  const {signEml}=await import('../scripts/dkim.mjs');
+  const raw=signEml('From: Test fixture <nytdirect@nytimes.com>\r\nSubject: Daily newsletter fixture\r\nDate: '+new Date(Number(BigInt(block.result.timestamp))*1000).toUTCString()+'\r\nContent-Type: text/html; charset=utf-8\r\nContent-Transfer-Encoding: quoted-printable\r\n\r\n'+Array.from({length:2400},(_,i)=>'<p>Public local pagination fixture '+i.toString().padStart(4,'0')+' filler bytes.</p>').join('\r\n')+'\r\n<p>Foulkes won the Demo=\r\ncratic primary.</p>\r\n', {domain:'nytimes.com',headers:['from','subject','date','content-type','content-transfer-encoding']});
+  await page.getByTestId('eml-input').setInputFiles({name:'altered-body.eml',mimeType:'message/rfc822',buffer:Buffer.from(raw+'forged appendix\r\n','latin1')});
+  await expect(page.getByTestId('proof-check-fail')).toContainText('invalid DKIM proof');
+  await expect(page.getByTestId('submit-proof')).toBeDisabled();
+  await page.getByTestId('eml-input').setInputFiles({name:'body-fixture.eml',mimeType:'message/rfc822',buffer:Buffer.from(raw,'latin1')});
+  await expect(page.getByTestId('proof-subject')).toContainText('Daily newsletter fixture');
+  await expect(page.getByTestId('proof-body')).toContainText('Foulkes won the Democratic primary');
+  await expect(page.getByTestId('body-pagination')).toContainText('body uploads');
+  await expect(page.getByTestId('proof-check-ok')).toBeVisible();
+  await page.getByTestId('submit-proof').click();
+  await expect(page.getByTestId('resolution-panel')).toContainText('Resolved YES',{timeout:60000});
+  await expect(page.getByTestId('you-won')).toBeVisible();
+  const before=await readCash(page);
+  await page.getByTestId('redeem').click();
+  await expect.poll(()=>readCash(page)).toBeGreaterThan(before);
 });

@@ -1,0 +1,44 @@
+{
+  "version": 1,
+  "declaredBeforeReservedContentRead": true,
+  "input": {
+    "questions": "All 241 unchanged public questions; existing one-draw development rules only. Preserve each failure; no regeneration.",
+    "pairs": "Complete Cartesian product of both emails and all 241 questions: 482 per method.",
+    "html": "Decode the saved complete main HTML UTF-8 bytes without newline rewriting. No fallback excerpts, attachments, external links or cross-email aggregation. Missing main HTML remains unscorable.",
+    "qwen": "Use the final selected study's sealed email_packet, judge_request, local_call, valid_judgment and settlement helpers, with its frozen semantic renderer and runtime. Each input contains the full semantic email and one existing rule; no labels, pair IDs, question ordinals, excerpts or review notes.",
+    "regex": "Use unchanged round4 selected-baseline generations and the exact sealed matcher.py/round2_matcher.py byte-level adapter on full main HTML. Preserve invalid patterns, timeouts, two matches and source byte offsets. This measures lexical candidates, not settlement authorization."
+  },
+  "metadata": {
+    "subject": "Preserve full source subject as untrusted subject metadata.",
+    "signer": "Require an earlier intake result exactly pass, algorithm rsa-sha256, nonempty domain and selector, no body-length limitation, unique matching domain/selector metadata, identical normalized signed-header lists, offline full-body hash match and recorded raw/decoded-body integrity checks. Expose a signing domain only when the validated candidates have one unique domain. Ambiguous signature linkage is unresolved; do not choose the first or derive signer from display From/proof.",
+    "signedDate": "Expose source.messageDate only if an eligible signature covers Date and the raw email contains exactly one Date header whose timezone-aware timestamp equals source.messageDate. Otherwise expose an empty signedDate and retain the ambiguity in the audit. A mismatch halts validation.",
+    "receivedAt": "Preserve mailbox receipt timestamp separately. Neither receipt nor signed message date establishes the event date.",
+    "verification": "Preserve original intake pass observation and its checkedAt timestamp. The evaluator does not repeat RSA/DNS verification. An offline body hash alone is insufficient. Provenance is not factual truth or original-rule eligibility."
+  },
+  "prediction": {
+    "indexMapping": "A is original outcomeLabels index 0; B is index 1. Verify every question is binary.",
+    "qwenFactual": "Use factualOutcome exactly, with no heuristic repair.",
+    "qwenStrict": "YES/NO independently for A and B: only A YES -> A, only B YES -> B, both NO -> NEITHER, both YES -> CONFLICT. Both NO and both YES remain unsettled.",
+    "regex": "The same two-match mask maps to A/B/NEITHER/CONFLICT. Compare its factual candidates and provisional original-rule admissibility separately, without claiming the matcher enforces full rules.",
+    "failures": "Unavailable rules, invalid patterns, timeout, over-context requests, malformed/capped local answers and transport failures are UNSCORABLE, never NEITHER.",
+    "preflight": "Count every available full request with the pinned loaded model and actual template. Record overflow per row and never truncate. Verify model artifact fields and context. No inference during preflight.",
+    "inference": "Four local workers, isolated requests grouped by full email packet hash then market ID. One request per available pair per unique method. No retries, resampling, best-of, shared history, or interleaved runtime experiments. Reuse only fully recorded identical completed requests on explicit resume; an interrupted started request blocks for reconciliation."
+  },
+  "scoring": {
+    "core": "supported_direct and supported_inferred require their recorded A/B index. Report these groups separately. unsupported expects NEITHER, indicating this email does not establish a target fact. This is not a negative market resolution.",
+    "strict": "admissible requires its recorded A/B index; unsupported expects NEITHER. Preserve missing conditions and other output fields unchanged. No posthoc quote, missing-condition or factual-agreement gate changes decisions.",
+    "uncertainty": "ambiguous and unreviewed are excluded from indexed accuracy denominators, but retain all rows, decision counts, failures and exclusive/conflicting claims. nonbinary is also separate; no conversion to an indexed outcome or automatic credit for a named nonbinary resolution.",
+    "quotes": "Report exact nonempty substring presence in the complete model-visible semantic body as an additional diagnostic. It is not an entailment or authenticity test.",
+    "denominators": "Report full category denominators, completed category denominators, and common-completed pairs across methods. Failure is not credited as abstention. Include exclusive claims and any A/B predicate claim, including CONFLICT, on unsupported evidence.",
+    "dependence": "Show results by email as well as pooled pairs. These are two independent source documents, not 482 independent samples; public questions are existing development questions. Do not estimate population or all-Polymarket accuracy.",
+    "annotations": "Validate all 482 rows, original question/rule hashes, Unicode evidence spans and source identities. Single-author provisional labels are not human-verified settlement gold. No correction based on candidate outputs. Read labels for scoring only after candidate calls have finished."
+  },
+  "openingGates": [
+    "Final Qwen selection and every captured file hash verify.",
+    "The original Qwen independent test's 48 Astra draws are frozen and verified.",
+    "Regex selected baseline, source copies and all captured artifacts verify.",
+    "This protocol, procedure, all evaluator source/dependencies and fixed candidate-rule links are frozen before reading reserved sources.",
+    "Reservation seal, every source file, annotation file and unchanged public-list hashes verify."
+  ],
+  "afterOpening": "No optimization, method selection, threshold adjustment or live promotion based on this reservation. Preserve failures and annotate any necessary execution repair as a separate artifact without changing the frozen procedure or predictions."
+}

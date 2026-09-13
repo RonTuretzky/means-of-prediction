@@ -1,0 +1,241 @@
+{
+  "description": "Synthetic automatic-email integration test; no NYT raw email was published.",
+  "chainId": 11155111,
+  "checkedAt": "2026-09-10T17:02:25.968Z",
+  "factory": "0xdbe9c7f2333a0705eefcac15c58d70859b5b1e2f",
+  "relayAddress": "0x3001a11B33A3B9D6eF0c8fd87FA910B5EF18149A",
+  "release": "e7e0116efc84f81ac1d4d5e6a7c3d7be8b0192a6237385865a281ac6cc04116b",
+  "fixtureDomain": "body-fixture.invalid",
+  "fixtureSha256": "52409011192e911fd5c68bdd9af4350a3425c8eb8e701f315397d4d25a513ab7",
+  "canonicalBodyBytes": 168786,
+  "scopeRestoredAt": "2026-09-10T17:01:35.320Z",
+  "cases": [
+    {
+      "kind": "subject",
+      "market": "0xB8123466F289B530C0B2217033b76bd3578C7e24",
+      "id": 2,
+      "fpmm": "0xD260A807C6C4de4ba55f8E808Be5f665186fA449",
+      "redeemed": true,
+      "redemptionAmount": "185422971",
+      "feeCollected": true
+    },
+    {
+      "kind": "body",
+      "market": "0x704c3B81aE50dD1e9bf7A03Ec9060E63e24de5DC",
+      "id": 3,
+      "fpmm": "0xb65078cc3baaa407D2C0DbAAEFBc179AAA2Cc58B",
+      "redeemed": true,
+      "redemptionAmount": "185422971",
+      "feeCollected": true
+    }
+  ],
+  "relayTransactions": [
+    {
+      "kind": "proof",
+      "hash": "0xe311b04636a6e39b88a68073cd515d738931e8d8ad76164ea4daadf94d660e99",
+      "nonce": 0,
+      "to": "0xb8123466f289b530c0b2217033b76bd3578c7e24",
+      "gasLimit": "3758846",
+      "gasUsed": "3361441",
+      "effectiveGasPrice": "1313577435",
+      "costWei": "4415513046683835",
+      "serializedBytes": 1585,
+      "block": 11676192
+    },
+    {
+      "kind": "body-page",
+      "hash": "0xf904cbf31314adf49a66af728b0f3513f8fbc68c28a1f0ca9f3de0ccc0f20c74",
+      "nonce": 1,
+      "to": "0xb15d8bf694aab06731d7debb17adac22b10ac3b1",
+      "gasLimit": "5909613",
+      "gasUsed": "5328916",
+      "effectiveGasPrice": "1340699791",
+      "costWei": "7144476567456556",
+      "serializedBytes": 24177,
+      "block": 11676195
+    },
+    {
+      "kind": "body-page",
+      "hash": "0xc71e17d9e1c1915769b9195026d4a7c7b32958b4966f64aef44cae6f90d95021",
+      "nonce": 2,
+      "to": "0xb15d8bf694aab06731d7debb17adac22b10ac3b1",
+      "gasLimit": "5909613",
+      "gasUsed": "5328916",
+      "effectiveGasPrice": "1314582281",
+      "costWei": "7005298550537396",
+      "serializedBytes": 24177,
+      "block": 11676217
+    },
+    {
+      "kind": "body-page",
+      "hash": "0xc965bf1eb241e36e47dbf55b855bdfcfd0590f3217002d2031717e6879fee6d0",
+      "nonce": 3,
+      "to": "0xb15d8bf694aab06731d7debb17adac22b10ac3b1",
+      "gasLimit": "5909613",
+      "gasUsed": "5328916",
+      "effectiveGasPrice": "1317863844",
+      "costWei": "7022785724113104",
+      "serializedBytes": 24177,
+      "block": 11676220
+    },
+    {
+      "kind": "body-page",
+      "hash": "0x0d9cfa101bc00533cd66ed65918f6c239dcd9824d7a57fd9b637f10cb6124d42",
+      "nonce": 4,
+      "to": "0xb15d8bf694aab06731d7debb17adac22b10ac3b1",
+      "gasLimit": "5909613",
+      "gasUsed": "5328916",
+      "effectiveGasPrice": "1268222864",
+      "costWei": "6758253111535424",
+      "serializedBytes": 24177,
+      "block": 11676223
+    },
+    {
+      "kind": "body-page",
+      "hash": "0x18c7a3c42045e5004577592fe8b7b5eddd8075458d0ab4df6474184852d8b54d",
+      "nonce": 5,
+      "to": "0xb15d8bf694aab06731d7debb17adac22b10ac3b1",
+      "gasLimit": "5909613",
+      "gasUsed": "5328916",
+      "effectiveGasPrice": "1259022440",
+      "costWei": "6709224824875040",
+      "serializedBytes": 24177,
+      "block": 11676226
+    },
+    {
+      "kind": "body-page",
+      "hash": "0x0651ee7bf35649921fcbe0f42354ddcc8b5bd94e7163e8f2bda0a45481f3af5e",
+      "nonce": 6,
+      "to": "0xb15d8bf694aab06731d7debb17adac22b10ac3b1",
+      "gasLimit": "5909613",
+      "gasUsed": "5328916",
+      "effectiveGasPrice": "1396097544",
+      "costWei": "7439686539782304",
+      "serializedBytes": 24177,
+      "block": 11676229
+    },
+    {
+      "kind": "body-page",
+      "hash": "0x653e5aec13e51279574d0efdab7014c56808d668f7beb746debcbc967498e2e8",
+      "nonce": 7,
+      "to": "0xb15d8bf694aab06731d7debb17adac22b10ac3b1",
+      "gasLimit": "5909613",
+      "gasUsed": "5328916",
+      "effectiveGasPrice": "1434601977",
+      "costWei": "7644873428866932",
+      "serializedBytes": 24177,
+      "block": 11676232
+    },
+    {
+      "kind": "body-page",
+      "hash": "0xe2569f4c82430bb80ee6847aeacab3d66c699f532a9ede93625599e858ab7359",
+      "nonce": 8,
+      "to": "0xb15d8bf694aab06731d7debb17adac22b10ac3b1",
+      "gasLimit": "303693",
+      "gasUsed": "272753",
+      "effectiveGasPrice": "1597204704",
+      "costWei": "435642374630112",
+      "serializedBytes": 977,
+      "block": 11676245
+    },
+    {
+      "kind": "proof",
+      "hash": "0xd63513a63acdc502d94afd1e3ceb253ab103d51aeb865383ae89256284fbb117",
+      "nonce": 9,
+      "to": "0xb15d8bf694aab06731d7debb17adac22b10ac3b1",
+      "gasLimit": "5713053",
+      "gasUsed": "5031581",
+      "effectiveGasPrice": "1484587279",
+      "costWei": "7469821145858099",
+      "serializedBytes": 1969,
+      "block": 11676249
+    }
+  ],
+  "lifecycleTransactions": [
+    {
+      "label": "mint test collateral",
+      "hash": "0x23c66f2d833965bb86d482723855e5a3068d6de75688e1b3210b3783a6cdb37f",
+      "gasUsed": "33928"
+    },
+    {
+      "label": "approve test funding",
+      "hash": "0xc70b6298d6431e107be0b89a10f571bb7aace53d5303da7465fa194dd743ad75",
+      "gasUsed": "26349"
+    },
+    {
+      "label": "create automatic subject market",
+      "hash": "0x847b21623866f14a8c4670b883d200930f73ed9b88b6689025a4ecdde10c48de",
+      "gasUsed": "1448062"
+    },
+    {
+      "label": "approve automatic test buy",
+      "hash": "0x70779d0f3d1f83f3ba216d039975168e527e4f51ae89b63a14c98135f11b4126",
+      "gasUsed": "46249"
+    },
+    {
+      "label": "buy automatic test YES",
+      "hash": "0x42f7e4e7378856e2b892385fdeb9614ed95c6fd5dcf782e06bc5fbb5234ec36a",
+      "gasUsed": "196934"
+    },
+    {
+      "label": "mint test collateral",
+      "hash": "0x94275e492e0133d176affb73f6a0bf644817bedda5f0471dee7aa892848f6a0d",
+      "gasUsed": "33928"
+    },
+    {
+      "label": "approve test funding",
+      "hash": "0x0a584f09e90c1cc7d26e265ba8388977d229aade9318bf4b86e47018fd144ce8",
+      "gasUsed": "26349"
+    },
+    {
+      "label": "create automatic body market",
+      "hash": "0x3a7c20cc724cdaa75a1309661c90f408a3360944758381c13ce6f8daa840c8c6",
+      "gasUsed": "1490992"
+    },
+    {
+      "label": "approve automatic test buy",
+      "hash": "0x572226370607f355aa85d65ed2ce67942019f5337732aa13de0a6a1a7c30030c",
+      "gasUsed": "46249"
+    },
+    {
+      "label": "buy automatic test YES",
+      "hash": "0x4a92994e380add990592d9b3e2b6625875471017bc8c93fc3c66aefb1c52dd33",
+      "gasUsed": "196934"
+    },
+    {
+      "label": "redeem automatic subject winner",
+      "hash": "0xbcdfdc8574da2fa060daabb46393069c73fb96ec81c4b9c8448c4fb74d9699bc",
+      "gasUsed": "56317"
+    },
+    {
+      "label": "collect automatic subject fee",
+      "hash": "0xc2238feb901a2f7ef69c48f3c485132624d22f126caf003b910e66584f08c403",
+      "gasUsed": "45887"
+    },
+    {
+      "label": "redeem automatic body winner",
+      "hash": "0x519cc5c07339964c732f94992bb91055ee325f5529fd87d493619dc5f5369d34",
+      "gasUsed": "56317"
+    },
+    {
+      "label": "collect automatic body fee",
+      "hash": "0x9a18bb97a06b117b1db626faace181a1523b978bb67e47571d3b4bc1b70b6e6b",
+      "gasUsed": "45887"
+    }
+  ],
+  "totalRelayGas": "45968187",
+  "totalRelayCostWei": "62045575314338802",
+  "mailboxAuthenticatedNytCount": 132,
+  "isolation": {
+    "collectorCannotReadSignerKey": true,
+    "signerCannotReadMailbox": true,
+    "signerLockExclusive": true,
+    "collectorLockExclusive": true,
+    "signerNetworkPrivate": true,
+    "signerUnixOnly": true,
+    "healthLoopbackOnly": true,
+    "invalidSignRejected": true
+  },
+  "backupRestoreVerified": true,
+  "automationAndMailboxTestsPassed": 25
+}

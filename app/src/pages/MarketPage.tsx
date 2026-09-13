@@ -5,11 +5,12 @@ import { ArrowLeft, CaretDown, CaretUp } from "@phosphor-icons/react";
 import { statusBadge } from "../components/MarketCard";
 import { ActivityFeed } from "../components/ActivityFeed";
 import { LiquidityPanel } from "../components/LiquidityPanel";
+import { ProtocolFeesPanel } from "../components/ProtocolFeesPanel";
 import { PositionsPanel } from "../components/PositionsPanel";
 import { PriceChart } from "../components/PriceChart";
 import { ResolutionPanel } from "../components/ResolutionPanel";
 import { ResolutionTimeline } from "../components/ResolutionTimeline";
-import { RulesPanel } from "../components/RulesPanel";
+import { ResolutionBadge, RulesPanel } from "../components/RulesPanel";
 import { MarketPageSkeleton } from "../components/Skeleton";
 import { TradeWidget } from "../components/TradeWidget";
 import { Resolution, useMarket } from "../hooks/useMarkets";
@@ -60,6 +61,7 @@ export function MarketPage() {
             <Chip size="small">
               {m.matchedCount}/{m.threshold} sources matched
             </Chip>
+            {m.judged && <ResolutionBadge />}
           </div>
           <h1 className="font-breadDisplay text-3xl font-black leading-tight" data-testid="market-question">
             {m.question}
@@ -122,6 +124,7 @@ export function MarketPage() {
           </div>
 
           <LiquidityPanel m={m} />
+          <ProtocolFeesPanel m={m} />
         </div>
         <div className="space-y-6">
           <TradeWidget m={m} />

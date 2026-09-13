@@ -1,0 +1,18 @@
+{
+  "name": "mop-email-settler-runtime",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24.21.0"
+  },
+  "dependencies": {
+    "imapflow": "2.0.2",
+    "mailauth": "5.0.3",
+    "viem": "2.55.13"
+  },
+  "overrides": {
+    "joi": "18.2.8",
+    "nodemailer": "9.1.1"
+  }
+}

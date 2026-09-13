@@ -5,11 +5,36 @@ import {Script} from "forge-std/Script.sol";
 import {ConditionalTokens} from "../src/tokens/ConditionalTokens.sol";
 import {TestUSDC} from "../src/tokens/TestUSDC.sol";
 import {IERC20} from "../src/tokens/ERC20.sol";
-import {DKIMRegistry} from "../src/zkemail/DKIMRegistry.sol";
-import {DKIMVerifier} from "../src/zkemail/DKIMVerifier.sol";
+import {DKIMRegistry} from "../src/dkim/DKIMRegistry.sol";
+import {DKIMVerifier} from "../src/dkim/DKIMVerifier.sol";
 import {HeadlineMarket} from "../src/market/HeadlineMarket.sol";
 import {MarketFactory} from "../src/market/MarketFactory.sol";
 import {FPMM} from "../src/market/FPMM.sol";
+import {ILLMJudge} from "../src/judge/ILLMJudge.sol";
+import {LLMJudge} from "../src/judge/LLMJudge.sol";
+import {Qwen35Pins} from "./Qwen35Pins.sol";
+import {IBLSSignatureCheckerTypes} from "@eigenlayer-middleware/interfaces/IBLSSignatureChecker.sol";
+
+/// @dev Local-only BLS checker that approves every submission with full stake, so the
+/// judge's `verifyAndUpdate` can be exercised on anvil (see app/scripts/judge/e2e).
+contract LocalMockBLSSignatureChecker {
+    function checkSignatures(
+        bytes32,
+        bytes calldata quorumNumbers,
+        uint32,
+        IBLSSignatureCheckerTypes.NonSignerStakesAndSignature calldata
+    ) external pure returns (IBLSSignatureCheckerTypes.QuorumStakeTotals memory totals, bytes32) {
+        uint256 n = quorumNumbers.length;
+        totals.signedStakeForQuorum = new uint96[](n);
+        totals.totalStakeForQuorum = new uint96[](n);
+        for (uint256 i = 0; i < n; ++i) {
+            totals.signedStakeForQuorum[i] = 100;
+            totals.totalStakeForQuorum[i] = 100;
+        }
+        return (totals, bytes32(0));
+    }
+}
+import {EmailBodyStore} from "../src/dkim/EmailBodyStore.sol";
 import {Multicall3} from "../src/utils/Multicall3.sol";
 
 /// @notice Deploys the full stack to a local anvil chain, seeds demo markets and
@@ -27,12 +52,18 @@ contract Deploy is Script {
         vm.startBroadcast();
 
         Multicall3 multicall = new Multicall3();
+        EmailBodyStore bodyStore = new EmailBodyStore();
         ConditionalTokens ct = new ConditionalTokens();
         TestUSDC usdc = new TestUSDC();
         DKIMRegistry dkim = new DKIMRegistry();
         DKIMVerifier verifier = new DKIMVerifier(dkim);
+        // AI-judged settlement (local: mock quorum; the overlay tokenizer is mounted by the e2e script)
+        LocalMockBLSSignatureChecker checker = new LocalMockBLSSignatureChecker();
+        LLMJudge judge = new LLMJudge(
+            msg.sender, address(0xA5), address(checker), Qwen35Pins.modelConfig(keccak256("local-qwen35"))
+        );
         MarketFactory factory =
-            new MarketFactory(ct, verifier, address(new HeadlineMarket()), address(new FPMM()));
+            new MarketFactory(ct, verifier, address(new HeadlineMarket()), address(new FPMM()), ILLMJudge(address(judge)), vm.envOr("PROTOCOL_FEE", uint256(1e16)), vm.envOr("FEE_RECIPIENT", msg.sender));
 
         // Register real DKIM public keys. The demo fixtures are signed by a committed
         // dev key (keys/dev-dkim.pub) registered for the newspaper domains; the REAL
@@ -53,11 +84,11 @@ contract Deploy is Script {
         p1.question = "Fed rate cut announced by September 10, 2026?";
         p1.description = "Resolves YES if at least 2 of 3 sources (The New York Times, The Washington"
             " Post, Reuters) send a breaking-news alert email matching the pattern"
-            " /(?i)fed (cuts|lowers|slashes) (interest )?rates/ on the subject or body,"
-            " dated before the deadline. Settled permissionlessly by zkEmail proofs of the"
+            " /(?i)fed (cuts|lowers|slashes) (interest )?rates/ on the signed subject,"
+            " dated before the deadline. Settled permissionlessly by DKIM proofs of the"
             " alert emails; resolves NO 24h after the deadline otherwise.";
         p1.contentRegex = "(?i)fed (cuts|lowers|slashes) (interest )?rates";
-        p1.contentField = HeadlineMarket.ContentField.SubjectOrBody;
+        p1.contentField = HeadlineMarket.ContentField.Subject;
         p1.sources = threeWires();
         p1.threshold = 2;
         p1.windowStart = 0; // accept any email date up to the deadline (sample .emls stay valid)
@@ -110,7 +141,7 @@ contract Deploy is Script {
             " before the deadline (7 days). Almost certainly resolves NO - useful for demoing"
             " the permissionless NO path.";
         p3.contentRegex = "(?i)(alien|extraterrestrial) (life|contact|signal) (confirmed|verified)";
-        p3.contentField = HeadlineMarket.ContentField.SubjectOrBody;
+        p3.contentField = HeadlineMarket.ContentField.Subject;
         p3.sources = threeWires();
         p3.threshold = 2;
         p3.windowStart = uint64(block.timestamp);
@@ -132,8 +163,13 @@ contract Deploy is Script {
         vm.serializeAddress(json, "usdc", address(usdc));
         vm.serializeAddress(json, "dkimRegistry", address(dkim));
         vm.serializeAddress(json, "verifier", address(verifier));
+        vm.serializeAddress(json, "llmJudge", address(judge));
+        vm.serializeAddress(json, "mockChecker", address(checker));
+        vm.serializeBytes32(json, "qwen35Manifest", judge.weightsManifest());
         vm.serializeAddress(json, "multicall3", address(multicall));
         vm.serializeUint(json, "chainId", block.chainid);
+        vm.serializeUint(json, "bodyParsingVersion", 1);
+        vm.serializeAddress(json, "emailBodyStore", address(bodyStore));
         string memory out = vm.serializeAddress(json, "factory", address(factory));
         vm.writeJson(out, "./deployments/local.json");
     }

@@ -6,6 +6,7 @@
 // The single source of canonicalization truth: the prover (browser) and the Node
 // fixture-signer both import this so a signed fixture always re-canonicalizes identically.
 import { keccak256, type Hex } from "viem";
+import { canonicalizeBody, signedBodyEncoding, decodeBodyWindow } from "./body.ts";
 
 export interface ParsedDkim {
   domain: string; // d=
@@ -16,11 +17,13 @@ export interface ParsedDkim {
   fromAddress: string;
   subject: string;
   bodyExcerpt: string;
+  canonicalBody: Uint8Array;
+  bodyEncoding: number;
+  bodyError?: string;
   timestamp: number; // Date header as unix seconds
   nullifier: Hex; // keccak256(signature)
 }
 
-const BODY_EXCERPT_MAX = 4096;
 
 function latin1ToBytes(s: string): Uint8Array {
   const out = new Uint8Array(s.length);
@@ -58,7 +61,7 @@ export function parseDkimEmail(raw: string): ParsedDkim {
   const norm = raw.replace(/\r\n/g, "\n");
   const split = norm.indexOf("\n\n");
   const headerBlock = split === -1 ? norm : norm.slice(0, split);
-  let body = split === -1 ? "" : norm.slice(split + 2);
+  const body = split === -1 ? "" : norm.slice(split + 2);
 
   // fold continuation lines back into their header
   const lines: string[] = [];
@@ -114,9 +117,15 @@ export function parseDkimEmail(raw: string): ParsedDkim {
   const subject = decodeSubject(rawHeader("subject").replace(/[ \t]*\r?\n[ \t]*/g, " ").trim());
   const timestamp = Math.floor(new Date(rawHeader("date").replace(/[ \t]*\r?\n[ \t]*/g, " ").trim()).getTime() / 1000);
 
-  const cte = rawHeader("content-transfer-encoding").toLowerCase();
-  if (cte.includes("quoted-printable")) body = decodeQuotedPrintable(body);
-  const bodyExcerpt = body.slice(0, BODY_EXCERPT_MAX);
+  let canonicalBody = new Uint8Array(0), bodyEncoding = 1, bodyExcerpt = "", bodyError: string | undefined;
+  try {
+    if (Object.hasOwn(tags, "l")) throw new Error("DKIM l= partial-body signatures cannot authenticate a body proof");
+    const [headerCanon, bodyCanon] = (tags.c ?? "simple/simple").split("/");
+    if (headerCanon !== "relaxed") throw new Error("Only relaxed DKIM headers are supported");
+    canonicalBody = canonicalizeBody(body, bodyCanon ?? "simple");
+    bodyEncoding = signedBodyEncoding(signed);
+    if (canonicalBody.length) bodyExcerpt = new TextDecoder("utf-8", { fatal: true }).decode(decodeBodyWindow(canonicalBody, 0, canonicalBody.length, bodyEncoding, false));
+  } catch (e) { bodyError = e instanceof Error ? e.message : String(e); }
 
   return {
     domain: tags.d,
@@ -127,6 +136,7 @@ export function parseDkimEmail(raw: string): ParsedDkim {
     fromAddress,
     subject,
     bodyExcerpt,
+    canonicalBody, bodyEncoding, bodyError,
     timestamp,
     nullifier,
   };

@@ -1,0 +1,8 @@
+[Unit]
+Description=Daily Means of Prediction %i database backup
+[Timer]
+OnCalendar=*-*-* 04:20:00 UTC
+Persistent=true
+RandomizedDelaySec=300
+[Install]
+WantedBy=timers.target

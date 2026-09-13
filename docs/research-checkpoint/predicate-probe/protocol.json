@@ -1,0 +1,33 @@
+{
+  "declaredAt": "2026-09-13T18:09:23.933475+00:00",
+  "purpose": "Test separate strict settlement A/B calls on the same 12 selected old-development examples.",
+  "sourcePanelSha256": "7c878418c87b2bb41d3ed8b9b2dab7a635fe2b891d71df48698ab3422401983c",
+  "scope": "Strict-only diagnostic; no factual prediction, selection eligibility, reserved data or live promotion.",
+  "intervention": "Preserve full original baseline-generated rule, email packet and runtime. Adapt the judge prompt to one targetSettlement and schema to verdict/evidenceQuote/missingConditions. Within the split pair only targetSettlement A versus B changes. Comparison against the prior combined task also changes prompt and output schema; it is not a pure causal ablation.",
+  "calls": 24,
+  "cases": 12,
+  "workers": 4,
+  "schedule": "Four concurrent case pairs; A/B serial within each pair. Six A-first and six B-first, alternating the original panel order. Each call isolated with no history or other answer. Preserve all attempts; no automatic retry or best-of.",
+  "outputOrder": [
+    "verdict",
+    "evidenceQuote",
+    "missingConditions"
+  ],
+  "orderChoice": "Verdict-first fixed before either probe executes, independently of order-probe results.",
+  "combination": "A YES/B NO => A; A NO/B YES => B; both NO => NEITHER; both YES => CONFLICT and unsettled. Any incomplete/malformed call makes the pair UNSCORABLE. Exact quote is measured separately without silently changing the original strict control criterion.",
+  "labels": "Six positive and four negative synthetic controls retain all existing labels and contingency policy. Two natural examples have no strict settlement gold, so their expected factual labels are never used for strict scoring.",
+  "gates": "Code-only review and exact input freeze; full 1915-row v2 completion; completed and reviewed order-probe summary; coordinator confirmation of local quiescence; full token preflight. Must precede final main selection. No concurrent other local model jobs.",
+  "runtime": "Pinned Qwen3.5-35B-A3B Q4_K_M instance; temp0, seed20260912, max2048 output tokens per call, same original template/grammar defaults. Two calls allow4096 total output tokens per pair, compared with2048 in the combined baseline.",
+  "accounting": "Exact saved request bytes transmitted, full raw responses retained, model/reasoning metadata bound, complete-input token usage reconciled. Independent missing input/output/duration fields. Report24 split calls separately against12 combined calls per variant; never compare per-call cost as if it were per-pair cost.",
+  "assessment": "Report strict positives, false claims, wrong sides, conflicts, malformed/unscorable pairs and exact quote coverage; compare both full and common-completed cases with contemporaneous original and quote-first order-probe outputs. Natural cases are claim/abstention observations only. No automatic adoption or use in the main factual-recall selection gate.",
+  "limitations": [
+    "Small selected prior-failure panel, not an independent accuracy estimate.",
+    "Three baseball controls share one event.",
+    "Adapted prompt and schema confound causal task-decomposition attribution.",
+    "Separate runs and cache/scheduling affect observed latency.",
+    "No factual classifier exists in this diagnostic; further full-method design/evaluation would be required."
+  ],
+  "noWeightTraining": true,
+  "noReservedInputsRead": true,
+  "noAutomaticAdoption": true
+}

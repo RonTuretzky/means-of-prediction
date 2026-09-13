@@ -1,27 +1,15 @@
-# Daily settlement bot (backlog D7): reads the alert mailbox over IMAP, matches every
-# newspaper email against the live markets, and submits DKIM proofs onchain.
-#
-# Repo secrets (set them yourself — never paste them in chat):
-#   GMAIL_USER          the mailbox subscribed to the newspapers' breaking-news alerts
-#   GMAIL_APP_PASSWORD  a Gmail App Password (Google Account → Security → 2-Step
-#                       Verification → App passwords); IMAP must be enabled
-#   PRIVATE_KEY         funded settler key (same throwaway deployer key works); omit to dry-run
-name: Settle
+# Continuous submissions belong to the durable DigitalOcean worker.
+# This manual diagnostic intentionally has no signing key or automatic NO path.
+name: Settlement diagnostic
 on:
-  schedule:
-    - cron: "17 13 * * *" # daily 13:17 UTC
   workflow_dispatch:
     inputs:
       network:
         description: "gnosis | sepolia"
-        default: "gnosis"
+        default: "sepolia"
       since:
         description: "how far back to scan the mailbox (e.g. 2d, 12h)"
         default: "2d"
-      dry_run:
-        description: "simulate only (no transactions)"
-        type: boolean
-        default: false
 
 permissions:
   contents: read
@@ -42,7 +30,7 @@ jobs:
       - name: Check mailbox is configured
         if: env.GMAIL_USER == ''
         run: |
-          echo "::notice title=Settlement bot skipped::GMAIL_USER / GMAIL_APP_PASSWORD repo secrets are not set, so there is no mailbox to read. Add them (Settings → Secrets and variables → Actions) to enable the daily run — see .github/workflows/settle.yml."
+          echo "::notice title=Settlement bot skipped::GMAIL_USER / GMAIL_APP_PASSWORD repo secrets are not set, so there is no mailbox to read. Add them (Settings → Secrets and variables → Actions) for a manual dry run — see .github/workflows/settle.yml."
       - uses: actions/checkout@v4
         if: env.GMAIL_USER != ''
       - uses: pnpm/action-setup@v4
@@ -64,12 +52,12 @@ jobs:
         working-directory: app
         env:
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
-          PRIVATE_KEY: ${{ inputs.dry_run == true && '' || secrets.PRIVATE_KEY }}
           RPC_OVERRIDE: ${{ secrets.RPC_OVERRIDE }}
         run: |
-          node scripts/settlement-bot.mjs \
-            --network "${{ inputs.network || 'gnosis' }}" \
+          node --experimental-strip-types scripts/settlement-bot.mjs \
+            --network "${{ inputs.network || 'sepolia' }}" \
             --since "${{ inputs.since || '2d' }}" \
+            --dry-run --no-judge \
             --out settle-report.json
       - uses: actions/upload-artifact@v4
         if: always() && env.GMAIL_USER != ''

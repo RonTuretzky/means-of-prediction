@@ -1,0 +1,37 @@
+[Unit]
+Description=Means of Prediction automatic email settlement
+After=network-online.target mop-signer.service
+Wants=network-online.target mop-signer.service
+[Service]
+Type=simple
+User=mop-settler
+Group=mop-settler
+SupplementaryGroups=mop-ipc
+WorkingDirectory=/opt/mop/current/app
+Environment=NODE_ENV=production
+Environment=MOP_WORKER_CONFIG=/etc/mop/collector/config.json
+ExecStart=/usr/bin/flock --nonblock --no-fork /var/lib/mop-settler/process.lock /usr/local/bin/node --experimental-strip-types automation/run.mjs
+Restart=on-failure
+RestartSec=15
+TimeoutStopSec=90
+UMask=0077
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+ProtectProc=invisible
+RestrictSUIDSGID=yes
+RestrictNamespaces=yes
+LockPersonality=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+ReadWritePaths=/var/lib/mop-settler
+MemoryMax=450M
+TasksMax=64
+[Install]
+WantedBy=multi-user.target

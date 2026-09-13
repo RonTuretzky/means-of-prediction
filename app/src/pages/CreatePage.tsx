@@ -1,8 +1,9 @@
 import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { Button, Chip, Heading1 } from "@breadcoop/ui";
 import { CheckCircle, Plus, Trash, WarningCircle } from "@phosphor-icons/react";
-import { maxUint256 } from "viem";
+import { maxUint256, zeroAddress } from "viem";
 import { abis } from "../contracts/gen";
 import { NEWSPAPERS } from "../data/newspapers";
 import { tokensForChain, type TokenInfo } from "../data/tokens";
@@ -10,7 +11,10 @@ import { CHAIN_ID } from "../config";
 import { KeywordBuilder, phrasesToRegex, regexToPhrases } from "../components/KeywordBuilder";
 import { AIRegexPanel } from "../components/AIRegexPanel";
 import { CATEGORIES, withCategoryTag, type Category } from "../data/categories";
+import { substringPattern } from "../lib/body";
+import { BODY_PARSING } from "../config";
 import { ContentField, FACTORY, USDC, useCash } from "../hooks/useMarkets";
+import { ResolutionBadge, sanitizeCriteria, MAX_CRITERIA_BYTES } from "../components/RulesPanel";
 import { parseAmount } from "../lib/format";
 import { publicClient, useWallet } from "../lib/wallet";
 import { explain } from "../components/TradeWidget";
@@ -24,10 +28,39 @@ interface SourceDraft {
 
 const STEPS = ["Question", "Newspapers", "Condition", "Market"] as const;
 
+type ConditionMode = "simple" | "advanced" | "ai" | "judged";
+
+/** The factory's LLMJudge oracle; address(0) = this network cannot host AI-judged markets. */
+function useFactoryJudge() {
+  return useQuery({
+    queryKey: ["factory-judge", FACTORY],
+    staleTime: Infinity,
+    queryFn: async () => {
+      try {
+        return (await publicClient.readContract({
+          address: FACTORY,
+          abi: abis.MarketFactory,
+          functionName: "judge",
+        })) as `0x${string}`;
+      } catch {
+        return zeroAddress; // older factory without judge()
+      }
+    },
+  });
+}
+
 export function CreatePage() {
   const wallet = useWallet();
   const navigate = useNavigate();
   const { data: cash } = useCash(wallet.address);
+  const { data: platformFee = 0n } = useQuery({
+    queryKey: ["factory-protocol-fee", FACTORY],
+    queryFn: async () => {
+      try { return await publicClient.readContract({ address: FACTORY, abi: abis.MarketFactory, functionName: "protocolFee" }) as bigint; }
+      catch { return 0n; } // legacy factories have no platform fee
+    },
+  });
+  const platformPct = Number(platformFee) / 1e16;
 
   const [step, setStep] = useState(0);
   const [question, setQuestion] = useState("");
@@ -38,12 +71,18 @@ export function CreatePage() {
     { ...NEWSPAPERS[1], contentRegex: "" },
   ]);
   const [threshold, setThreshold] = useState(2);
-  const [regexMode, setRegexMode] = useState<"simple" | "advanced" | "ai">("simple");
+  const [regexMode, setRegexMode] = useState<ConditionMode>("simple");
+  const [criteriaRaw, setCriteriaRaw] = useState("");
+  const { data: factoryJudge } = useFactoryJudge();
+  const judgeAvailable = !!factoryJudge && factoryJudge !== zeroAddress;
+  const judged = regexMode === "judged";
   const [phrases, setPhrases] = useState<string[]>([]);
   const [contentRegex, setContentRegex] = useState("");
-  const [contentField, setContentField] = useState<ContentField>(ContentField.SubjectOrBody);
+  // Subject is the default; fresh deployments also accept authenticated body-source windows.
+  const [contentField, setContentField] = useState<ContentField>(ContentField.Subject);
   const collateralOptions = tokensForChain(CHAIN_ID, USDC);
   const [collateral, setCollateral] = useState<TokenInfo>(collateralOptions[0]);
+  const bodyPatternValid = contentField !== ContentField.Body || substringPattern(contentRegex);
   const [testSubject, setTestSubject] = useState("Breaking News: ");
   const [days, setDays] = useState(30);
   const [bufferHours, setBufferHours] = useState(24);
@@ -57,7 +96,8 @@ export function CreatePage() {
     setPhrases(next);
     setContentRegex(phrasesToRegex(next));
   };
-  const switchMode = (mode: "simple" | "advanced" | "ai") => {
+  const switchMode = (mode: ConditionMode) => {
+    if (mode === "judged" && !judgeAvailable) return;
     if (mode === "simple") {
       // best-effort: recover phrases from a simple alternation pattern
       const recovered = regexToPhrases(contentRegex);
@@ -85,6 +125,15 @@ export function CreatePage() {
     }
   }, [contentRegex, testSubject]);
 
+  // Judged mode: one-line criteria, no '<' (prompt-injection guard), <= 1200 bytes — the
+  // same rules HeadlineMarket.initialize enforces via JudgePrompt.isSafeMarketText.
+  const criteriaState = useMemo(() => {
+    if (!judged) return { valid: true, value: "", error: null as string | null };
+    return sanitizeCriteria(criteriaRaw);
+  }, [judged, criteriaRaw]);
+  const criteria = criteriaState.value;
+  const conditionValid = judged ? criteriaState.valid : regexState.valid && bodyPatternValid;
+
   const toggleNewspaper = (i: number) => {
     const preset = NEWSPAPERS[i];
     setSources((cur) => {
@@ -101,11 +150,12 @@ export function CreatePage() {
   const canContinue = [
     question.trim().length > 3,
     sources.length > 0 && threshold >= 1 && threshold <= sources.length,
-    regexState.valid,
+    conditionValid,
     true,
   ][step];
 
   const create = async () => {
+    if (!bodyPatternValid) { setError("Body rules cannot use ^ or $ anchors"); return; }
     setBusy(true);
     setError(null);
     try {
@@ -133,25 +183,31 @@ export function CreatePage() {
       const hint =
         startYes === 50 ? [] : [BigInt(100 - startYes), BigInt(startYes)];
 
+      const conditionText = judged
+        ? ` breaking-news alert email whose subject line an on-chain language model judges to satisfy the resolution rules,`
+        : ` breaking-news alert email matching /${contentRegex}/ on the` +
+          ` ${contentField === ContentField.Subject ? "subject" : contentField === ContentField.Body ? "body" : "subject or body"},`;
+      // Struct field order follows the forge artifact (CreateMarketParams): regex, then criteria.
       const params = {
         question: question.trim(),
         description: withCategoryTag(
           description.trim() ||
             `Resolves YES if at least ${threshold} of ${sources.length} configured newspapers send a` +
-              ` breaking-news alert email matching /${contentRegex}/ on the` +
-              ` ${contentField === ContentField.Subject ? "subject" : contentField === ContentField.Body ? "body" : "subject or body"},` +
+              conditionText +
               ` dated before the deadline. Settled permissionlessly by a real DKIM signature verified onchain;` +
               ` resolves NO` +
               ` ${bufferHours}h after the deadline if the threshold is not met.`,
           category,
         ),
-        contentRegex,
-        contentField,
+        contentRegex: judged ? "" : contentRegex,
+        criteria: judged ? criteria : "",
+        contentField: judged ? ContentField.Subject : contentField,
         sources: sources.map((s) => ({
           name: s.name,
           dkimDomain: s.dkimDomain,
           fromRegex: s.fromRegex,
-          contentRegex: s.contentRegex,
+          // judged markets take no per-source regex overrides
+          contentRegex: judged ? "" : s.contentRegex,
         })),
         threshold,
         windowStart: BigInt(now),
@@ -187,7 +243,8 @@ export function CreatePage() {
     <div className="mx-auto max-w-3xl px-4 py-8">
       <Heading1>Create a market</Heading1>
       <p className="mb-6 text-body text-surface-grey-2">
-        Permissionless: no approval, no whitelist. You choose the newspapers, the regex and the token.
+        Permissionless: no approval, no whitelist. You choose the newspapers, the condition (regex or AI-judged rules)
+        and the token.
       </p>
 
       <ol className="mb-6 flex flex-wrap gap-2">
@@ -361,9 +418,56 @@ export function CreatePage() {
               >
                 AI (describe it)
               </button>
+              <button
+                data-testid="mode-judged"
+                onClick={() => switchMode("judged")}
+                disabled={!judgeAvailable}
+                title={
+                  judgeAvailable
+                    ? "Settle by an on-chain language model judging the subject line against plain-English rules"
+                    : "AI-judged markets are unavailable on this network: the factory has no LLMJudge (judge() is the zero address)"
+                }
+                className={`flex-1 px-3 py-2 font-breadDisplay font-bold uppercase ${
+                  regexMode === "judged" ? "bg-surface-ink text-paper-0" : "bg-paper-0"
+                } disabled:cursor-not-allowed disabled:text-surface-grey`}
+              >
+                AI-judged
+              </button>
             </div>
 
-            {regexMode === "simple" ? (
+            {regexMode === "judged" ? (
+              <div>
+                <label className="text-caption font-bold uppercase text-surface-grey-2">
+                  Resolution rules (judged against the subject line)
+                </label>
+                <textarea
+                  data-testid="create-criteria"
+                  rows={6}
+                  placeholder="Resolves YES if the Federal Reserve announces a cut to its benchmark interest rate. Forecasts, expectations or calls for a cut do not count; only an announced decision."
+                  value={criteriaRaw}
+                  onChange={(e) => setCriteriaRaw(e.target.value)}
+                  className="w-full border-2 border-surface-ink bg-paper-0 px-3 py-2 outline-none focus:border-core-orange"
+                />
+                <div className="mt-1 flex items-start justify-between gap-2 text-caption">
+                  <span className="text-surface-grey-2">
+                    Newlines are collapsed to spaces; <code>&lt;</code> is not allowed.{" "}
+                    {new TextEncoder().encode(criteria).length}/{MAX_CRITERIA_BYTES} bytes.
+                  </span>
+                  {criteriaState.error && (
+                    <span className="flex shrink-0 items-center gap-1 font-bold text-system-red" data-testid="criteria-error">
+                      <WarningCircle size={14} /> {criteriaState.error}
+                    </span>
+                  )}
+                </div>
+                <p className="mt-2 text-caption text-surface-grey-2">
+                  Settled by an on-chain language model (Qwen3.5-35B via Gas Killer) judging the DKIM-signed subject
+                  line against these rules. Attested by the Gas Killer operator set, not proven on-chain.
+                </p>
+                <div className="mt-2">
+                  <ResolutionBadge />
+                </div>
+              </div>
+            ) : regexMode === "simple" ? (
               <>
                 <KeywordBuilder phrases={phrases} onChange={setPhrasesAndRegex} />
                 {contentRegex && (
@@ -393,8 +497,11 @@ export function CreatePage() {
               </div>
             )}
 
+            {!judged && (
+              <>
             <div>
               <label className="text-caption font-bold uppercase text-surface-grey-2">Match against</label>
+              {!bodyPatternValid && <p role="alert" className="text-red-700">Body patterns cannot use ^ or $ anchors.</p>}
               <div className="flex gap-2">
                 {[
                   [ContentField.Subject, "Subject"],
@@ -404,15 +511,21 @@ export function CreatePage() {
                   <button
                     key={label as string}
                     data-testid={`field-${label}`}
+                    disabled={v !== ContentField.Subject && !BODY_PARSING}
+                    title={v !== ContentField.Subject && !BODY_PARSING ? "This deployment needs the body verifier upgrade." : undefined}
                     onClick={() => setContentField(v as ContentField)}
                     className={`border-2 border-surface-ink px-3 py-1.5 text-sm font-bold ${
                       contentField === v ? "bg-surface-ink text-paper-0" : "bg-paper-0"
-                    }`}
+                    } disabled:cursor-not-allowed disabled:border-surface-grey disabled:bg-paper-2 disabled:text-surface-grey`}
                   >
                     {label as string}
                   </button>
                 ))}
               </div>
+              <p className="mt-1 text-caption text-surface-grey-2">
+                {BODY_PARSING ? "Body rules match a decoded excerpt authenticated against the complete signed body hash. HTML markup is retained. Use substring patterns without ^ or $ anchors; multipart and base64 messages are not supported in this version." : "Body proofs require a fresh deployment with the upgraded verifier."}
+
+              </p>
             </div>
 
             <div>
@@ -439,6 +552,8 @@ export function CreatePage() {
                 )}
               </div>
             </div>
+              </>
+            )}
           </div>
         )}
 
@@ -502,14 +617,14 @@ export function CreatePage() {
                 )}
               </div>
               <div>
-                <label className="text-caption font-bold uppercase text-surface-grey-2">Trading fee (%)</label>
+                <label className="text-caption font-bold uppercase text-surface-grey-2">Liquidity-provider fee (%)</label>
                 <input
                   data-testid="create-fee"
                   value={feePct}
                   onChange={(e) => setFeePct(e.target.value)}
                   className="w-full border-2 border-surface-ink bg-paper-0 px-3 py-2 outline-none"
                 />
-                <p className="text-caption text-surface-grey-2">Paid to liquidity providers on every trade.</p>
+                <p className="text-caption text-surface-grey-2">Paid to liquidity providers on every trade. The platform adds {platformPct}%, for {Number(feePct || 0) + platformPct}% total.</p>
               </div>
             </div>
 
@@ -535,13 +650,20 @@ export function CreatePage() {
                 <b>{question || "(no question)"}</b>
               </p>
               <p className="text-surface-grey-2">
-                {threshold} of {sources.length} newspapers · /{contentRegex}/ ·{" "}
-                {contentField === ContentField.Subject
-                  ? "subject"
-                  : contentField === ContentField.Body
-                    ? "body"
-                    : "subject or body"}{" "}
-                · {days}d deadline · {feePct}% fee · {liquidity} {collateral.symbol} seed
+                {threshold} of {sources.length} newspapers ·{" "}
+                {judged ? (
+                  <>AI-judged: “{criteria.length > 80 ? `${criteria.slice(0, 80)}…` : criteria}” · subject</>
+                ) : (
+                  <>
+                    /{contentRegex}/ ·{" "}
+                    {contentField === ContentField.Subject
+                      ? "subject"
+                      : contentField === ContentField.Body
+                        ? "body"
+                        : "subject or body"}
+                  </>
+                )}{" "}
+                · {days}d deadline · {feePct}% LP + {platformPct}% platform fee · {liquidity} {collateral.symbol} seed
               </p>
             </div>
 
@@ -568,7 +690,7 @@ export function CreatePage() {
               data-testid="create-submit"
               isLoading={busy}
               showChildrenWhenLoading
-              disabled={busy || !question || !regexState.valid}
+              disabled={busy || !question || !conditionValid}
               onClick={create}
             >
               {busy ? "Creating market" : "Create market"}

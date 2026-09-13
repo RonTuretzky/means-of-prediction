@@ -1,0 +1,5 @@
+{
+  "host": "imap.gmail.com",
+  "user": "REPLACE_WITH_YOUR_GMAIL_ADDRESS",
+  "appPassword": "REPLACE_WITH_YOUR_GOOGLE_APP_PASSWORD"
+}

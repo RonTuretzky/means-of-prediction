@@ -3,7 +3,7 @@ import { Resolution, type MarketData } from "../hooks/useMarkets";
 import { fmtDate, fmtDuration } from "../lib/format";
 
 // Polymarket shows resolution as a labeled timeline ("Outcome proposed → Dispute
-// window → Final outcome"). Ours is the zkEmail equivalent: opened → proofs 1..K →
+// window → Final outcome"). Ours is the DKIM equivalent: opened → proofs 1..K →
 // threshold → resolved / NO-window.
 interface Step {
   icon: React.ReactNode;
@@ -53,7 +53,7 @@ export function ResolutionTimeline({ m }: { m: MarketData }) {
       steps.push({
         icon: <Envelope size={14} weight="bold" />,
         label: `Waiting for ${m.threshold - m.matchedCount} more source${m.threshold - m.matchedCount > 1 ? "s" : ""}`,
-        detail: "anyone can submit a zkEmail proof below",
+        detail: "anyone can submit a DKIM proof below",
         state: "current",
       });
     }

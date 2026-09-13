@@ -286,7 +286,7 @@ export function TradeWidget({ m }: { m: MarketData }) {
           </div>
         )}
         <div className="flex justify-between text-caption text-surface-grey-2">
-          <span>Fee ({Number(m.fee) / 1e16}%) included · max slippage 1%</span>
+          <span data-testid="trade-fees">Fees included: {Number(m.fee) / 1e16}% to liquidity providers + {Number(m.protocolFee) / 1e16}% platform ({Number(m.fee + m.protocolFee) / 1e16}% total). Max slippage 1%.</span>
         </div>
       </div>
 
@@ -315,7 +315,7 @@ export function TradeWidget({ m }: { m: MarketData }) {
             : `${tab === "buy" ? "Buy" : "Sell"} ${side === 0 ? "Yes" : "No"}`}
       </Button>
       <p className="mt-2 text-center text-caption text-surface-grey-2">
-        By trading, you agree this is a local demo settled by real DKIM signatures verified onchain.
+        Settlement uses public DKIM signatures verified onchain. Winning shares redeem without an additional platform fee.
       </p>
     </div>
   );

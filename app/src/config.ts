@@ -45,6 +45,8 @@ export function setNetwork(name: NetworkName) {
 
 export const deployment = deployments[NETWORK as keyof typeof deployments] as {
   chainId: number;
+  bodyParsingVersion?: number;
+  emailBodyStore?: string;
   factory: string;
   conditionalTokens: string;
   usdc: string;
@@ -52,7 +54,11 @@ export const deployment = deployments[NETWORK as keyof typeof deployments] as {
   verifier: string;
   multicall3: string;
   deployBlock?: number;
+  /** LLMJudge oracle (judged markets); absent/null where the factory has no judge. */
+  llmJudge?: string | null;
 };
+
+export const BODY_PARSING = deployment.bodyParsingVersion === 1;
 
 export const CHAIN_ID = deployment.chainId as number;
 export const IS_LOCAL = CHAIN_ID === 31337;

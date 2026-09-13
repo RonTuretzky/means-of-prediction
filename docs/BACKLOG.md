@@ -2,20 +2,20 @@
 
 Grounded in a source-level review of Polymarket's stack (Gnosis CTF, `ctf-exchange`,
 `uma-ctf-adapter`, `neg-risk-ctf-adapter`) and its product UX. Our engine —
-permissionless market creation + permissionless zkEmail settlement — stays the
+permissionless market creation + permissionless DKIM settlement — stays the
 differentiator throughout; the backlog is everything around it.
 
 Legend: **P0** = needed for any real deployment · **P1** = trading-experience parity
 · **P2** = full product parity.
 
-## A. Settlement engine (the zkEmail core)
+## A. Settlement engine (the DKIM core)
 
 | # | Item | Notes |
 |---|---|---|
-| A1 **P0** | **DKIM verification** | ◑ *Real onchain RSA-SHA256 DKIM verification shipped* (`RSAVerify` via modexp + `DKIMRegistry` of real DNS keys + `DKIMVerifier`); the real NYT key + a real NYT email verify onchain. Remaining for *private* settlement: fold the RSA + SHA-256 + regex into one zk circuit (zkEmail-style) so the email never appears in calldata — pairs with A3. |
-| A2 **P0** | **DKIM key rotation windows** | `DKIMRegistry` holds real keys (permissionless, write-once per modulus). Add validity intervals fed by a DNSSEC oracle so an alert proven after the sender rotates keys still validates against the *historical* key (papers rotate ~yearly — see docs/NEWSPAPERS.md). |
-| A3 **P0** | **Regex → circuit compilation** | ✅ *Done (dev-trust setup)*: real pipeline ships — regex → DFA (differentially tested, 12k cases) → circom → Groth16 via `zk:build`; `ZkRegexVerifierRegistry` maps pattern pairs to deployed verifiers (write-once — registration kills the mock fallback); snarkjs proves in node (~2s) and in-browser; measured 329k gas incl. onchain pairing check. Remaining: a real multi-party ceremony per circuit (dev uses a local single-contribution setup), and folding DKIM verification into the same circuit (A1) so content binding is trustless. |
-| A4 **P1** | **Body-content binding** | Only the Subject is bound by the header signature today; binding Body conditions needs the DKIM body-hash (`bh=`) check against the canonicalized body (and canonical text extraction for multipart HTML). Until then, prefer Subject-field conditions. |
+| A1 **P0** | **DKIM verification** | Real RSA-SHA256 header verification, exact Subject/Date binding and empty-body enforcement. New registry restricts key authorization to the deploying registrar. Requires a fresh deployment to replace old verifier/registry clones. |
+| A2 **P0** | **Authenticated DNS and historical keys** | Registrar authenticates domain/key associations today. Add DNSSEC verification and historical validity windows; arbitrary permissionless key registration is unsafe. |
+| A3 | **ZK circuit experiment removed** | Public DKIM settlement is the product. No ZK dependencies, private-settlement path or trusted setup is required. Historical evaluation retained in docs/ZKEMAIL-PRIVATE-SETTLEMENT.md. |
+| A4 **P1** | **Body-content binding** | Implemented on fresh Sepolia: complete `bh=` verification, bounded single-part body parsing and paginated uploads. Broader MIME, size/gas limits and proof compression remain in issues #1/#2; see BODY-PARSING.md. |
 | A5 **P1** | **Settler incentive** | Creator-funded bounty paid to the address whose proof resolves the market (and to `resolveNo` caller), so settlement is economically automatic, like UMA proposer rewards. |
 | A6 **P2** | **Dispute layer for oracle edge cases** | Spec assumes newspapers never publish conflicting emails. For parity with UMA's safety: optional escalation window where a bonded challenger can contest (e.g. claim the DKIM key leaked, or the email was retracted) before payouts finalize; escalates to a fallback oracle. |
 | A7 **P2** | **Richer conditions** | Numeric captures with comparisons ("Fed cuts by `(\d+)` bps, ≥ 50"), NOT-conditions (market fails if a retraction email arrives), M-of-N across *different* regexes per source, time-ordered conditions ("A before B"). |
@@ -48,13 +48,24 @@ Legend: **P0** = needed for any real deployment · **P1** = trading-experience p
 | D4 **P1** | **Resolution timeline UI** | Polymarket-style labeled timeline ("Proof 1/2 accepted → threshold reached → finalized"), plus an "email inbox" view rendering each accepted alert. |
 | D5 **P2** | **Discovery** | ◑ *Categories shipped* (Polymarket-style category tags + filter tabs, stored as a description tag). Remaining: trending sort by 24h volume, comments, watchlists, embeds. |
 | D6 **P2** | **Notifications** | Push/email when a tracked market gets a proof, resolves, or nears deadline. |
-| D7 **P2** | **Settlement bot** | ✅ *Shipped*: `app/scripts/settlement-bot.mjs` + daily `settle.yml` cron — IMAP (Gmail app password) or `.eml` input, onchain `checkProof` dry-run, `submitProof`/`resolveNo`, auto-registers unseen DKIM keys from DNS (also covers A2's rotation case for keys still in DNS). |
+| D7 **P2** | **Settlement bot** | ✅ Sepolia automatic worker deployed: durable NYT IMAP intake, encrypted journal, restricted IPC signer, confirmed nonce retries and resumable body uploads. No automatic NO or key registration. Mainnet rollout and external health alert delivery remain; see AUTO-SETTLEMENT.md. |
 
 ## E. Infrastructure
 
 | # | Item | Notes |
 |---|---|---|
-| E1 **P0** | **Gas reality pass** | ✅ *Done*: settle = 329k gas with the real Groth16 verify (126k mock fallback) vs 2-5.7M transparent; markets/FPMMs are **EIP-1167 clones** (createMarket 1.81M vs ~5M+, implementations deployed once); every contract under EIP-170; evidence event-only on the compiled path; vanilla anvil, no flags. |
+| E1 **P0** | **Gas reality pass** | Public RSA/DKIM settlement and onchain regex matching are the only regex settlement path. EIP-1167 clones reduce creation cost. Benchmark the new verifier and fees before deployment; historical ZK measurements are not settlement costs. |
 | E2 **P0** | **Audit + invariant/fuzz suite** | The FPMM fee accounting and RegexLib parser are the two components most deserving adversarial review; add Foundry invariant campaigns (collateral conservation under random trade/fund/settle sequences). |
 | E3 **P1** | **Indexer** | Subgraph/ponder for markets, trades, positions, volume — replaces the frontend's from-genesis log scans (fine on anvil, not on a real chain). |
 | E4 **P2** | **Testnet + real-email dry run** | ◑ *Sepolia deployed + verified* (faucet TestUSDC, seeded markets, real NYT key; CI deploys per PR). Remaining: subscribe to the alert lists and settle a market with a real breaking-news email end to end. |
+
+## September 2026 refactor
+
+- Daily private mailbox index and trailing-14-day Polymarket coverage service: docs/DAILY-RESEARCH.md. Semantic review is separate from lexical retrieval.
+- Platform fees (default 1% plus LP fee) implemented for new deployments: docs/FEES.md.
+- Mailbox access and deployment migration are activation prerequisites: docs/EMAIL-ACCESS.md.
+
+## Large email bodies and alternative execution (2026-09-10)
+
+- **P1 — [#1: DKIM body size and gas limits](https://github.com/RonTuretzky/means-of-prediction/issues/1).** Measured direct-proof costs, 128 KiB relay policy, transaction gas cap, MIME/predicate bounds, pagination overhead, and succinct-proof alternatives. Local issue source: `docs/issues/email-body-size-and-cost.md`.
+- **P1 — [#2: GasKiller body-settlement adapter](https://github.com/RonTuretzky/means-of-prediction/issues/2).** Proposed compact receipt with onchain RSA/header verification; current upstream input cap, operator trust and availability requirements, implementation stages and benchmark criteria. Tags `@tbsoc` and `@nomoregas`. Local issue source: `docs/issues/gaskiller-email-body-computation.md`.

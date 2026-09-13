@@ -1,10 +1,20 @@
 {
   "chainId": 11155111,
-  "conditionalTokens": "0x583f520E35BDA4caFeEa7d7a3b2f358d838789a5",
-  "deployBlock": 11538927,
-  "dkimRegistry": "0xE8803065fA3eAa9aE82A839028a09535799e2ff7",
-  "factory": "0x534bf057b115Ca133C982f42acDB3Fc8fe8B3b4b",
+  "bodyParsingVersion": 1,
+  "conditionalTokens": "0x59052bd0d6951821f9124e610b4ebed428b9f2e8",
+  "usdc": "0x4154a14816611371532cb50a00cb698dd2eaeb39",
+  "dkimRegistry": "0x2832d0db4722bd08953d6397728bd9f93b88dfb3",
+  "verifier": "0x9e66b9d05d595b47f8dad91161cfa1749849d1d6",
+  "regexLib": "0xb68403727b518526a5cd9c25914c14b730ee25d8",
+  "marketImplementation": "0x740bf64d31cdce80ffbf9e0862f20e27ee75b399",
+  "fpmmImplementation": "0x775de3d528b43261d1db21b047cd9bdc9362d47f",
+  "factory": "0xdbe9c7f2333a0705eefcac15c58d70859b5b1e2f",
   "multicall3": "0xcA11bde05977b3631167028862bE2a173976CA11",
-  "usdc": "0x0A29a562a2141b3bB209bDa1F53A1fC65DAB0742",
-  "verifier": "0x9fb26E84e98030bFc523ae60f5660B3287aEF2dB"
+  "emailBodyStore": "0xb15d8bf694aab06731d7debb17adac22b10ac3b1",
+  "llmJudge": null,
+  "protocolFee": "10000000000000000",
+  "feeRecipient": "0x354fA317d43A36e2f18caAfc70aEd5f2FAD3CB86",
+  "deployBlock": 11675854,
+  "deployedAt": "2026-09-10T15:58:38.762Z",
+  "e2eReport": "docs/BODY-PARSING.md"
 }

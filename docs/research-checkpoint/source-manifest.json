@@ -1,0 +1,250 @@
+{
+  "purpose": "Source-only archival copy; no private dataset or model-output contents",
+  "files": [
+    {
+      "source": "/Users/wk/.local/share/means-of-prediction/slides/qwen-order-probe-20260913/README.md",
+      "copy": "order-probe/README.md",
+      "sha256": "b9e9e1451039882132169d89d578fd4a08125e910302db9c5562ec550204c808"
+    },
+    {
+      "source": "/Users/wk/.local/share/means-of-prediction/slides/qwen-order-probe-20260913/prepare.py",
+      "copy": "order-probe/prepare.py",
+      "sha256": "812d6bd63e74f6b62c4e9ca293ac3b91e0f19a21bdf875da9bafb817767bdff0"
+    },
+    {
+      "source": "/Users/wk/.local/share/means-of-prediction/slides/qwen-order-probe-20260913/probe.py",
+      "copy": "order-probe/probe.py",
+      "sha256": "6bf90302023aa3c8c9c5b711bd367f8d20c305740dde897a8ce66a26e4e6a054"
+    },
+    {
+      "source": "/Users/wk/.local/share/means-of-prediction/slides/qwen-order-probe-20260913/protocol.json",
+      "copy": "order-probe/protocol.json",
+      "sha256": "4fce8c177445c04b2f20f654ee73697a59c00753eb2e3955fc8799e56ab68fcb"
+    },
+    {
+      "source": "/Users/wk/.local/share/means-of-prediction/slides/qwen-order-probe-20260913/source/astra_transport.py",
+      "copy": "order-probe/source/astra_transport.py",
+      "sha256": "d80cb3a50c0ecafb455f696a593003b479ce96d39cea154803dde03a52ec3fe1"
+    },
+    {
+      "source": "/Users/wk/.local/share/means-of-prediction/slides/qwen-order-probe-20260913/source/experiment.py",
+      "copy": "order-probe/source/experiment.py",
+      "sha256": "08578175def5e8b7792238dff371a57ed072a25f99d7fd3d816a9c3012f39f0b"
+    },
+    {
+      "source": "/Users/wk/.local/share/means-of-prediction/slides/qwen-order-probe-20260913/source/improve.py",
+      "copy": "order-probe/source/improve.py",
+      "sha256": "230471f99c34e478c7b6ed452f4a038012cef74aed87c77f46c56e661616558f"
+    },
+    {
+      "source": "/Users/wk/.local/share/means-of-prediction/slides/qwen-order-probe-20260913/source/matcher.py",
+      "copy": "order-probe/source/matcher.py",
+      "sha256": "e992a1a1be5df9425ce95880977a1654f4672987218da4c783890be3ac6d69f9"
+    },
+    {
+      "source": "/Users/wk/.local/share/means-of-prediction/slides/qwen-order-probe-20260913/source/prepare_dataset.py",
+      "copy": "order-probe/source/prepare_dataset.py",
+      "sha256": "72c4a3cb9cc207f9bf3d628875c8063baf59c265d7c3a9186ec068313e9a4ab9"
+    },
+    {
+      "source": "/Users/wk/.local/share/means-of-prediction/slides/qwen-order-probe-20260913/source/qwen_preflight.mjs",
+      "copy": "order-probe/source/qwen_preflight.mjs",
+      "sha256": "188c8d42055c9c3055dd3a4b687a9cd9071555cd63d60a7ecbe9070d67e82dfe"
+    },
+    {
+      "source": "/Users/wk/.local/share/means-of-prediction/slides/qwen-order-probe-20260913/source/qwen_round1.py",
+      "copy": "order-probe/source/qwen_round1.py",
+      "sha256": "7f9e157e5efda22b593a1962fe7fb3a896e56ad5eb7a481cb7ef4865c7ab2f8c"
+    },
+    {
+      "source": "/Users/wk/.local/share/means-of-prediction/slides/qwen-order-probe-20260913/source/qwen_semantic.py",
+      "copy": "order-probe/source/qwen_semantic.py",
+      "sha256": "8f9e13ae567227b9fecfcce7006f2fad3a414fee169939fdcdec378bedf3c38d"
+    },
+    {
+      "source": "/Users/wk/.local/share/means-of-prediction/slides/qwen-order-probe-20260913/source/round2.py",
+      "copy": "order-probe/source/round2.py",
+      "sha256": "e7a228db2ffbc69e6ee8a60f51842460c2d377bb7cf50303b756afa63fabacaf"
+    },
+    {
+      "source": "/Users/wk/.local/share/means-of-prediction/slides/qwen-order-probe-20260913/source/round2_matcher.py",
+      "copy": "order-probe/source/round2_matcher.py",
+      "sha256": "b7dcd9414d2d932d167b370fe4678ac28b5bfc2ba50f2b1c2cc99210fcbe8a6a"
+    },
+    {
+      "source": "/Users/wk/.local/share/means-of-prediction/slides/qwen-order-probe-20260913/source/round3.py",
+      "copy": "order-probe/source/round3.py",
+      "sha256": "23002deda8f5adec37d7c980581bee70bbb51f5bc65a6e5d43e7539c6e851beb"
+    },
+    {
+      "source": "/Users/wk/.local/share/means-of-prediction/slides/qwen-order-probe-20260913/source/round4.py",
+      "copy": "order-probe/source/round4.py",
+      "sha256": "507af5a9e03649896d82ff9ee6259c7701e2a8671ba82a830e103fc28f0a3476"
+    },
+    {
+      "source": "/Users/wk/.local/share/means-of-prediction/slides/qwen-order-probe-20260913/source/witness.py",
+      "copy": "order-probe/source/witness.py",
+      "sha256": "9f6b248ed39cee2beb46b2e432ccc2eae46b3a1f9b435704ad38583d7d591111"
+    },
+    {
+      "source": "/Users/wk/.local/share/means-of-prediction/slides/qwen-order-probe-20260913/test_probe.py",
+      "copy": "order-probe/test_probe.py",
+      "sha256": "5a6a51148af829153a6a95ba928cbe4f64daddd931ca1d5ec9236316fd2702f7"
+    },
+    {
+      "source": "/Users/wk/.local/share/means-of-prediction/slides/qwen-predicate-probe-20260913/README.md",
+      "copy": "predicate-probe/README.md",
+      "sha256": "0d28466b6246b2ed9c1f88469dfe8c0cc89484a25ca3d87c658fc3517129d0cb"
+    },
+    {
+      "source": "/Users/wk/.local/share/means-of-prediction/slides/qwen-predicate-probe-20260913/judge.txt",
+      "copy": "predicate-probe/judge.txt",
+      "sha256": "9d8e3e30b3842766c5b307daa81ea09543f1b78d5199580051920641ec829580"
+    },
+    {
+      "source": "/Users/wk/.local/share/means-of-prediction/slides/qwen-predicate-probe-20260913/order_support.py",
+      "copy": "predicate-probe/order_support.py",
+      "sha256": "6bf90302023aa3c8c9c5b711bd367f8d20c305740dde897a8ce66a26e4e6a054"
+    },
+    {
+      "source": "/Users/wk/.local/share/means-of-prediction/slides/qwen-predicate-probe-20260913/prepare.py",
+      "copy": "predicate-probe/prepare.py",
+      "sha256": "36f7075b292f5c50d93ce806d58393c517b77b9af6e09f49a1238e41cd4085a4"
+    },
+    {
+      "source": "/Users/wk/.local/share/means-of-prediction/slides/qwen-predicate-probe-20260913/probe.py",
+      "copy": "predicate-probe/probe.py",
+      "sha256": "c4a44ae520506b2bbf259317057241c9b081047fc6b33f4e322c60f128c80dd1"
+    },
+    {
+      "source": "/Users/wk/.local/share/means-of-prediction/slides/qwen-predicate-probe-20260913/protocol.json",
+      "copy": "predicate-probe/protocol.json",
+      "sha256": "f1644aafaf0e46713e80dda47a29cd1a1e8bde8acf8dbe81842348a1d6423955"
+    },
+    {
+      "source": "/Users/wk/.local/share/means-of-prediction/slides/qwen-predicate-probe-20260913/source/astra_transport.py",
+      "copy": "predicate-probe/source/astra_transport.py",
+      "sha256": "d80cb3a50c0ecafb455f696a593003b479ce96d39cea154803dde03a52ec3fe1"
+    },
+    {
+      "source": "/Users/wk/.local/share/means-of-prediction/slides/qwen-predicate-probe-20260913/source/experiment.py",
+      "copy": "predicate-probe/source/experiment.py",
+      "sha256": "08578175def5e8b7792238dff371a57ed072a25f99d7fd3d816a9c3012f39f0b"
+    },
+    {
+      "source": "/Users/wk/.local/share/means-of-prediction/slides/qwen-predicate-probe-20260913/source/improve.py",
+      "copy": "predicate-probe/source/improve.py",
+      "sha256": "230471f99c34e478c7b6ed452f4a038012cef74aed87c77f46c56e661616558f"
+    },
+    {
+      "source": "/Users/wk/.local/share/means-of-prediction/slides/qwen-predicate-probe-20260913/source/matcher.py",
+      "copy": "predicate-probe/source/matcher.py",
+      "sha256": "e992a1a1be5df9425ce95880977a1654f4672987218da4c783890be3ac6d69f9"
+    },
+    {
+      "source": "/Users/wk/.local/share/means-of-prediction/slides/qwen-predicate-probe-20260913/source/prepare_dataset.py",
+      "copy": "predicate-probe/source/prepare_dataset.py",
+      "sha256": "72c4a3cb9cc207f9bf3d628875c8063baf59c265d7c3a9186ec068313e9a4ab9"
+    },
+    {
+      "source": "/Users/wk/.local/share/means-of-prediction/slides/qwen-predicate-probe-20260913/source/qwen_preflight.mjs",
+      "copy": "predicate-probe/source/qwen_preflight.mjs",
+      "sha256": "188c8d42055c9c3055dd3a4b687a9cd9071555cd63d60a7ecbe9070d67e82dfe"
+    },
+    {
+      "source": "/Users/wk/.local/share/means-of-prediction/slides/qwen-predicate-probe-20260913/source/qwen_round1.py",
+      "copy": "predicate-probe/source/qwen_round1.py",
+      "sha256": "7f9e157e5efda22b593a1962fe7fb3a896e56ad5eb7a481cb7ef4865c7ab2f8c"
+    },
+    {
+      "source": "/Users/wk/.local/share/means-of-prediction/slides/qwen-predicate-probe-20260913/source/qwen_semantic.py",
+      "copy": "predicate-probe/source/qwen_semantic.py",
+      "sha256": "8f9e13ae567227b9fecfcce7006f2fad3a414fee169939fdcdec378bedf3c38d"
+    },
+    {
+      "source": "/Users/wk/.local/share/means-of-prediction/slides/qwen-predicate-probe-20260913/source/round2.py",
+      "copy": "predicate-probe/source/round2.py",
+      "sha256": "e7a228db2ffbc69e6ee8a60f51842460c2d377bb7cf50303b756afa63fabacaf"
+    },
+    {
+      "source": "/Users/wk/.local/share/means-of-prediction/slides/qwen-predicate-probe-20260913/source/round2_matcher.py",
+      "copy": "predicate-probe/source/round2_matcher.py",
+      "sha256": "b7dcd9414d2d932d167b370fe4678ac28b5bfc2ba50f2b1c2cc99210fcbe8a6a"
+    },
+    {
+      "source": "/Users/wk/.local/share/means-of-prediction/slides/qwen-predicate-probe-20260913/source/round3.py",
+      "copy": "predicate-probe/source/round3.py",
+      "sha256": "23002deda8f5adec37d7c980581bee70bbb51f5bc65a6e5d43e7539c6e851beb"
+    },
+    {
+      "source": "/Users/wk/.local/share/means-of-prediction/slides/qwen-predicate-probe-20260913/source/round4.py",
+      "copy": "predicate-probe/source/round4.py",
+      "sha256": "507af5a9e03649896d82ff9ee6259c7701e2a8671ba82a830e103fc28f0a3476"
+    },
+    {
+      "source": "/Users/wk/.local/share/means-of-prediction/slides/qwen-predicate-probe-20260913/source/witness.py",
+      "copy": "predicate-probe/source/witness.py",
+      "sha256": "9f6b248ed39cee2beb46b2e432ccc2eae46b3a1f9b435704ad38583d7d591111"
+    },
+    {
+      "source": "/Users/wk/.local/share/means-of-prediction/slides/qwen-predicate-probe-20260913/test_probe.py",
+      "copy": "predicate-probe/test_probe.py",
+      "sha256": "892b39a3f81229490aeb8165c25c86e36d33660081dd63c021eb27ef79e249aa"
+    },
+    {
+      "source": "/Users/wk/.local/share/means-of-prediction/slides/paired-natural-evaluation-20260913/README.md",
+      "copy": "natural-evaluation/README.md",
+      "sha256": "93d8c5c939a7ebfa83e2d9f3b68f63466700eef872a3287a83875a7d98003850"
+    },
+    {
+      "source": "/Users/wk/.local/share/means-of-prediction/slides/paired-natural-evaluation-20260913/evaluate.py",
+      "copy": "natural-evaluation/evaluate.py",
+      "sha256": "f97a2926feaba5a385b391981a2d7a19e803a66d5e1310ee25bc87ebab076ee7"
+    },
+    {
+      "source": "/Users/wk/.local/share/means-of-prediction/slides/paired-natural-evaluation-20260913/evaluation_core.py",
+      "copy": "natural-evaluation/evaluation_core.py",
+      "sha256": "7709ca5ce0d0c915bf9439cc2e8cabc8a3eb9f8c83af6cc52135156555f3252a"
+    },
+    {
+      "source": "/Users/wk/.local/share/means-of-prediction/slides/paired-natural-evaluation-20260913/preflight.mjs",
+      "copy": "natural-evaluation/preflight.mjs",
+      "sha256": "f425b2782b07700908dcb444c7ca551b99998aeae43f1d083cfb2d8ebcfae633"
+    },
+    {
+      "source": "/Users/wk/.local/share/means-of-prediction/slides/paired-natural-evaluation-20260913/procedure-initial.json",
+      "copy": "natural-evaluation/procedure-initial.json",
+      "sha256": "df1ab887fdd49239262c4f32b13a055128c00ec55891c987b2a478adbb3db04d"
+    },
+    {
+      "source": "/Users/wk/.local/share/means-of-prediction/slides/paired-natural-evaluation-20260913/procedure.json",
+      "copy": "natural-evaluation/procedure.json",
+      "sha256": "86a7a6063909a0fc63c60ca972ed65751df2fea71b699fae599110bea4fa3429"
+    },
+    {
+      "source": "/Users/wk/.local/share/means-of-prediction/slides/paired-natural-evaluation-20260913/protocol.json",
+      "copy": "natural-evaluation/protocol.json",
+      "sha256": "298307aeb2d28790bac0acc225c3a76269a150cd081399b594231225f256434e"
+    },
+    {
+      "source": "/Users/wk/.local/share/means-of-prediction/slides/paired-natural-evaluation-20260913/regex-source/matcher.py",
+      "copy": "natural-evaluation/regex-source/matcher.py",
+      "sha256": "e992a1a1be5df9425ce95880977a1654f4672987218da4c783890be3ac6d69f9"
+    },
+    {
+      "source": "/Users/wk/.local/share/means-of-prediction/slides/paired-natural-evaluation-20260913/regex-source/round2_matcher.py",
+      "copy": "natural-evaluation/regex-source/round2_matcher.py",
+      "sha256": "b7dcd9414d2d932d167b370fe4678ac28b5bfc2ba50f2b1c2cc99210fcbe8a6a"
+    },
+    {
+      "source": "/Users/wk/.local/share/means-of-prediction/slides/paired-natural-evaluation-20260913/test_evaluation.py",
+      "copy": "natural-evaluation/test_evaluation.py",
+      "sha256": "41f48a9f6992ecaa1714bd62ce4aad33f5ac98bc51af896a292037ab037140c3"
+    },
+    {
+      "source": "/Users/wk/.local/share/means-of-prediction/slides/parallel-track-review-20260913/compare_methods.py",
+      "copy": "compare_methods.py",
+      "sha256": "cf6f079605d4d3d791570863d754a403345b9380a8f23ecbcedf6447ce18d1a1"
+    }
+  ]
+}

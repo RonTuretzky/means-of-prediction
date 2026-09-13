@@ -27,10 +27,10 @@ const fpmmImpl = cast("call", "--rpc-url", net.rpc, d.factory, "fpmmImplementati
 
 const targets = [
   { addr: d.conditionalTokens, path: "src/tokens/ConditionalTokens.sol", name: "ConditionalTokens", args: "" },
-  { addr: d.dkimRegistry, path: "src/zkemail/DKIMRegistry.sol", name: "DKIMRegistry", args: "" },
+  { addr: d.dkimRegistry, path: "src/dkim/DKIMRegistry.sol", name: "DKIMRegistry", args: "" },
   {
     addr: d.verifier,
-    path: "src/zkemail/DKIMVerifier.sol",
+    path: "src/dkim/DKIMVerifier.sol",
     name: "DKIMVerifier",
     args: cast("abi-encode", "c(address)", d.dkimRegistry),
   },
@@ -40,15 +40,26 @@ const targets = [
     addr: d.factory,
     path: "src/market/MarketFactory.sol",
     name: "MarketFactory",
-    args: cast("abi-encode", "c(address,address,address,address)", d.conditionalTokens, d.verifier, mktImpl, fpmmImpl),
+    args: cast("abi-encode", "c(address,address,address,address,address,uint256,address)", d.conditionalTokens, d.verifier, mktImpl, fpmmImpl,
+      cast("call", "--rpc-url", net.rpc, d.factory, "judge()(address)"),
+      cast("call", "--rpc-url", net.rpc, d.factory, "protocolFee()(uint256)").split(" ")[0],
+      cast("call", "--rpc-url", net.rpc, d.factory, "feeRecipient()(address)")),
   },
 ];
 if (net.testUsdc) {
   targets.push({ addr: d.usdc, path: "src/tokens/TestUSDC.sol", name: "TestUSDC", args: "" });
 }
 
+if (d.regexLib) targets.push({addr:d.regexLib,path:"src/lib/RegexLib.sol",name:"RegexLib",args:""});
+if (d.emailBodyStore) targets.push({addr:d.emailBodyStore,path:"src/dkim/EmailBodyStore.sol",name:"EmailBodyStore",args:""});
+
 for (const t of targets) {
-  const stdJson = execFileSync("forge", ["verify-contract", "--show-standard-json-input", t.addr, `${t.path}:${t.name}`]).toString();
+  let stdJson = execFileSync("forge", ["verify-contract", "--show-standard-json-input", t.addr, `${t.path}:${t.name}`]).toString();
+  if (t.name === "HeadlineMarket" && d.regexLib) {
+    const input = JSON.parse(stdJson);
+    input.settings.libraries = {"src/lib/RegexLib.sol": {RegexLib:d.regexLib}};
+    stdJson = JSON.stringify(input);
+  }
   const fd = new FormData();
   fd.append("compiler_version", "v0.8.28+commit.7893614a");
   fd.append("license_type", "mit");

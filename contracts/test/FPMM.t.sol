@@ -5,7 +5,7 @@ import {MarketTestBase} from "./MarketTestBase.sol";
 import {HeadlineMarket} from "../src/market/HeadlineMarket.sol";
 import {MarketFactory} from "../src/market/MarketFactory.sol";
 import {FPMM} from "../src/market/FPMM.sol";
-import {EmailProof} from "../src/zkemail/IZKEmail.sol";
+import {EmailProof} from "../src/dkim/IDKIMVerifier.sol";
 
 contract FPMMTest is MarketTestBase {
     HeadlineMarket market;

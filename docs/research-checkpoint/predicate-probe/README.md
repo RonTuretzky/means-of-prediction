@@ -1,0 +1,9 @@
+Private, strict-only diagnostic on the same 12 selected old-development cases as the order probe. This uses two separate calls, one for each settlement predicate, retaining the entire original email and rule in each. It cannot satisfy the main study's factual-recall gate and has no automatic adoption path.
+
+Preparation has no model calls. Run the synthetic unit tests, then `python3 prepare.py` once. Review the complete code and adapted prompt before writing `reviewed.json` with `approved: true` and the exact `inputFreezeSha256`. All inputs/source and the fixed verdict-first schema must be frozen before either probe's results are used.
+
+After the main v2 local judgments, its summary, and the order probe's audited summary are complete, coordinate exclusive use of the local model. Write `run-approved.json` with `inputFreezeSha256`, `reviewSha256`, `v2JudgmentsSha256`, `orderSummarySha256`, `localInferenceQuiescent: true`, and a timestamp. This is an internal execution record, not a request for user approval. Then run `python3 probe.py preflight` followed by `python3 probe.py run` from this directory. Keep process logs outside any previously frozen study directory.
+
+The copied `order_support.py` supplies immutable write, full-response transport and model metadata validation functions. The local copied study modules supply unchanged runtime checks and body/combined-answer scoring helpers. The split-specific code creates requests, scores only strict outcomes, and verifies both new responses and comparison responses directly against raw HTTP data.
+
+Do not retry uncertain attempts or overwrite results. A missing or invalid side makes the whole pair unscorable. The two natural factual labels are never treated as strict settlement gold. The summary reports 24 new calls separately from each 12-call combined comparison, with independent missing input/output/duration accounting. Keep this cost bucket separate in the eventual overall report.

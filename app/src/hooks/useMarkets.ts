@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import type { Address, Hex } from "viem";
-import { parseAbiItem } from "viem";
+import { parseAbiItem, zeroAddress } from "viem";
 import { abis } from "../contracts/gen";
 import { deployment, DEPLOY_BLOCK } from "../config";
 import { publicClient } from "../lib/wallet";
@@ -9,6 +9,8 @@ export const FACTORY = deployment.factory as Address;
 export const CT = deployment.conditionalTokens as Address;
 export const USDC = deployment.usdc as Address;
 export const DKIM = deployment.dkimRegistry as Address;
+/** LLMJudge oracle address for this deployment (undefined = judged mode unavailable). */
+export const LLM_JUDGE = (deployment.llmJudge || undefined) as Address | undefined;
 
 export enum Resolution {
   Unresolved = 0,
@@ -44,6 +46,12 @@ export interface MarketData {
   question: string;
   description: string;
   contentRegex: string;
+  /** Natural-language resolution rules (judged mode); "" on regex markets. */
+  criteria: string;
+  /** AI-judged market: empty regex + non-empty criteria, settled via the LLMJudge oracle. */
+  judged: boolean;
+  /** LLMJudge address this market consumes verdicts from (zero on regex markets). */
+  judge: Address;
   contentField: ContentField;
   sources: Source[];
   sourceMatched: boolean[];
@@ -61,6 +69,8 @@ export interface MarketData {
   noPositionId: bigint;
   collateral: { address: Address; symbol: string; decimals: number };
   fee: bigint;
+  protocolFee: bigint;
+  feeRecipient: Address;
   priceYes: bigint; // 1e18
   priceNo: bigint;
   poolYes: bigint;
@@ -159,6 +169,20 @@ async function fetchMarket(id: number, market: Address, fpmm: Address, chainNow:
     bigint,
   ];
 
+  // Judged-mode fields were appended to the implementation after the first clones
+  // shipped (older markets have no criteria()/judge() selector), so tolerate failure.
+  const [criteriaRes, judgeRes, protocolFeeRes, feeRecipientRes] = await publicClient.multicall({
+    allowFailure: true,
+    contracts: [
+      { ...m, functionName: "criteria" },
+      { ...m, functionName: "judge" },
+      { ...f, functionName: "protocolFee" },
+      { ...f, functionName: "feeRecipient" },
+    ],
+  });
+  const criteria = criteriaRes.status === "success" ? (criteriaRes.result as string) : "";
+  const judge = judgeRes.status === "success" ? (judgeRes.result as Address) : zeroAddress;
+
   const [symbol, decimals] = (await publicClient.multicall({
     allowFailure: false,
     contracts: [
@@ -192,6 +216,9 @@ async function fetchMarket(id: number, market: Address, fpmm: Address, chainNow:
     question,
     description,
     contentRegex,
+    criteria,
+    judged: criteria.length > 0,
+    judge,
     contentField: contentField as ContentField,
     sources: sources.map((s) => ({ ...s })),
     sourceMatched,
@@ -209,6 +236,8 @@ async function fetchMarket(id: number, market: Address, fpmm: Address, chainNow:
     noPositionId,
     collateral: { address: collateralAddr, symbol, decimals: Number(decimals) },
     fee,
+    protocolFee: protocolFeeRes.status === "success" ? protocolFeeRes.result as bigint : 0n,
+    feeRecipient: feeRecipientRes.status === "success" ? feeRecipientRes.result as Address : zeroAddress,
     priceYes,
     priceNo,
     poolYes: pool[0],

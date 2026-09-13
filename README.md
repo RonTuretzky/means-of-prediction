@@ -2,7 +2,7 @@
 
 *(formerly "Headlines")*
 
-Binary prediction markets where **settlement is a zkEmail proof of a newspaper
+Binary prediction markets where **settlement is a public DKIM signature proof of a newspaper
 breaking-news alert email**. Anyone can permissionlessly:
 
 - **open a market** over any set of newspapers, any regex condition, any ERC-20
@@ -13,9 +13,11 @@ breaking-news alert email**. Anyone can permissionlessly:
 The token layer reimplements the Conditional Tokens model Polymarket settles on;
 trading runs through a Gnosis-style fixed-product AMM (Polymarket's original venue).
 Settlement is **real DKIM verification**: an email's RSA-SHA256 signature is checked
-onchain (modexp precompile) against the sending domain's real published public key —
-the same operation an inbound mail server performs. The real New York Times key and a
-real NYT email verify end to end.
+onchain (modexp precompile) against a key whose domain association is authenticated
+by the deployment registrar —
+the same RSA operation used in DKIM verification. The new Sepolia deployment also authenticates complete body hashes and bounded body-text witnesses; see [body parsing](docs/BODY-PARSING.md).
+
+A dedicated [automatic email settlement worker](docs/AUTO-SETTLEMENT.md) now collects authenticated NYT mail and submits accepted Subject/body proofs on the new Sepolia deployment. It uses a durable encrypted journal and a separate restricted signer. The existing Gnosis deployment remains unchanged.
 
 ```
 ┌─────────────┐   creates    ┌────────────────┐   oracle-reports   ┌───────────────────┐
@@ -24,8 +26,8 @@ real NYT email verify end to end.
                              └───▲────────────┘                    └─────────▲─────────┘
                                  │ submitProof(EmailProof)                   │ split/merge/redeem
                           ┌──────┴───────────┐                     ┌─────────┴─────────┐
-                          │MockZKEmailVerifier│                    │       FPMM        │
-                          │ + MockDKIMRegistry│                    │ (YES/NO AMM pool) │
+                          │  DKIMVerifier    │                    │       FPMM        │
+                          │ +  DKIMRegistry   │                    │ (YES/NO AMM pool) │
                           └──────────────────┘                     └───────────────────┘
 ```
 
@@ -86,8 +88,8 @@ against every unresolved market (domain, From-regex, content regex, time window 
 same checks the contract makes), dry-runs `checkProof`, and submits `submitProof` for
 every accepted pair; it also calls `resolveNo` on markets past deadline + buffer. If a
 sender's key `(domain, selector)` isn't registered yet, it's looked up in the registry's
-events, then fetched from DNS and registered permissionlessly — so key rotation never
-blocks settlement. `.github/workflows/settle.yml` runs it **daily at 13:17 UTC** (and on
+events, then fetched from DNS and registered by the authorized registrar. New keys
+must be authorized before they can settle a market. `.github/workflows/settle.yml` runs it **daily at 13:17 UTC** (and on
 demand, with a dry-run switch). To run the experiment, set three repo secrets yourself:
 `GMAIL_USER` (a mailbox subscribed to the papers' breaking-news alerts — a dedicated
 account is wise), `GMAIL_APP_PASSWORD` (Google Account → Security → 2-Step Verification
@@ -156,12 +158,12 @@ Prereqs: [Foundry](https://getfoundry.sh), Node 22+, pnpm.
 
 ```bash
 # 1. chain (vanilla anvil works: every contract is under EIP-170 and settlement
-#    fits ordinary blocks since the compiled-proof path landed)
+#    uses the public RSA/DKIM verifier)
 anvil --port 8547
 
 # 2. contracts — deploys the stack + 3 seeded demo markets, writes deployments/local.json
 cd contracts
-forge script script/Deploy.s.sol --rpc-url http://localhost:8547 --broadcast \
+forge script script/Deploy.s.sol:Deploy --rpc-url http://localhost:8547 --broadcast \
   --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
 
 # 3. app — syncs ABIs/addresses then serves on http://localhost:5199
@@ -176,28 +178,20 @@ proof reaches the 2-of-3 threshold and resolves YES.
 ### Tests
 
 ```bash
-cd contracts && forge test        # 75 tests: real RSA/DKIM, regex diff-vs-JS, CTF, FPMM, e2e
+cd contracts && forge test        # real RSA/DKIM, registry access, fee accounting, regex, CTF and lifecycle tests
 cd app && pnpm e2e                # 9 Playwright flows on an isolated anvil (port 8548)
 ```
 
-The mock prover also runs standalone:
+### Email coverage research and revenue
 
-```bash
-cd app && node scripts/prove-email.mjs ../emails/nyt-fed-cut.eml   # .eml -> EmailProof JSON
-```
+- [Connect your mailbox and enable settlement](docs/EMAIL-ACCESS.md).
+- [Daily Polymarket/email retrospective research](docs/DAILY-RESEARCH.md).
+- [NYT-specific Astra prompt optimization and blind rule generation](docs/BLIND-NYT-PROMPT-RESEARCH.md).
+- [Platform fee configuration and collection](docs/FEES.md).
 
-### Real zk-regex circuits (optional, ~10 min one-time ptau)
-
-```bash
-cd app
-pnpm zk:build -- --from '^nytdirect@nytimes\.com$' --field 2 \
-  --content '(?i)fed (cuts|lowers|slashes) (interest )?rates'   # regex -> DFA -> circom -> Groth16
-pnpm zk:register        # deploy the generated verifier + register the pattern pair
-pnpm zk:verify -- --submit   # prove a sample email for real and settle onchain (~2s prove, ~330k gas)
-```
-
-Once registered, the app's compiled settle mode generates the Groth16 proof
-in-browser and the mock fallback is dead for that pattern.
+The unused ZK circuit experiment and its dependencies have been removed. Settlement
+requires no proving circuit, trusted setup or redaction. Signed headers are public
+calldata. Historical ZK research remains in the documentation as a record only.
 
 ## How settlement works
 
@@ -208,7 +202,7 @@ A market is configured at creation with:
   (subset of JS regex: literals, `. * + ? {m,n}`, classes, groups, alternation,
   anchors, `\d \w \s`, `(?i)`); per-source overrides supported since papers word
   headlines differently,
-- **contentField** — subject, body, or either,
+- **contentField** — use subject; body evidence is refused until onchain body-hash verification is implemented,
 - **threshold K** — distinct newspapers required for YES (aggregate settlement),
 - **window / deadline / buffer** — accepted email `Date` range; after
   `deadline + buffer` anyone can resolve NO.
@@ -218,16 +212,12 @@ signed headers + its real RSA signature. Onchain, `DKIMVerifier`:
 1. looks up the sending domain's RSA public key in `DKIMRegistry` (real DNS keys),
 2. verifies the RSA-SHA256 signature over the header bytes (`RSAVerify` + the modexp
    precompile) — genuine DKIM verification, and
-3. binds the extracted From/Subject by requiring they appear in the authenticated
-   header.
+3. binds From, exact Subject and Date to authenticated header fields and refuses
+   nonempty body excerpts.
 The market then runs its regex (onchain `RegexLib`) over the **DKIM-verified Subject**,
 dedupes by email nullifier, and marks the source. The K-th distinct source reports
 payout `[1,0]` to ConditionalTokens; `resolveNo()` reports `[0,1]` after deadline +
 buffer. The market contract *is* the oracle — no human, committee, or mock in the loop.
-
-A separate **zk-regex research track** (`app/scripts/zkregex`) compiles a pattern to a
-real Groth16 circuit (regex → DFA → circom, differentially tested on 12k cases) toward
-privacy-preserving settlement — see backlog A3; it is decoupled from the live path.
 
 ## Market token management
 
@@ -239,20 +229,21 @@ Follows the Polymarket/Gnosis standard:
 - **Collateral is configurable per market** (test USDC by default; the e2e suite also
   exercises an 18-decimal token).
 - Trading via a per-market **FPMM**: constant-product AMM over the YES/NO pool,
-  configurable fee accruing to LP shares, `distributionHint` sets opening odds.
+  configurable LP fee plus a fixed platform fee (default 1% for new deployments);
+  `distributionHint` sets opening odds.
   Prices are probabilities — displayed in cents, Polymarket-style.
 
 ## Trust model — what's real, what's assumed
 
 | Component | Here | Production delta |
 |---|---|---|
-| Email authenticity | **REAL** DKIM: RSA-SHA256 verified onchain (`RSAVerify` + modexp) against the domain's real public key in `DKIMRegistry`. The real NYT key + a real NYT email verify end to end. | Add key-rotation validity windows fed by a DNSSEC oracle (backlog A2); fold the DKIM RSA + SHA-256 into a zk circuit for private settlement (A1). |
-| Test fixtures | The sample `.eml`s are signed by a **real** committed dev RSA key (`keys/dev-dkim.pub`) — real signatures, real verification, dev key (we can't hold NYT's private key). Registered on local/Sepolia only; **revoked on Gnosis mainnet**. | Real senders sign their own real emails; the settlement bot registers their DNS keys on first sight. |
-| Regex | **REAL** onchain matcher (`RegexLib`) over the DKIM-verified Subject. | Compile to a zk circuit for privacy (A3; `app/scripts/zkregex` already does regex→DFA→Groth16). |
+| Email authenticity | **REAL** DKIM: RSA-SHA256 verified onchain (`RSAVerify` + modexp) against the domain's real public key in `DKIMRegistry`. The real NYT key + a real NYT email verify end to end. | Registrar authenticates DNS keys; DNSSEC and historical validity windows remain future work (A2). |
+| Test fixtures | The sample `.eml`s are signed by a **real** committed dev RSA key (`keys/dev-dkim.pub`) — real signatures, real verification, dev key (we can't hold NYT's private key). Registered on local/Sepolia only; **revoked on Gnosis mainnet**. | Real senders sign their own real emails; the authorized registrar registers their DNS keys. |
+| Regex | **REAL** onchain matcher (`RegexLib`) over the DKIM-verified Subject. | No circuit required; improve authenticated body and numeric condition support. |
 | Tokens / AMM / factory | **REAL** ConditionalTokens, FPMM, EIP-1167 clone factory. | Unchanged. |
 
 Assumed (per spec): each newspaper publishes one canonical truth and never emails
 conflicting alerts. The threshold K exists so a single compromised newsroom email
-pipeline can't settle a market alone. Known limitation: only the **Subject** is bound
+pipeline can't settle a market alone. Known limitation: the signed **From, Subject and Date** are bound
 by the header signature — Body-field conditions need the DKIM body-hash (`bh=`) check
 (backlog A4). See the [backlog](docs/BACKLOG.md) for the full roadmap.

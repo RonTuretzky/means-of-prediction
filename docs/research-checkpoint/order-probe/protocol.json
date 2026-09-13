@@ -1,0 +1,38 @@
+{
+  "declaredAt": "2026-09-13T16:44:28.916781+00:00",
+  "purpose": "Test quote-first JSON field order as a bounded old-development hypothesis, separate from prompt-only v2.",
+  "variants": {
+    "original": [
+      "factualOutcome",
+      "outcomeA",
+      "outcomeB",
+      "evidenceQuote",
+      "missingConditions"
+    ],
+    "quote-first": [
+      "evidenceQuote",
+      "factualOutcome",
+      "outcomeA",
+      "outcomeB",
+      "missingConditions"
+    ]
+  },
+  "intervention": "Reorder only schema properties and required array. Preserve all field names, types, required set, output semantics, full messages, frozen baseline rule, model and sampling settings.",
+  "selection": "Twelve unique completed baseline cases: 2 correct A, 2 correct B, 1 wrong-side expected A, 1 wrong-side expected B, 2 negative false claims, 2 correct negative rejections, shortest and longest natural factual body with distinct email IDs. Case-ID order breaks ties; no v2 outcomes used.",
+  "calls": 24,
+  "workers": 4,
+  "schedule": "Four concurrent case pairs. Within each pair run both variants serially; six pairs start with original and six with quote-first, alternating by sorted case ID. Preserve all attempts, no best-of or automatic retry.",
+  "runtime": "Same pinned local Qwen3.5-35B-A3B Q4_K_M, temperature0, seed20260912, 2048 output allowance, original template and grammar. No model/default-setting changes.",
+  "gates": "Code-only review and exact input freeze; then v2 full 1915-row local completion and coordinator confirmation that inference is quiescent; then full-token preflight before any probe call. Must precede final selection. No reserved email or fixture reads.",
+  "accounting": "Transmit the exact saved ordered JSON wire bytes. Hash wire and schema-bearing files, retain original raw HTTP bytes, audit field order and full input token counts. Report missing usage independently. Canonical object hashing is insufficient to distinguish properties-only reorder.",
+  "assessment": "Compare contemporaneous paired strict control correctness, false claims, wrong side, exact grounding, validity, raw output order and observed latency. Also report replay variation versus the earlier baseline. No automatic adoption: any promising change requires separately declared full-cohort evaluation and per-method schema/wire lineage before selection.",
+  "limitations": [
+    "Diagnostic panel includes selected prior failures and is not representative or independent.",
+    "Two natural factual pairs are not strict settlement gold.",
+    "An exact quote is not proof of entailment or admissibility.",
+    "No separate reasoning trace is introduced; ordering may help, hurt or have no effect.",
+    "Balanced order does not make observed concurrent latency a controlled causal benchmark."
+  ],
+  "noWeightTraining": true,
+  "noLivePromotion": true
+}

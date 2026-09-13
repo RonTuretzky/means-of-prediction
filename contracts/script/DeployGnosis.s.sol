@@ -3,11 +3,13 @@ pragma solidity ^0.8.28;
 
 import {Script} from "forge-std/Script.sol";
 import {ConditionalTokens} from "../src/tokens/ConditionalTokens.sol";
-import {DKIMRegistry} from "../src/zkemail/DKIMRegistry.sol";
-import {DKIMVerifier} from "../src/zkemail/DKIMVerifier.sol";
+import {DKIMRegistry} from "../src/dkim/DKIMRegistry.sol";
+import {EmailBodyStore} from "../src/dkim/EmailBodyStore.sol";
+import {DKIMVerifier} from "../src/dkim/DKIMVerifier.sol";
 import {HeadlineMarket} from "../src/market/HeadlineMarket.sol";
 import {MarketFactory} from "../src/market/MarketFactory.sol";
 import {FPMM} from "../src/market/FPMM.sol";
+import {ILLMJudge} from "../src/judge/ILLMJudge.sol";
 
 /// @notice Gnosis mainnet deployment (chain 100). Differences vs the local script:
 /// no TestUSDC/faucet and no seeded markets (collateral = real Gnosis stablecoins:
@@ -27,8 +29,9 @@ contract DeployGnosis is Script {
         ConditionalTokens ct = new ConditionalTokens();
         DKIMRegistry dkim = new DKIMRegistry();
         DKIMVerifier verifier = new DKIMVerifier(dkim);
+        EmailBodyStore bodyStore = new EmailBodyStore();
         MarketFactory factory =
-            new MarketFactory(ct, verifier, address(new HeadlineMarket()), address(new FPMM()));
+            new MarketFactory(ct, verifier, address(new HeadlineMarket()), address(new FPMM()), ILLMJudge(address(0)), vm.envOr("PROTOCOL_FEE", uint256(1e16)), vm.envOr("FEE_RECIPIENT", msg.sender));
 
         registerKeysFromFile(dkim);
 
@@ -38,6 +41,8 @@ contract DeployGnosis is Script {
         vm.serializeAddress(json, "conditionalTokens", address(ct));
         vm.serializeAddress(json, "dkimRegistry", address(dkim));
         vm.serializeAddress(json, "verifier", address(verifier));
+        vm.serializeAddress(json, "emailBodyStore", address(bodyStore));
+        vm.serializeUint(json, "bodyParsingVersion", 1);
         // canonical Multicall3, predeployed on Gnosis
         vm.serializeAddress(json, "multicall3", 0xcA11bde05977b3631167028862bE2a173976CA11);
         // "usdc" = the app's default/faucet slot; on Gnosis point it at bridged USDC
@@ -52,9 +57,12 @@ contract DeployGnosis is Script {
         uint256 n = vm.parseJsonUint(json, ".count");
         for (uint256 i = 0; i < n; i++) {
             string memory base = string.concat(".keys[", vm.toString(i), "]");
+            // Never authorize the public fixture private key for mainnet settlement.
+            string memory selector = vm.parseJsonString(json, string.concat(base, ".selector"));
+            if (keccak256(bytes(selector)) == keccak256("dev2026")) continue;
             dkim.registerKey(
                 vm.parseJsonString(json, string.concat(base, ".domain")),
-                vm.parseJsonString(json, string.concat(base, ".selector")),
+                selector,
                 vm.parseJsonBytes(json, string.concat(base, ".exponent")),
                 vm.parseJsonBytes(json, string.concat(base, ".modulus"))
             );

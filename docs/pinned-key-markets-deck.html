@@ -1,0 +1,711 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pinned-Key Markets — pin at creation, void on rotation</title>
+<style>
+  :root{
+    color-scheme: dark;
+    --page:#0d0d0d; --surface:#1a1a19;
+    --ink:#ffffff; --ink-2:#c3c2b7; --muted:#898781;
+    --grid:#2c2c2a; --baseline:#383835; --border:rgba(255,255,255,.10);
+    --good:#0ca30c; --warn:#fab219; --serious:#ec835a; --critical:#d03b3b;
+    --clsA:#184f95; --clsB:#3987e5; --clsC:#9ec5f4; --clsD:#cde2fb;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  *{box-sizing:border-box; margin:0; padding:0}
+  html,body{height:100%; overflow:hidden}
+  body{
+    background:var(--page); color:var(--ink);
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    font-size: clamp(13px, 1.25vw, 16px); line-height:1.5;
+  }
+  .progress{position:fixed; top:0; left:0; right:0; height:3px; background:var(--grid); z-index:30}
+  .progress i{display:block; height:100%; width:0; background:var(--clsB); transition:width .25s ease}
+
+  .slide{position:absolute; inset:0; display:none; overflow-y:auto; padding:6vh 6vw 8vh}
+  .slide.active{display:flex; flex-direction:column; justify-content:center; animation:in .35s ease}
+  @keyframes in{from{opacity:0; transform:translateY(10px)}to{opacity:1; transform:none}}
+  .wrap{max-width:1140px; width:100%; margin:0 auto}
+
+  .kicker{display:flex; align-items:center; gap:10px; font-size:.72em; letter-spacing:.14em;
+    text-transform:uppercase; color:var(--muted); margin-bottom:16px; font-weight:600}
+  .kicker::before{content:""; width:26px; height:2px; background:var(--clsB)}
+  h1{font-size:clamp(30px,4.2vw,54px); line-height:1.08; letter-spacing:-.02em; margin-bottom:20px; font-weight:750}
+  h2{font-size:clamp(22px,2.8vw,36px); line-height:1.12; letter-spacing:-.015em; margin-bottom:18px; font-weight:700}
+  h3{font-size:1.02em; margin-bottom:8px; font-weight:650}
+  .sub{color:var(--ink-2); font-size:clamp(15px,1.5vw,19px); max-width:60ch}
+  .accent{color:var(--clsB)}
+  p{color:var(--ink-2)} strong{color:var(--ink); font-weight:650} em{font-style:italic}
+  code{font-family:var(--mono); font-size:.9em; color:var(--ink); background:var(--surface);
+    border:1px solid var(--border); border-radius:5px; padding:1px 6px}
+
+  .card{background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:18px 20px}
+  .cards2{display:grid; grid-template-columns:1fr 1fr; gap:14px}
+  @media (max-width:840px){.cards2{grid-template-columns:1fr}}
+  .card .tag{display:inline-block; font-size:.7em; letter-spacing:.1em; text-transform:uppercase;
+    color:var(--muted); font-weight:650; margin-bottom:8px}
+  .card p{font-size:.94em}
+  .cards2 + .card, .card + .cards2, .card + .card{margin-top:14px}
+
+  ul.tight{list-style:none}
+  ul.tight li{padding-left:20px; position:relative; margin:6px 0; color:var(--ink-2); font-size:.95em}
+  ul.tight li::before{content:"—"; position:absolute; left:0; color:var(--clsB)}
+  ul.tight li strong{color:var(--ink)}
+
+  .formula{font-family:var(--mono); font-size:clamp(15px,1.8vw,22px); color:var(--ink);
+    background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:18px 22px; margin:14px 0}
+  .formula .q{color:var(--muted); font-family:system-ui,-apple-system,"Segoe UI",sans-serif; font-size:.68em; display:block; margin-top:8px}
+
+  pre.codeblock{font-family:var(--mono); font-size:clamp(11px,1.05vw,14px); line-height:1.5; color:var(--ink-2);
+    background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:18px 22px; overflow-x:auto}
+  pre.codeblock .k{color:var(--clsC)} pre.codeblock .c{color:var(--muted)} pre.codeblock .s{color:var(--warn)}
+
+  /* flow */
+  .flow{display:flex; align-items:stretch; gap:0; flex-wrap:wrap}
+  .fnode{background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:14px 16px; flex:1; min-width:170px}
+  .fnode .n{font-size:.7em; letter-spacing:.1em; color:var(--clsB); font-weight:700; text-transform:uppercase}
+  .fnode h3{margin:4px 0 6px}
+  .fnode p{font-size:.82em}
+  .farrow{align-self:center; padding:0 10px; color:var(--muted); font-size:22px; flex:none}
+  .fbranch{display:flex; flex-direction:column; gap:10px; flex:1.4; min-width:220px}
+  .fbranch .fnode{flex:none}
+  .fnode.good{border-color:rgba(12,163,12,.45)} .fnode.void{border-color:rgba(250,178,25,.45)}
+
+  /* chips & status */
+  .chip{display:inline-flex; align-items:center; gap:6px; font-size:.8em; font-weight:650;
+    border-radius:999px; padding:3px 11px; border:1px solid var(--border); color:var(--ink)}
+  .chip.low{border-color:rgba(12,163,12,.5)} .chip.low .ic{color:var(--good)}
+  .chip.med{border-color:rgba(250,178,25,.5)} .chip.med .ic{color:var(--warn)}
+  .chip.elev{border-color:rgba(236,131,90,.5)} .chip.elev .ic{color:var(--serious)}
+  .chip.avoid{border-color:rgba(208,59,59,.55)} .chip.avoid .ic{color:var(--critical)}
+
+  /* timelines */
+  .tl{position:relative; margin-top:10px}
+  .tl .vline{position:absolute; top:0; bottom:24px; width:1px; background:var(--grid)}
+  .tl .nowline{position:absolute; top:-6px; bottom:24px; width:1px;
+    background:repeating-linear-gradient(180deg,var(--ink-2) 0 4px,transparent 4px 8px)}
+  .tl .nowlab{position:absolute; top:-22px; transform:translateX(-50%); font-size:.7em; color:var(--ink-2)}
+  .tl .band{position:absolute; top:-6px; bottom:24px; background:rgba(250,178,25,.10);
+    border-left:1px dashed var(--warn); border-right:1px dashed var(--warn)}
+  .tl .bandlab{position:absolute; top:-22px; transform:translateX(-50%); font-size:.7em; color:var(--warn); white-space:nowrap}
+  .lane{display:grid; grid-template-columns:178px 1fr; align-items:center; height:26px}
+  .lane .lab{font-family:var(--mono); font-size:.72em; color:var(--ink-2); padding-right:12px; text-align:right; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .lane .track{position:relative; height:100%}
+  .bar{position:absolute; top:6px; height:14px; border-radius:4px; cursor:default}
+  .bar:hover{filter:brightness(1.18)}
+  .dead{position:absolute; top:4px; font-size:12px; font-weight:800; color:var(--critical); cursor:default}
+  .born{position:absolute; top:4px; font-size:11px; font-weight:700; color:var(--good); cursor:default}
+  .axis{display:grid; grid-template-columns:178px 1fr; margin-top:2px}
+  .axis .ticks{position:relative; height:20px; border-top:1px solid var(--baseline)}
+  .axis .tick{position:absolute; top:3px; transform:translateX(-50%); font-size:.7em; color:var(--muted); white-space:nowrap}
+  .eralab{position:absolute; top:-14px; font-size:.66em; color:var(--muted); transform:translateX(-50%); white-space:nowrap}
+  .legendrow{display:flex; gap:16px; flex-wrap:wrap; margin-top:12px; font-size:.78em; color:var(--ink-2)}
+  .legendrow i{width:10px; height:10px; border-radius:3px; display:inline-block; margin-right:5px; vertical-align:-1px}
+  details.tbl{margin-top:10px}
+  details.tbl summary{cursor:pointer; color:var(--muted); font-size:.8em}
+  details.tbl table{width:100%; border-collapse:collapse; margin-top:8px; font-size:.78em}
+  details.tbl th, details.tbl td{text-align:left; padding:4px 8px; border-bottom:1px solid var(--grid); color:var(--ink-2); font-variant-numeric:tabular-nums}
+  details.tbl th{color:var(--muted); font-weight:600}
+  details.tbl td:first-child{font-family:var(--mono)}
+
+  table.haz{width:100%; border-collapse:collapse; font-size:.88em; margin-top:6px}
+  table.haz th, table.haz td{text-align:left; padding:9px 10px; border-bottom:1px solid var(--grid); color:var(--ink-2); vertical-align:top}
+  table.haz th{color:var(--muted); font-weight:600; font-size:.8em; letter-spacing:.06em; text-transform:uppercase}
+  table.haz td:first-child{color:var(--ink); font-weight:650; white-space:nowrap}
+  table.haz code{font-size:.85em}
+
+  .step{display:grid; grid-template-columns:40px 1fr; gap:14px; padding:10px 0; border-bottom:1px solid var(--grid); align-items:start}
+  .step:last-child{border-bottom:none}
+  .step .n{width:30px; height:30px; border-radius:50%; border:1.5px solid var(--clsB); color:var(--clsB);
+    display:grid; place-items:center; font-weight:700; font-size:.9em}
+  .step p{font-size:.9em}
+
+  .stats{display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-top:20px}
+  @media (max-width:900px){.stats{grid-template-columns:1fr 1fr}}
+  .stat{background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:14px 16px}
+  .stat .v{font-size:clamp(22px,2.6vw,34px); font-weight:750; letter-spacing:-.02em}
+  .stat .l{color:var(--muted); font-size:.78em; margin-top:4px}
+
+  .foot{margin-top:22px; color:var(--muted); font-size:.78em; font-family:var(--mono)}
+  .hud{position:fixed; right:18px; bottom:14px; display:flex; align-items:center; gap:10px; z-index:30;
+    color:var(--muted); font-variant-numeric:tabular-nums; font-size:.85em}
+  .hud button{background:var(--surface); color:var(--ink-2); border:1px solid var(--border); border-radius:8px;
+    width:34px; height:30px; font-size:16px; cursor:pointer}
+  .hud button:hover{color:var(--ink); border-color:rgba(255,255,255,.25)}
+  .hint{position:fixed; left:18px; bottom:14px; color:var(--muted); font-size:.75em; z-index:30}
+  #tip{position:fixed; z-index:50; display:none; max-width:340px; pointer-events:none;
+    background:#242423; border:1px solid rgba(255,255,255,.16); border-radius:8px;
+    padding:8px 11px; font-size:.8em; color:var(--ink-2); box-shadow:0 6px 24px rgba(0,0,0,.5)}
+  #tip b{color:var(--ink)}
+</style>
+</head>
+<body>
+
+<div class="progress"><i id="pbar"></i></div>
+
+<!-- 1 · TITLE -->
+<section class="slide" aria-label="Title">
+  <div class="wrap">
+    <div class="kicker">zkEmail prediction markets · rotation research + market design</div>
+    <h1>Pinned-Key Markets</h1>
+    <p class="sub"><strong>Pin the key at creation. Void on rotation. Refund at par.</strong><br>
+    The market agrees on the sender's current DKIM key the way it agrees on any other term —
+    and if the key dies first, the market dies gracefully and the money comes home.</p>
+    <div class="stats">
+      <div class="stat"><div class="v">74</div><div class="l">archived keys analyzed across 8 domains</div></div>
+      <div class="stat"><div class="v">8.7y</div><div class="l">age of irs.gov's still-live key (oldest pin candidate)</div></div>
+      <div class="stat"><div class="v">8 days</div><div class="l">width of NYT's April '25 purge window</div></div>
+      <div class="stat"><div class="v">0</div><div class="l">oracles needed after market creation</div></div>
+    </div>
+    <div class="foot">measured 2026-08-20 · archive.prove.email + live dig verification · full memo: docs/PINNED-KEY-MARKETS.md</div>
+  </div>
+</section>
+
+<!-- 2 · THE MOVE -->
+<section class="slide" aria-label="The move">
+  <div class="wrap">
+    <div class="kicker">the move</div>
+    <h2>Stop <em>following</em> rotation. Start <em>accepting</em> it.</h2>
+    <div class="cards2">
+      <div class="card">
+        <span class="tag">rotation-following (the provenance deck)</span>
+        <ul class="tight">
+          <li>Registry that tracks every key forever</li>
+          <li>DNSSEC oracles, notarized DoH quorums, witnessed Merkle logs, challenge games</li>
+          <li>Standing machinery, standing trust, standing cost</li>
+          <li>Follows rotations — <strong>including the ones an attacker makes</strong></li>
+        </ul>
+      </div>
+      <div class="card" style="border-color:rgba(57,135,229,.5)">
+        <span class="tag" style="color:var(--clsB)">rotation-accepting (this deck)</span>
+        <ul class="tight">
+          <li>One <code>bytes32</code> pinned at creation + one deadline</li>
+          <li>Settlement proof must match the pin — nothing else exists</li>
+          <li>Deadline passes unresolved → anyone voids → everyone refunded</li>
+          <li>The failure mode is <strong>a refund</strong>, not a theft</li>
+        </ul>
+      </div>
+    </div>
+    <div class="card"><p><strong>Viable only if keys actually live long enough.</strong> So the first half of this
+    deck is measurement: 74 archived keys across nytimes.com, wsj.com, washingtonpost.com, economist.com,
+    gmail.com, irs.gov — cross-checked against live DNS today.</p></div>
+  </div>
+</section>
+
+<!-- 3 · LIFECYCLE -->
+<section class="slide" aria-label="Lifecycle">
+  <div class="wrap">
+    <div class="kicker">the model in one picture</div>
+    <h2>Four stages, one branch</h2>
+    <div class="flow">
+      <div class="fnode">
+        <div class="n">① pin</div>
+        <h3>Create</h3>
+        <p>Creator fetches the sender's current key — live DoH, two resolvers — and pins
+        <code>keccak(domain·selector·pubkey)</code> into the market terms with a settle-by deadline.</p>
+      </div>
+      <div class="farrow">→</div>
+      <div class="fnode">
+        <div class="n">② verify &amp; trade</div>
+        <h3>Join</h3>
+        <p>Every client re-checks the pin against live DNS on render. Joining = consent to the pin,
+        like verifying a token address before you LP.</p>
+      </div>
+      <div class="farrow">→</div>
+      <div class="fbranch">
+        <div class="fnode good">
+          <div class="n" style="color:var(--good)">③ settle</div>
+          <p><strong>A zk proof under the pinned key</strong> (with <code>t=</code> inside the market window)
+          resolves YES/NO. Nothing else can.</p>
+        </div>
+        <div class="fnode void">
+          <div class="n" style="color:var(--warn)">③′ void</div>
+          <p><strong>Deadline passes unresolved</strong> → anyone calls <code>voidMarket()</code>.
+          No proof. No oracle. Absence is the evidence.</p>
+        </div>
+      </div>
+      <div class="farrow">→</div>
+      <div class="fnode">
+        <div class="n">④ payout</div>
+        <h3>Exit</h3>
+        <p>Settled: winners paid. Voided: <strong>everything redeems at par</strong> —
+        YES = NO = 0.5, complete sets = 1.0, LPs unwind whole.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 4 · NO ORACLE AFTER BIRTH -->
+<section class="slide" aria-label="No oracle after birth">
+  <div class="wrap">
+    <div class="kicker">why this deletes the oracle problem</div>
+    <h2>Rotation is never proven.<br>It’s <span class="accent">inferred from absence</span>.</h2>
+    <div class="card" style="border-color:rgba(57,135,229,.5); margin-bottom:14px">
+      <p style="font-size:1.05em"><strong>We never prove the key died — we observe that nobody could prove it lived.</strong>
+      Void-by-timeout needs no DNS oracle, no committee, no challenge game. If the pinned key can still sign,
+      someone settles; if it can’t, the clock settles.</p>
+    </div>
+    <ul class="tight">
+      <li><strong>The only oracle-shaped moment is creation</strong> — and it isn’t a protocol oracle. It’s a market-formation
+      fact each participant checks independently and for free (one DoH lookup).</li>
+      <li><strong>Proving absence is the classically impossible part</strong> of every DKIM registry design
+      (no DNSSEC → no authenticated denial). Timeout-void sidesteps it entirely.</li>
+      <li><strong>Two market classes:</strong> future-event markets (“will NYT email X before T?”) bear the full
+      rotation hazard — the pinned key must sign a <em>future</em> email. Archival markets (the email already exists)
+      settle immediately and carry ~none.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- 5 · COMPROMISE IMMUNITY -->
+<section class="slide" aria-label="Compromise immunity">
+  <div class="wrap">
+    <div class="kicker">the surprise upgrade</div>
+    <h2>Pinning buys <span class="accent">future-compromise immunity</span></h2>
+    <div class="cards2">
+      <div class="card">
+        <span class="tag" style="color:var(--critical)">registry world</span>
+        <p>Attacker takes the sender’s zone (registrar, NS hijack, ESP tenancy) <em>after</em> markets open.
+        The rotation-following registry does its job faithfully — <strong>and imports the attacker’s key.</strong>
+        Attacker settles markets with forged mail.</p>
+      </div>
+      <div class="card">
+        <span class="tag" style="color:var(--good)">pinned world</span>
+        <p>The pin was fixed before the compromise. The attacker’s new key ≠ pin, so their forged mail
+        proves nothing. <strong>Post-creation DNS compromise achieves nothing at all.</strong>
+        Worst case remains: void → refund.</p>
+      </div>
+    </div>
+    <div class="card">
+      <p><strong>Residual attack surface:</strong> theft of the sender’s <em>existing</em> private key (fatal in every
+      DKIM design, not just this one) · poisoning the pin <em>at creation</em> (killed by the archive age-gate — §UX) ·
+      a malicious pin vs. traders who never verify (UI auto-verification; and their worst honest outcome is par refund, not loss to a rug).</p>
+    </div>
+  </div>
+</section>
+
+<!-- 6 · RESEARCH: LIFETIMES -->
+<section class="slide" aria-label="Research: key lifetimes">
+  <div class="wrap">
+    <div class="kicker">research I · archive windows, live-dig verified · 2024 → today</div>
+    <h2>How long do keys really live?</h2>
+    <div class="card">
+      <div class="tl">
+        <span class="vline" style="left:0%"></span><span class="vline" style="left:18.75%"></span>
+        <span class="vline" style="left:37.5%"></span><span class="vline" style="left:56.25%"></span>
+        <span class="vline" style="left:75%"></span><span class="vline" style="left:93.75%"></span>
+        <span class="nowline" style="left:98.8%"></span><span class="nowlab" style="left:98.8%">today</span>
+
+        <div class="lane"><span class="lab">irs.gov · irs-20171230</span><div class="track">
+          <span class="bar" style="left:7.5%; width:91.3%; background:var(--clsA)" data-tip="<b>irs-20171230</b> · class A<br>in DNS since 2017-12-30 (name-dated) — 8.7 years<br>zero rotations ever observed · RSA-2048"></span></div></div>
+        <div class="lane"><span class="lab">wsj.com · 200608</span><div class="track">
+          <span class="bar" style="left:10.3%; width:88.5%; background:var(--clsA)" data-tip="<b>200608</b> · class A<br>RSA-1024 relic · live through the whole observation window<br>(selector name suggests 2006/2008 vintage)"></span></div></div>
+        <div class="lane"><span class="lab">economist.com · fleet ×15</span><div class="track">
+          <span class="bar" style="left:10.3%; width:88.5%; background:var(--clsA)" data-tip="<b>economist.com — 15 selectors</b> · class A<br>archive says they all died Apr ’26 — <b>live dig today: all present</b><br>lastSeen ≠ death: the crawler just stopped visiting (crawl artifact)"></span></div></div>
+        <div class="lane"><span class="lab">gmail.com · 20230601</span><div class="track">
+          <span class="bar" style="left:3.1%; width:95.7%; background:var(--clsB)" data-tip="<b>20230601</b> · class B<br>signing era 2023–2025, record still published (verification of old mail)"></span></div></div>
+        <div class="lane"><span class="lab">gmail.com · 20251104</span><div class="track">
+          <span class="bar" style="left:69.1%; width:29.7%; background:var(--clsB)" data-tip="<b>20251104</b> · class B<br>born 2025-11-04 by name · archive discovered it 2026-03 (~5mo lag)"></span></div></div>
+        <div class="lane"><span class="lab">nytimes.com · scph0118</span><div class="track">
+          <span class="bar" style="left:5.1%; width:43.6%; background:var(--clsB)" data-tip="<b>scph0118</b> · class B · SparkPost<br>≥7 years old (Jan 2018 by name) · purged 2025-04-17 in the cluster cleanup"></span>
+          <span class="dead" style="left:49.4%" data-tip="record removed 2025-04-17 — verified gone by live dig">✕</span></div></div>
+        <div class="lane"><span class="lab">nytimes.com · scph20250409</span><div class="track">
+          <span class="bar" style="left:47.8%; width:51%; background:var(--clsB)" data-tip="<b>scph20250409</b> · class B · SparkPost · RSA-4096<br>born 2025-04-09 (name) · verified live today via dig<br>archive lagged 8 months behind its birth"></span></div></div>
+        <div class="lane"><span class="lab">zendesk1 (CNAME fleet)</span><div class="track">
+          <span class="bar" style="left:10.3%; width:2.6%; background:var(--clsC)" data-tip="<b>zendesk1</b> key #1 · class C"></span>
+          <span class="dead" style="left:13.2%" data-tip="re-keyed">✕</span>
+          <span class="bar" style="left:33.9%; width:29.1%; background:var(--clsC)" data-tip="<b>zendesk1</b> key #2 · class C"></span>
+          <span class="dead" style="left:63.4%" data-tip="re-keyed">✕</span>
+          <span class="bar" style="left:70.3%; width:28.5%; background:var(--clsC)" data-tip="<b>zendesk1</b> key #3 · class C — live<br>CNAME → zendesk1._domainkey.zendesk.com: one record, every customer<br>identical windows observed on nytimes.com AND washingtonpost.com"></span></div></div>
+        <div class="lane"><span class="lab">wsj.com · cv-usprod-1</span><div class="track">
+          <span class="bar" style="left:12.3%; width:35.5%; background:var(--clsC)" data-tip="<b>cv-usprod-1</b> key #2 · class C · 345d"></span>
+          <span class="dead" style="left:48.2%" data-tip="re-keyed 2025-04">✕</span>
+          <span class="bar" style="left:55.1%; width:29.4%; background:var(--clsC)" data-tip="<b>cv-usprod-1</b> key #3 · class C · 286d"></span>
+          <span class="dead" style="left:84.9%" data-tip="re-keyed 2026-04">✕</span>
+          <span class="bar" style="left:92.3%; width:6.5%; background:var(--clsC)" data-tip="<b>cv-usprod-1</b> key #4 · class C — live<br>same selector, ~annual re-key (4 distinct keys archived)"></span></div></div>
+        <div class="lane"><span class="lab">wapo · dyhng56…</span><div class="track">
+          <span class="bar" style="left:31.8%; width:29.2%; background:var(--clsD)" data-tip="<b>dyhng56otxe…</b> · class D · SES token · lived 283d"></span>
+          <span class="dead" style="left:61.4%" data-tip="rotated out by SES">✕</span></div></div>
+        <div class="lane"><span class="lab">wapo · qc3bbt7…</span><div class="track">
+          <span class="bar" style="left:67.8%; width:31%; background:var(--clsD)" data-tip="<b>qc3bbt7h6f7…</b> · class D — live<br>CNAME → dkim.amazonses.com (verified today)<br>SES auto-rotates ~90–365d, unannounced (AWS docs)"></span></div></div>
+
+        <div class="axis"><span></span><div class="ticks">
+          <span class="tick" style="left:0%">Jan ’24</span><span class="tick" style="left:18.75%">Jul ’24</span>
+          <span class="tick" style="left:37.5%">Jan ’25</span><span class="tick" style="left:56.25%">Jul ’25</span>
+          <span class="tick" style="left:75%">Jan ’26</span><span class="tick" style="left:93.75%">Jul ’26</span>
+        </div></div>
+      </div>
+      <div class="legendrow">
+        <span><i style="background:var(--clsA)"></i>A set-and-forget</span>
+        <span><i style="background:var(--clsB)"></i>B planned, date-stamped</span>
+        <span><i style="background:var(--clsC)"></i>C ESP-fleet re-key</span>
+        <span><i style="background:var(--clsD)"></i>D auto-rotating tokens</span>
+        <span><b style="color:var(--critical)">✕</b> record removed / re-keyed</span>
+        <span style="color:var(--muted)">hover bars for evidence</span>
+      </div>
+      <details class="tbl"><summary>table view — all plotted windows</summary>
+        <table><tr><th>key</th><th>class</th><th>window</th><th>status</th></tr>
+          <tr><td>irs-20171230</td><td>A</td><td>2017-12 (name) → today</td><td>live, 8.7y</td></tr>
+          <tr><td>wsj 200608</td><td>A</td><td>≤2024-04 → today</td><td>live</td></tr>
+          <tr><td>economist fleet (15)</td><td>A</td><td>≤2024-04 → today</td><td>live (archive artifact says dead)</td></tr>
+          <tr><td>gmail 20230601</td><td>B</td><td>2023-06 (name) → today</td><td>live</td></tr>
+          <tr><td>gmail 20251104</td><td>B</td><td>2025-11 (name) → today</td><td>live</td></tr>
+          <tr><td>nyt scph0118</td><td>B</td><td>2018-01 (name) → 2025-04-17</td><td>purged</td></tr>
+          <tr><td>nyt scph20250409</td><td>B</td><td>2025-04-09 (name) → today</td><td>live, RSA-4096</td></tr>
+          <tr><td>zendesk1 ×3 keys</td><td>C</td><td>re-keyed 2024-05, 2025-09/11</td><td>3rd key live</td></tr>
+          <tr><td>wsj cv-usprod-1 ×4 keys</td><td>C</td><td>~annual re-key</td><td>4th key live</td></tr>
+          <tr><td>wapo dyhng56…</td><td>D</td><td>2024-11 → 2025-08 (283d)</td><td>rotated out</td></tr>
+          <tr><td>wapo qc3bbt7…</td><td>D</td><td>2025-10 → today (219d+)</td><td>live</td></tr>
+        </table>
+      </details>
+    </div>
+  </div>
+</section>
+
+<!-- 7 · RESEARCH: GMAIL CHAIN -->
+<section class="slide" aria-label="Research: gmail succession">
+  <div class="wrap">
+    <div class="kicker">research II · true cadence from date-stamped names · 2012 → 2027</div>
+    <h2>gmail.com: fourteen years of succession</h2>
+    <div class="card">
+      <div class="tl" style="margin-top:22px">
+        <span class="vline" style="left:0%"></span><span class="vline" style="left:20%"></span>
+        <span class="vline" style="left:40%"></span><span class="vline" style="left:60%"></span>
+        <span class="vline" style="left:80%"></span><span class="vline" style="left:100%"></span>
+        <span class="nowline" style="left:97.6%"></span><span class="nowlab" style="left:97.6%">today</span>
+
+        <div class="lane"><span class="lab">20120113</span><div class="track">
+          <span class="eralab" style="left:16%">4.8y era</span>
+          <span class="bar" style="left:0.2%; width:31.7%; background:var(--clsB)" data-tip="<b>20120113</b> · era 2012-01 → 2016-10 (4.8y)"></span></div></div>
+        <div class="lane"><span class="lab">20161025</span><div class="track">
+          <span class="eralab" style="left:46%">4.2y era</span>
+          <span class="bar" style="left:31.9%; width:28.2%; background:var(--clsB)" data-tip="<b>20161025</b> · era 2016-10 → 2021-01 (4.2y)<br>record later revoked by emptying (p=)"></span></div></div>
+        <div class="lane"><span class="lab">20210112</span><div class="track">
+          <span class="eralab" style="left:66.5%">1.9y</span>
+          <span class="bar" style="left:60.1%; width:12.8%; background:var(--clsB)" data-tip="<b>20210112</b> · era 2021-01 → 2022-12 (1.9y) · later emptied"></span></div></div>
+        <div class="lane"><span class="lab">20221208</span><div class="track">
+          <span class="eralab" style="left:74.6%">0.5y</span>
+          <span class="bar" style="left:72.9%; width:3.4%; background:var(--clsB)" data-tip="<b>20221208</b> · era 2022-12 → 2023-06 (0.5y)<br><b>live-verified today: record exists with p= EMPTY</b> — RFC 6376 revocation"></span></div></div>
+        <div class="lane"><span class="lab">20230601</span><div class="track">
+          <span class="eralab" style="left:84.3%">2.4y era</span>
+          <span class="bar" style="left:76.3%; width:16.1%; background:var(--clsB)" data-tip="<b>20230601</b> · era 2023-06 → 2025-11 (2.4y) · record still live"></span></div></div>
+        <div class="lane"><span class="lab">20251104</span><div class="track">
+          <span class="eralab" style="left:95%">live</span>
+          <span class="bar" style="left:92.4%; width:5.2%; background:var(--clsB)" data-tip="<b>20251104</b> · current, born 2025-11-04"></span></div></div>
+
+        <div class="axis"><span></span><div class="ticks">
+          <span class="tick" style="left:0%">2012</span><span class="tick" style="left:20%">2015</span>
+          <span class="tick" style="left:40%">2018</span><span class="tick" style="left:60%">2021</span>
+          <span class="tick" style="left:80%">2024</span><span class="tick" style="left:100%">2027</span>
+        </div></div>
+      </div>
+      <p style="font-size:.85em; margin-top:12px; color:var(--muted)">Eras = birth of each key (from its name) to birth of its successor — the signing-era approximation. Rotation is real but slow, and the cadence is tightening: 4.8y → 4.2y → 1.9y → 0.5y → 2.4y.</p>
+    </div>
+    <div class="cards2" style="margin-top:14px">
+      <div class="card"><p><strong>Overlap is long.</strong> Old and new records run concurrently for months–years
+      (20230601 is still published beside 20251104 today) — verification of old mail survives succession.</p></div>
+      <div class="card"><p><strong>Google revokes by emptying, not deleting.</strong> <code>20221208</code> resolves
+      today as <code>v=DKIM1; k=rsa; p=</code> — the RFC 6376 revocation signal, live-verified. “The record still exists”
+      is not a liveness heuristic.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 8 · RESEARCH: THE PURGE -->
+<section class="slide" aria-label="Research: April 2025 purge">
+  <div class="wrap">
+    <div class="kicker">research III · nytimes.com · March – May 2025</div>
+    <h2>Rotation arrives as a <span class="accent">cluster cleanup</span></h2>
+    <div class="card">
+      <div class="tl" style="margin-top:24px">
+        <span class="vline" style="left:0%"></span><span class="vline" style="left:33.7%"></span>
+        <span class="vline" style="left:66.3%"></span>
+        <span class="band" style="left:42.4%; width:8.7%"></span>
+        <span class="bandlab" style="left:46.8%">8-day purge · Apr 9–17</span>
+
+        <div class="lane"><span class="lab">200608</span><div class="track">
+          <span class="bar" style="left:0%; width:42.4%; background:var(--clsB)" data-tip="<b>200608</b> · removed Apr 9 ’25"></span><span class="dead" style="left:43%">✕</span></div></div>
+        <div class="lane"><span class="lab">k1 (→ Mailchimp)</span><div class="track">
+          <span class="bar" style="left:0%; width:43.5%; background:var(--clsB)" data-tip="<b>k1</b> · CNAME → dkim.mcsv.net · removed Apr 10 ’25"></span><span class="dead" style="left:44.1%">✕</span></div></div>
+        <div class="lane"><span class="lab">paperboy-1024</span><div class="track">
+          <span class="bar" style="left:0%; width:47.8%; background:var(--clsB)" data-tip="<b>paperboy-1024</b> · removed Apr 14 ’25"></span><span class="dead" style="left:48.4%">✕</span></div></div>
+        <div class="lane"><span class="lab">s1 · smtpapi</span><div class="track">
+          <span class="bar" style="left:0%; width:48.9%; background:var(--clsB)" data-tip="<b>s1</b> and <b>smtpapi</b> · both removed Apr 15 ’25"></span><span class="dead" style="left:49.5%">✕</span></div></div>
+        <div class="lane"><span class="lab">scph0118</span><div class="track">
+          <span class="bar" style="left:0%; width:51.1%; background:var(--clsB)" data-tip="<b>scph0118</b> · the ≥7-year-old SparkPost key · removed Apr 17 ’25"></span><span class="dead" style="left:51.7%">✕</span></div></div>
+        <div class="lane"><span class="lab">scph20250409</span><div class="track">
+          <span class="born" style="left:40%" data-tip="born Apr 9 ’25 — same day the purge began">●</span>
+          <span class="bar" style="left:42.4%; width:57.6%; background:var(--clsB)" data-tip="<b>scph20250409</b> · RSA-4096 successor · born Apr 9 ’25 · still live today"></span></div></div>
+        <div class="lane"><span class="lab">k2 · google · ot · s2</span><div class="track">
+          <span class="bar" style="left:0%; width:100%; background:var(--clsA)" data-tip="<b>survivors</b> · k2 (Mailchimp), google, ot, s2 — untouched by the purge, still live"></span></div></div>
+
+        <div class="axis"><span></span><div class="ticks">
+          <span class="tick" style="left:0%">Mar 1 ’25</span><span class="tick" style="left:33.7%">Apr 1</span>
+          <span class="tick" style="left:66.3%">May 1</span><span class="tick" style="left:100%">May 31</span>
+        </div></div>
+      </div>
+    </div>
+    <ul class="tight" style="margin-top:14px">
+      <li><strong>Six selectors removed in eight days</strong>, the same week the RSA-4096 successor appeared — verified real (sibling selectors kept being crawled, and live dig confirms the six are gone).</li>
+      <li>For pinned markets: anything pinned on a victim → <strong>void, refund</strong>. Anything pinned on a survivor → sailed through untouched.</li>
+      <li>Cleanups are <strong>observable in advance-ish</strong>: the successor key appears first; DNS watchers see the overlap open.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- 9 · RESEARCH: TRAPS -->
+<section class="slide" aria-label="Research: the traps">
+  <div class="wrap">
+    <div class="kicker">research IV · what the data almost hid</div>
+    <h2>Three traps the model must respect</h2>
+    <div class="cards2">
+      <div class="card">
+        <span class="tag" style="color:var(--serious)">trap 1 · a selector is not a key</span>
+        <p>Records get <strong>re-keyed under the same name</strong>: <code>zendesk1</code> held 3 different keys in 2 years,
+        WSJ’s <code>cv-usprod-1</code> four (~annual). And because these are CNAMEs into the ESP’s zone, one ESP re-key
+        rotates <strong>every customer domain at once</strong> — zendesk1’s windows are identical on nytimes.com and
+        washingtonpost.com. Pin the <em>key hash</em> (we do), and score hazard per key, never per selector.</p>
+      </div>
+      <div class="card">
+        <span class="tag" style="color:var(--serious)">trap 2 · archives lag and “lie” about death</span>
+        <p>economist.com’s whole fleet reads dead-Apr-’26 in the archive; live dig today: <strong>all present</strong>
+        (the crawler stopped visiting). scph20250409 entered the archive <strong>8 months after birth</strong>.
+        So: the pin must come from <strong>live DoH — never the archive</strong>. The archive’s job is age evidence
+        and hazard stats.</p>
+      </div>
+    </div>
+    <div class="card">
+      <span class="tag" style="color:var(--serious)">trap 3 · the ESP owns your rotation schedule</span>
+      <p>NYT’s <code>k2</code> → dkim2.mcsv.net (Mailchimp) · <code>kl/kl2</code> → sendgrid.net · <code>zendesk1/2</code> → zendesk.com ·
+      WaPo’s tokens → dkim.amazonses.com (verified live). For CNAME’d selectors the <em>sender can’t even prevent</em> rotation —
+      AWS documents that SES auto-rotates (~90–365d, unannounced). The creation UI must display the CNAME chain:
+      <strong>“who owns this pin’s death?”</strong></p>
+    </div>
+  </div>
+</section>
+
+<!-- 10 · HAZARD CLASSES -->
+<section class="slide" aria-label="Hazard classes">
+  <div class="wrap">
+    <div class="kicker">synthesis · rotation hazard → market policy</div>
+    <h2>Four hazard classes</h2>
+    <div class="card">
+      <table class="haz">
+        <tr><th>class</th><th>signature</th><th>measured exemplars</th><th>naive P(void) / 90d</th><th>policy</th></tr>
+        <tr><td><span class="chip low"><span class="ic">✓</span>A · LOW</span></td>
+          <td>old plain-TXT selector, no date convention</td>
+          <td>irs-20171230 (8.7y) · wsj 200608, dj</td><td>≪ 3%</td><td>pin freely · markets ≤ 1y</td></tr>
+        <tr><td><span class="chip med"><span class="ic">▲</span>B · MODERATE</span></td>
+          <td>date-stamped names, cluster cleanups, long overlap</td>
+          <td>gmail chain (0.5–4.8y gaps) · NYT scph*</td><td>~3–10%</td><td>markets ≤ 90d · prefer young keys</td></tr>
+        <tr><td><span class="chip elev"><span class="ic">◆</span>C · ELEVATED</span></td>
+          <td>CNAME into ESP zone · fleet-wide re-keys</td>
+          <td>zendesk1 (3× in 2y) · cv-usprod-1 (annual)</td><td>~15–30%</td><td>markets ≤ 30d · loud warning</td></tr>
+        <tr><td><span class="chip avoid"><span class="ic">✕</span>D · AVOID</span></td>
+          <td>random-token selectors → SES-style auto-rotation</td>
+          <td>WaPo tokens (11–283d observed)</td><td>~50%+</td><td>do not pin</td></tr>
+      </table>
+      <p style="font-size:.8em; color:var(--muted); margin-top:10px">Naive = duration ÷ mean observed lifetime (uniform hazard), on right-censored data — so true A/B numbers are <em>better</em> than shown. Displayed to traders as a rating, not a fake-precision percent.</p>
+    </div>
+    <div class="card"><p><strong>Guidance vs practice:</strong> M3AAWG best practice says rotate at least twice a year.
+    Measured practice at major senders: <strong>2–9 years, or never.</strong> That gap is the entire reason pinning is viable.</p></div>
+  </div>
+</section>
+
+<!-- 11 · CONTRACT -->
+<section class="slide" aria-label="Contract sketch">
+  <div class="wrap">
+    <div class="kicker">mechanics · replaces backlog A2’s registry with one bytes32</div>
+    <h2>The whole oracle, in one struct</h2>
+<pre class="codeblock"><span class="k">struct</span> Market {
+    <span class="k">bytes32</span> pinnedKeyHash;   <span class="c">// keccak256(domain · selector · pubkey DER)</span>
+    <span class="k">uint64</span>  createdAt;
+    <span class="k">uint64</span>  expiry;          <span class="c">// settle-by deadline = the void trigger</span>
+}
+
+<span class="k">function</span> settle(Groth16Proof <span class="k">calldata</span> p) <span class="k">external</span> {
+    require(block.timestamp &lt;= m.expiry,        <span class="s">"past deadline"</span>);
+    require(p.publicKeyHash == m.pinnedKeyHash, <span class="s">"not the pinned key"</span>);
+    require(p.dkimTimestamp &gt;= m.createdAt
+         &amp;&amp; p.dkimTimestamp &lt;= m.expiry,        <span class="s">"t= outside window"</span>);   <span class="c">// SparkPost sets t= (verified)</span>
+    require(VERIFIER.verify(p),                 <span class="s">"invalid proof"</span>);       <span class="c">// E1 compiled circuit</span>
+    _resolve(p.outcome);
+}
+
+<span class="k">function</span> voidMarket() <span class="k">external</span> {   <span class="c">// permissionless · no proof · no oracle</span>
+    require(block.timestamp &gt; m.expiry &amp;&amp; !m.resolved);
+    m.mode = Redemption.PAR;       <span class="c">// YES = NO = 0.5 · complete set = 1.0</span>
+}</pre>
+    <p style="margin-top:12px; font-size:.9em">DKIMRegistry, updater keys, grace windows, challenge games — all deleted.
+    The E1 circuit gains one public signal (<code>t=</code>) so pre-market emails can’t settle future-event markets.</p>
+  </div>
+</section>
+
+<!-- 12 · ECONOMICS -->
+<section class="slide" aria-label="Void economics">
+  <div class="wrap">
+    <div class="kicker">economics · rotation risk priced like time value</div>
+    <h2>What a share is worth under void risk</h2>
+    <div class="formula">V<sub>YES</sub> = p·(1−v) + 0.5·v &nbsp;=&nbsp; <strong>0.5 + (p − 0.5)·(1 − v)</strong>
+      <span class="q">p = probability YES · v = market-implied probability of void. Void risk shrinks every price toward 0.5 by the factor (1−v) — the same shape as discounting.</span>
+    </div>
+    <ul class="tight">
+      <li><strong>Par redemption is clean for the AMM:</strong> the pool holds complete sets, so LPs unwind whole; YES+NO always redeems 1.0.</li>
+      <li><strong>Void transfers value</strong> from high-conviction winners to losers (a 0.90-YES holder gets 0.50). Acceptable when v is small — which is exactly what the class gates enforce — and it is disclosed, not hidden.</li>
+      <li><strong>Insider wrinkle:</strong> someone who knows a rotation is scheduled can buy the cheap side and harvest the void. Profit is bounded by |p−0.5|·stake, and cluster cleanups are foreshadowed on-DNS (the successor key appears first — anyone watching sees the overlap open).</li>
+      <li><strong>Future work:</strong> a tradeable VOID outcome (Augur-style invalid share) gives rotation risk its own price instead of compressing YES/NO.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- 13 · UX -->
+<section class="slide" aria-label="Creation and join UX">
+  <div class="wrap">
+    <div class="kicker">creation &amp; join flow · “the users obviously agree”</div>
+    <h2>Making consent free</h2>
+    <div class="card">
+      <div class="step"><span class="n">1</span><div><h3>Live fetch, never archive</h3>
+        <p>Creator’s client resolves the selector via ≥2 DoH resolvers, shows the CNAME chain (“who owns this pin’s death”), computes the pin. The fetched record bytes ride along in creation calldata (~500B) as evidence of what was claimed.</p></div></div>
+      <div class="step"><span class="n">2</span><div><h3>Age gate</h3>
+        <p>Pin only keys with ≥ 6 months of archive history. Kills fresh dangling-CNAME poisoning and insert-sign-remove games. A market that skips the gate isn’t invalid — it’s just flagged.</p></div></div>
+      <div class="step"><span class="n">3</span><div><h3>Hazard label on the market card</h3>
+        <p>Class A–D chip + duration cap, derived from the measured data. Traders price v with their eyes open.</p></div></div>
+      <div class="step"><span class="n">4</span><div><h3>Re-verify on every render</h3>
+        <p>Each client re-checks pin vs live DNS whenever it shows the market; mismatch → red banner. Joining an unverified market is the same trust act as buying an unverified token contract — the UI makes verifying free.</p></div></div>
+      <div class="step"><span class="n">5</span><div><h3>Optional: bonded mismatch flag</h3>
+        <p>Anyone can post a bonded onchain “pin ≠ DNS” flag that UIs must surface. Advisory, never adjudicated — traders check DNS themselves.</p></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- 14 · DELETES / COSTS -->
+<section class="slide" aria-label="What it deletes and costs">
+  <div class="wrap">
+    <div class="kicker">the trade, stated honestly</div>
+    <h2>What it deletes · what it costs</h2>
+    <div class="cards2">
+      <div class="card" style="border-color:rgba(12,163,12,.4)">
+        <span class="tag" style="color:var(--good)">deleted</span>
+        <ul class="tight">
+          <li>The DKIMRegistry and its updater committee (backlog A2 → one <code>bytes32</code>)</li>
+          <li>Rotation-following, grace windows, key archival as a <em>trust</em> component</li>
+          <li>DNSSEC / notarized-DoH dependency on the happy path</li>
+          <li>Proving key-absence — the classically impossible part</li>
+          <li>Oracle exposure to post-creation zone compromise</li>
+        </ul>
+      </div>
+      <div class="card" style="border-color:rgba(236,131,90,.4)">
+        <span class="tag" style="color:var(--serious)">accepted costs</span>
+        <ul class="tight">
+          <li>Markets are short — class-capped (≤90d on NYT-grade pins)</li>
+          <li>SES-class senders (WaPo) effectively unpinnable</li>
+          <li>Void is real: value transfer toward 0.5, priced by traders</li>
+          <li>Non-verifying traders rely on UI auto-checks against a malicious pin</li>
+          <li>No market survives a benign planned rotation either — the refund is the feature</li>
+        </ul>
+      </div>
+    </div>
+    <div class="card"><p><strong>The witnessed log survives</strong> — demoted from trust infrastructure to analytics: it powers the age gate and the hazard ratings, and its absence never blocks settlement.</p></div>
+  </div>
+</section>
+
+<!-- 15 · CLOSER -->
+<section class="slide" aria-label="Closer">
+  <div class="wrap">
+    <div class="kicker">the honest one-liner</div>
+    <h2 style="max-width:22ch">The market doesn’t outlive the key — <span class="accent">and that’s the design</span></h2>
+    <p class="sub">It agrees on the key at birth — a fact every participant checks for free.
+    It prices the key’s death like time value. And if the key dies first, it dies gracefully into refunds.
+    No committee ever exists.</p>
+    <div class="stats">
+      <div class="stat"><div class="v">1 <span style="font-size:.5em">lookup</span></div><div class="l">the entire oracle: one DoH fetch at creation, re-checkable by anyone</div></div>
+      <div class="stat"><div class="v">≤ 90d</div><div class="l">market duration on NYT-grade (class B) pins → v ≈ 3–10%</div></div>
+      <div class="stat"><div class="v">0.5</div><div class="l">what every share redeems at if the key rotates — money comes home</div></div>
+      <div class="stat"><div class="v">∅</div><div class="l">what a post-creation zone compromise achieves against a pinned market</div></div>
+    </div>
+    <div class="foot">docs/PINNED-KEY-MARKETS.md · measured 2026-08-20 · companion: dkim-provenance-deck.html</div>
+  </div>
+</section>
+
+<div class="hud">
+  <button id="prev" aria-label="Previous slide">‹</button>
+  <span id="counter">1 / 15</span>
+  <button id="next" aria-label="Next slide">›</button>
+</div>
+<div class="hint">← → to navigate</div>
+<div id="tip" role="tooltip"></div>
+
+<script>
+(function(){
+  var slides = Array.prototype.slice.call(document.querySelectorAll('.slide'));
+  var N = slides.length, cur = 0;
+  var counter = document.getElementById('counter');
+  var pbar = document.getElementById('pbar');
+  var tip = document.getElementById('tip');
+
+  function show(i){
+    i = Math.max(0, Math.min(N-1, i));
+    slides[cur].classList.remove('active');
+    cur = i;
+    slides[cur].classList.add('active');
+    counter.textContent = (cur+1) + ' / ' + N;
+    pbar.style.width = ((cur+1)/N*100) + '%';
+    if (history.replaceState) history.replaceState(null, '', '#' + (cur+1));
+    hideTip();
+  }
+
+  var fromHash = parseInt((location.hash||'').replace('#',''), 10);
+  slides[0].classList.add('active');
+  show(isNaN(fromHash) ? 0 : fromHash - 1);
+
+  document.getElementById('next').addEventListener('click', function(){ show(cur+1); });
+  document.getElementById('prev').addEventListener('click', function(){ show(cur-1); });
+
+  document.addEventListener('keydown', function(e){
+    if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') { e.preventDefault(); show(cur+1); }
+    else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); show(cur-1); }
+    else if (e.key === 'Home') { e.preventDefault(); show(0); }
+    else if (e.key === 'End') { e.preventDefault(); show(N-1); }
+  });
+
+  window.addEventListener('hashchange', function(){
+    var h = parseInt((location.hash||'').replace('#',''), 10);
+    if (!isNaN(h)) show(h-1);
+  });
+
+  var tx = null;
+  document.addEventListener('touchstart', function(e){ tx = e.changedTouches[0].clientX; }, {passive:true});
+  document.addEventListener('touchend', function(e){
+    if (tx === null) return;
+    var dx = e.changedTouches[0].clientX - tx; tx = null;
+    if (dx < -40) show(cur+1); else if (dx > 40) show(cur-1);
+  }, {passive:true});
+
+  function hideTip(){ if (tip) tip.style.display = 'none'; }
+  function moveTip(e){
+    var pad = 14, x = e.clientX + pad, y = e.clientY + pad;
+    var r = tip.getBoundingClientRect();
+    if (x + r.width > window.innerWidth - 8) x = e.clientX - r.width - pad;
+    if (y + r.height > window.innerHeight - 8) y = e.clientY - r.height - pad;
+    tip.style.left = x + 'px'; tip.style.top = y + 'px';
+  }
+  document.addEventListener('mouseover', function(e){
+    var t = e.target.closest ? e.target.closest('[data-tip]') : null;
+    if (t) { tip.innerHTML = t.getAttribute('data-tip'); tip.style.display = 'block'; moveTip(e); }
+  });
+  document.addEventListener('mousemove', function(e){
+    if (tip.style.display === 'block') {
+      var t = e.target.closest ? e.target.closest('[data-tip]') : null;
+      if (t) moveTip(e); else hideTip();
+    }
+  });
+  document.addEventListener('mouseout', function(e){
+    var t = e.target.closest ? e.target.closest('[data-tip]') : null;
+    if (t && !(e.relatedTarget && t.contains(e.relatedTarget))) hideTip();
+  });
+})();
+</script>
+</body>
+</html>

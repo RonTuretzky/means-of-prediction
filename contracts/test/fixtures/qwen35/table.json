@@ -1,0 +1,8 @@
+{
+ "vocab": 248320,
+ "tokLen": 2836777,
+ "chunks": 116,
+ "tokenizerKeccak": "0x37bc92a3af3d3b7aec7bc57db087c91403eeaa14892629e35472447d7157fb23",
+ "nonEmpty": 248077,
+ "maxTokenBytes": 128
+}

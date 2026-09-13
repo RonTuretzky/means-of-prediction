@@ -1,0 +1,45 @@
+{
+  "createdAt": "2026-09-13T12:54:19.439020+00:00",
+  "purpose": "Supplemental paired evaluation on two newly reserved real NYT emails, using already defined public questions and trained methods. No extra training and no new public rule generation.",
+  "publicQuestions": 241,
+  "reservedEmails": 2,
+  "fullCartesianPairsPerMethod": 482,
+  "publicInputPath": "/Users/wk/.local/share/means-of-prediction/slides/astra-qwen-nyt-round1-20260912/public-inputs.json",
+  "publicInputSha256": "efbee47e8a297b0589a5d82eace007c54ea2e888f3ab5ed104506828820ede1c",
+  "reservedEmailSourcePath": "/Users/wk/.local/share/means-of-prediction/nyt-future-evaluation-snapshot-20260913-124922/future-evaluation/new-emails.private.json",
+  "reservedEmailSourceSha256": "acda9d17f33c3e3cbf7e29b42fc560f6059d6128cbd769ff8d7af3424b5b74b8",
+  "emailContentsReadByRootOrQwenOptimizer": false,
+  "methods": {
+    "regex": [
+      "frozen round4 selected baseline"
+    ],
+    "qwen": "unique baseline and final selected method; if baseline retained, evaluate it once. The original separate120-fixture test still evaluates its declared baseline/challenger pair."
+  },
+  "freezeBeforeAnyReservedSourceOrAnnotationRead": [
+    "Qwen final method selection, exact runtime/judge/generator prompts, source and scoring procedure",
+    "All48Astra draws for the existing separate independent120-fixture test",
+    "Supplemental annotation/source/public-input seals and exact evaluation adapter source"
+  ],
+  "candidateRuleSource": "Existing241public-only development rule draws for each frozen method, with original failures retained. Do not regenerate missing or poor rules.",
+  "representation": {
+    "regex": "Complete decoded main HTML using frozen experiment matcher. Match candidates remain distinct from source/time/admissibility authorization.",
+    "qwen": "Same complete semantic renderer, single-email metadata and frozen judge request/runtime as the selected method. No snippet retrieval, truncation, linked-page fetching or cross-email history."
+  },
+  "evaluationProcedure": [
+    "Verify all seals before reading evaluator-only content.",
+    "Preflight every available Qwen rule against each full rendered email; record all482pairs including unavailable rules and over-limit/failed calls.",
+    "One isolated local request per available pair per distinct Qwen method; no retries or best-of selection.",
+    "Evaluate both regex outcome predicates on the same full source HTML and retain errors, conflicts and matched source bytes.",
+    "Compare reported-fact and strict-predicate outputs separately against provisional independent labels; do not treat unreviewed/ambiguous pairs as negatives.",
+    "Publish only private aggregate reports with full denominators and shared-completed denominators; preserve every raw request/response and complete body hash.",
+    "No optimization, selection changes or live promotion after reserved material is opened."
+  ],
+  "annotationStatus": "Independent single-author research annotations, not human-verified settlement gold; label categories and uncertainty must be preserved.",
+  "limits": [
+    "Two new emails do not establish population accuracy or broad unseen-family generalization. Public questions were already development questions.",
+    "Email availability is later than prior snapshot; it does not by itself establish evidence available at original market settlement.",
+    "Successful lexical/semantic judgments are not authenticated onchain settlements.",
+    "Prompt-injection robustness remains unmeasured by this small natural sample."
+  ],
+  "sourceStatus": "Raw .eml, full decoded main parts and signed/receipt metadata requested from independent author. Cryptographic verification must be distinguished from mere source availability."
+}

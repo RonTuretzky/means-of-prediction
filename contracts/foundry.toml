@@ -6,11 +6,19 @@ solc_version = "0.8.28"
 optimizer = true
 optimizer_runs = 200
 via_ir = true
+# Cancun floor: the vendored Gas Killer SDK's TransitionGuard uses EIP-1153 transient storage.
+evm_version = "cancun"
 ffi = true
 fs_permissions = [
     { access = "read", path = "./" },
     { access = "read-write", path = "./deployments" },
 ]
+
+# The LLMJudge tests mount the real 2.8 MB Qwen3.5 tokenizer table as overlay code and run
+# the canonical tokenizer over it — billions of gas, exactly the unbounded regime the
+# tracked call executes in on the operators. Test-env knobs only; scripts unaffected.
+gas_limit = "18446744073709551615"
+memory_limit = 1073741824
 
 [fuzz]
 runs = 256

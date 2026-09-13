@@ -1,180 +1,102 @@
 # Architecture
 
-Everything is designed around one substitution: **the oracle is an email**. Where
-Polymarket outsources resolution to UMA's optimistic oracle (humans propose, dispute,
-and escalate to a token vote), here the market contract verifies a zkEmail proof that
-a configured newspaper actually sent a breaking-news alert matching a configured
-regex — and reports payouts itself. Creation and settlement are both permissionless.
+Markets settle from publicly submitted, RSA-signed newspaper alert headers and authenticated body-source substrings. The app
+uses DKIM signature verification and an onchain regex, with an optional existing
+LLM-judge path. There is no ZK settlement path, circuit setup or browser SNARK prover.
 
-## Contracts (`contracts/src`)
+## Contracts
 
-### `lib/RegexLib.sol` — the onchain regex engine
+### `dkim/IDKIMVerifier.sol` and `dkim/DKIMVerifier.sol`
 
-The "mock regex lib": mock in the sense that production zkEmail compiles the pattern
-into the circuit, but this is a real, working matcher. It parses the pattern with a
-recursive-descent parser into node pools (atoms / sequences / alternations / char
-classes) and matches via **NFA position-set simulation**: a `bool[input.length+1]`
-marks every input offset the pattern could have consumed up to. Search semantics fall
-out of seeding the set with all positions; `^`/`$` filter it. Quantifiers iterate to a
-fixpoint, so matching always terminates — `(a+)+b` cannot blow up (there is no
-backtracking), which matters because patterns are user-supplied and evaluated during
-settlement.
+`EmailProof` carries domain, key hash, timestamp, From, exact Subject, optional decoded body
+excerpt, nullifier, canonicalized headers and the original signature. The verifier:
 
-Supported: literals, `.`, `[...]`/`[^...]` with ranges, `\d \D \w \W \s \S`, escaped
-metacharacters, `\n \t \r \0`, groups `()`/`(?:)` (nested up to depth 16), alternation
-`|`, `* + ? {m} {m,} {m,n}`, anchors `^ $`, global `(?i)` prefix. Rejected at parse
-(so `validate()` catches them at creation): lookaround, backreferences, any escape we
-don't implement (`\b \x \u \c`, `\1`), quantified anchors (`^*`), and groups nested
-deeper than the matcher's EVM-stack limit. Intentional divergences from JS: a leading
-`]` in a class is a literal (POSIX-style), and matching is byte-wise (ASCII).
+1. Reads an authorized key from `DKIMRegistry` and checks its modulus hash.
+2. Verifies RSA-SHA256 PKCS#1 v1.5 with the EVM modular-exponentiation precompile.
+3. Binds the exact Subject and Date to signed fields through `HeaderParser` and
+   requires an exact parsed mailbox match in the unique signed From field.
+4. Requires the nullifier to equal the signature hash. An optional body proof supplies the complete canonical body and a bounded byte window; the verifier checks the signed `bh=` hash and decodes the window itself. See [BODY-PARSING.md](BODY-PARSING.md) for the precise profile and limits.
 
-Two guarantees back it:
+The browser and bot share the parser in `app/src/lib/dkim.ts` and proof builder in
+`prover.ts`. Current parsing supports relaxed header canonicalization. The contract
+checks the supplied signed bytes, not the entire original RFC 822 message. Body settlement checks the full canonical `bh=` hash and decodes a bounded quoted-printable/identity byte window under the explicit v1 profile. It does not render HTML or implement general MIME extraction.
+Signed headers become public calldata, including any recipient fields in the
+sender's signed header list. No ZK privacy is claimed.
 
-- `validate()` runs at **market creation** and rejects anything the matcher couldn't
-  execute — including deeply nested groups that would overflow the EVM stack — so a
-  malformed pattern can never brick settlement later.
-- `test/RegexDifferential.t.sol` ffi's every corpus case through **Node's own
-  `RegExp`** (~1,600 curated pairs + fuzzed inputs) and asserts byte-for-byte
-  agreement with the Solidity engine inside the documented subset.
+### `dkim/EmailBodyStore.sol`
 
-### `zkemail/` — real DKIM verification
+Large bodies can be uploaded in <=24,000-byte immutable code pages, with a leading STOP byte. Content hashes deduplicate uploads. A final small transaction supplies ordered page addresses and a compact proof; the store assembles the body and calls the existing market/verifier. Every byte is still authenticated by the original RSA-signed body hash. This preserves onchain verification while adding storage cost; it does not remove final-execution gas limits. See [BODY-PARSING.md](BODY-PARSING.md) for measurements and deployments.
 
-Settlement authenticity is genuine DKIM, verified onchain:
+### `dkim/DKIMRegistry.sol`
 
-- `RSAVerify.sol` — RSASSA-PKCS1-v1_5 with SHA-256 via the **modexp precompile
-  (0x05)**: `s^e mod n` compared to the EMSA-PKCS1 encoding of the digest. Works for
-  any modulus length (NYT uses RSA-4096). The same check an inbound mail server runs.
-- `DKIMRegistry.sol` — real RSA public keys (modulus + exponent) per signing domain,
-  the actual DNS-published keys. Permissionless + write-once per modulus
-  (`publicKeyHash = keccak256(modulus)`); registering a key grants no power since
-  settling still needs a valid signature (the domain's private key).
-- `DKIMVerifier.sol` — the verifier markets call: look up the domain's key, RSA-verify
-  the signature over the email's canonicalized headers, and bind the extracted
-  From/Subject by requiring they appear in the authenticated header
-  (`emailNullifier == keccak256(signature)`).
+The deploying address is the fixed registrar. It authenticates domain/selector/RSA
+key associations through DNS before registering them. Anyone may read keys or
+submit a settlement proof; only the registrar can authorize/revoke keys. Revoked
+moduli cannot be registered again. This fixes the old registry's ability to accept
+an attacker's key under an arbitrary newspaper's domain.
 
-The prover (`app/src/lib/dkim.ts`, browser-safe) does relaxed/relaxed RFC 6376
-canonicalization — byte-verified against mailauth and against the real NYT email's
-signature — and packages `{header, signature}` into `EmailProof`. The onchain verifier
-does the real RSA check; no email content is trusted, only what the signature covers.
-Test fixtures are signed by a committed dev RSA key (`keys/`), registered in the
-registry — real signatures, real verification, a dev key standing in for a private key
-we can't hold. The real NYT DNS key is registered too, and a real NYT email verifies
-against it end to end.
+This is an explicit trust boundary: RSA proves possession of the registered key;
+it does not prove DNS ownership. DNSSEC verification, registrar rotation and
+historical key-validity windows remain future work. Public demo signing keys must
+never be registered in a production registry. Local/Sepolia fixtures use them only
+for testing. Existing deployed registries and clones are not changed by this code.
 
-The **zk-regex research track** (`app/scripts/zkregex` + `ZkRegexVerifierRegistry`)
-compiles a pattern to a real Groth16 circuit toward private settlement (A1+A3); it is
-decoupled from this live path.
+### `lib/RegexLib.sol`
 
-### `tokens/ConditionalTokens.sol` — the Polymarket settlement layer
+A real onchain matcher parses the supported JS-like regex subset and evaluates it
+using NFA position sets. Creation validates patterns; differential tests compare
+matching against Node RegExp. There is no circuit compiler or hidden content witness.
+Patterns operate over the authenticated subject or decoded body source. Body windows use existential substring rules and reject unescaped whole-input anchors; market creation selects Subject, Body, or SubjectOrBody. Legacy deployment ABI selection keeps old subject-only markets compatible.
 
-Reimplements Gnosis CTF restricted to how Polymarket actually uses it: flat 2-slot
-conditions, elementary index sets (`0b01` YES, `0b10` NO), keccak-derived
-collection/position ids (Gnosis's alt_bn128 collection hashing only matters for
-nested conditions, which Polymarket never uses). API kept name-compatible:
-`prepareCondition / splitPosition / mergePositions / reportPayouts /
-redeemPositions`, ERC-1155 balances, payout-vector semantics (`[1,0]`, `[0,1]`,
-`[1,1]` = 50/50). One collateral lock backs every complete set, so winning shares
-always redeem at exactly 1 unit.
+### `market/HeadlineMarket.sol`
 
-### `market/HeadlineMarket.sol` — market + oracle in one
+Each market is its own oracle for a binary condition. Config fixes distinct source
+DKIM domains, From patterns, shared/per-source content patterns, K-of-N threshold,
+accepted email-date window and settlement buffer. Anyone can submit an accepted
+proof. Nullifiers prevent replay within a market. The Kth source resolves YES;
+`resolveNo` becomes available after deadline plus buffer. `checkProof` is a view
+simulation used before spending gas.
 
-Holds the settlement config (sources, regexes, threshold, window, deadline, buffer)
-and is registered as its own condition's oracle in its constructor
-(`questionId = keccak("HEADLINE_MARKET_V1", address(this))`).
+Optional judged markets (criteria plus empty regex) require a YES verdict from the
+existing `LLMJudge`. That mechanism has its own pinned model/operator trust model;
+see `GASKILLER-LLM-SETTLEMENT.md`. This refactor preserves that separate work.
 
-Sources must have **distinct DKIM domains** (enforced in the constructor), so a
-K-of-N "distinct newspapers" threshold can't be satisfied by one domain occupying two
-slots.
+### `tokens/ConditionalTokens.sol`
 
-`submitProof` check order: not resolved → valid source index → source not already
-matched → **nullifier unused** (replay guard, per-market since one real email may
-legitimately settle several markets) → verifier accepts → proof domain == source's
-DKIM domain → email date within `[windowStart, deadline]` → From matches `fromRegex`
-→ content matches the effective regex (per-source override, else market default;
-against subject, body, or either). Accepting the K-th distinct source reports `[1,0]`.
+Collateral splits into complete YES/NO ERC-1155 sets, merges back, and redeems at the
+oracle's final payout vector. Each complete set is backed by one unit of collateral.
+The token layer is a simplified CTF-compatible interface, not byte-compatible with
+all production Gnosis CTF collection identifiers.
 
-**Real zk-regex circuits (A3).** `app/scripts/zkregex/` compiles a market pattern
-pair for real: parse (same grammar as RegexLib) → Thompson NFA → subset-construction
-DFA over byte-interval classes (differentially tested against JS `RegExp` on 12k
-cases) → a circom circuit (one-hot DFA simulation; search semantics via start-state
-self-merge; accepting states absorbing; NUL padding can never create a match) →
-Groth16 setup → snarkjs Solidity verifier. `ZkRegexVerifierRegistry` maps
-`keccak(fromPatternHash ++ contentPatternHash)` to the deployed verifier,
-**write-once** so nobody can swap in an always-true verifier later; registering a
-circuit permanently disables the mock fallback for that pair in `ZkEmailVerifierV2`.
-The proof's public input `binding = keccak(domain, pubkeyHash, timestamp, nullifier)
-mod r` ties the zk proof to the claimed email identity. Proving: ~2s in node for the
-Fed-pattern circuit (150,593 constraints), in-browser via snarkjs on submit. Dev
-trust caveat: the Groth16 setup is a local single contribution — production needs a
-per-circuit MPC ceremony — and until the DKIM-RSA check joins the circuit (A1) the
-content witness is honest-prover.
+### `market/FPMM.sol` and `market/MarketFactory.sol`
 
-**Compiled settlement path (backlog E1/A3).** `submitCompiledProof(sourceIndex,
-CompiledEmailProof)` is the gas-real, privacy-real twin of `submitProof`: the From and
-content patterns are compiled *into the proving circuit*, which only produces a proof
-for a DKIM-signed email that matches them. The proof's public outputs are pattern
-*commitments* (`keccak(fromRegex)` and `keccak(field ++ effectivePattern)` — standing
-in for per-pattern Groth16 verifying keys), which the market checks against
-commitments fixed at construction, so both paths enforce identical conditions. No
-onchain regex, no email content in calldata, evidence via `CompiledProofAccepted`
-event only. Measured: **126k gas including YES resolution + payout reporting**, vs
-~2M for the interpreted path (5.7M with a real 4KB email body) — add ~230k for a
-production Groth16 pairing check. Nullifiers are shared across both paths, so the
-same email can never be counted twice regardless of path.
+The permissionless factory creates EIP-1167 market/pool clones and optionally funds
+the pool for its creator. The pool maintains a binary fixed-product AMM. Quote and
+execution paths include both the market's LP fee and the factory's platform fee.
 
-`resolveNo()` requires `now > deadline + resolutionBuffer` — the buffer is a grace
-period so late-arriving proofs of in-window emails can still settle YES before anyone
-can force NO. `checkProof` / `checkCompiledProof` are view dry-runs returning
-`(ok, reason)`; the frontend calls them before spending a transaction, and settlement
-bots can too.
+`fee` is the LP rate; `protocolFee` is the platform rate, defaulting to 1% in deploy
+scripts. `totalFee` is their sum. Treasury address and platform rate are fixed at
+factory deployment and copied to each pool. Platform collateral accrues separately
+from LP entitlements. `withdrawProtocolFees` always pays the fixed treasury;
+`withdrawFees` pays the entitled LP. Funding, liquidity exits and redemption have no
+new platform fee. See `FEES.md` for rounding, constructor options and examples.
 
-### `market/FPMM.sol` — trading venue
+Existing clones retain their old implementation/verifier/registry and have no
+platform fee. A new deployment is required; this source refactor does not migrate
+live markets, balances or positions.
 
-Gnosis `FixedProductMarketMaker` (Polymarket's original AMM), binary-specialised:
+## Private research service
 
-- `addFunding(amount, distributionHint, receiver)` splits collateral into complete
-  sets. Initial funding may pass `distributionHint` to open at skewed odds (pool
-  keeps `amount·hint[i]/maxHint` of side *i*, surplus tokens go back to the funder);
-  follow-on funding keeps pool ratios and mints `amount·supply/maxBal` LP shares.
-  The `receiver` parameter lets the factory fund on the creator's behalf.
-- `buy` / `sell` preserve the constant product with ceil-division rounding in the
-  pool's favor; `calcBuyAmount`/`calcSellAmount` are the quote views; slippage guards
-  (`min` tokens out / `max` tokens in) on both.
-- **Fees**: `fee` (1e18-scale, e.g. `2e16` = 2%) is charged in collateral on each
-  trade and accrues to LP shares via accumulator-per-share accounting
-  (`accFeesPerShare` + signed corrections on mint/burn/transfer — same scheme as
-  MasterChef, simpler than Gnosis's feePoolWeight and equivalent in effect).
-  `withdrawFees` is claimable any time; `removeFunding` auto-claims.
-- `whileTrading` blocks buy/sell/addFunding once the condition has reported payouts,
-  freezing stale-price trading at resolution (Polymarket freezes at resolution too).
-  LP exit (`removeFunding` → position tokens → `redeemPositions`) stays open.
-- Prices: `marginalPrice(i) = oppositeBalance / (yes + no)`, a 0..1 probability the
-  UI shows in cents. LP shares are collateral-scale (Gnosis convention).
+`app/scripts/research/daily.mjs` downloads resolved Polymarket markets from the last
+14 days using cursor pagination, and indexes all accessible received email through
+read-only IMAP. Raw RFC 822 messages, full-text SQLite index and reports are private
+local files outside the public repository. Mailauth verifies signatures/body hashes
+offchain. Lexical candidate retrieval is followed by a scheduled Codex semantic
+review, with exact email references, source/time checks and explicit pending counts.
 
-### `market/MarketFactory.sol` + `market/Deployers.sol`
-
-`createMarket(params)` deploys the market (which self-registers its condition) and its
-FPMM, optionally pulls `initialLiquidity` from the creator and funds the pool in the
-same transaction (LP shares + any hint surplus go to the creator), and records the
-pair in an enumerable registry. No allowlists, no admin.
-
-Size + deploy discipline (E1): markets and FPMMs are **EIP-1167 clones** of two
-implementations deployed once (constructor → `initialize`, per-market immutables →
-storage, implementations locked in their constructors); RegexLib deploys once as an
-external linked library (its `matches`/`validate` are `public`). Result: every
-contract is under the EIP-170 24,576-byte limit, `createMarket` costs 1.81M gas
-(~5M+ before), and the whole system deploys on a vanilla EVM chain with no
-size/gas overrides.
-
-### Deviations from production Polymarket (by design)
-
-| Polymarket | Here | Why |
-|---|---|---|
-| CTFExchange: offchain operator-matched orderbook, EIP-712 orders | onchain FPMM | permissionless + self-contained e2e; orderbook is backlog |
-| UMA optimistic oracle (propose/bond/dispute/DVM) | zkEmail proof of the alert email | the point of the project |
-| USDC only | any ERC-20, per market | requested: configurable token management |
-| NegRiskAdapter multi-outcome | binary only | backlog |
+Body evidence found in research is not accepted by today's onchain verifier.
+Research never creates/trades/settles markets. See `DAILY-RESEARCH.md` and
+`EMAIL-ACCESS.md` for setup, schedule, commands and coverage limitations.
 
 ## Frontend (`app/`)
 

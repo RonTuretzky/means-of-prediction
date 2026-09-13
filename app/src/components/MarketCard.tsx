@@ -3,6 +3,7 @@ import { type MarketData, Resolution } from "../hooks/useMarkets";
 import { usePriceHistory } from "../hooks/usePriceHistory";
 import { Sparkline } from "./PriceChart";
 import { fmtCents, fmtDate, fmtVol } from "../lib/format";
+import { ResolutionBadge } from "./RulesPanel";
 
 export function statusBadge(m: MarketData): { label: string; className: string } {
   if (m.resolution === Resolution.Yes) return { label: "Resolved YES", className: "bg-system-green text-white" };
@@ -26,6 +27,7 @@ export function MarketCard({ m }: { m: MarketData }) {
           <span className="text-caption text-surface-grey-2">
             {m.matchedCount}/{m.threshold} sources
           </span>
+          {m.judged && <ResolutionBadge className="ml-auto" />}
         </div>
 
         <h3 className="mb-3 min-h-12 font-breadDisplay text-lg font-bold leading-snug">{m.question}</h3>

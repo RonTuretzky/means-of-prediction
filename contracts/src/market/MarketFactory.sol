@@ -3,7 +3,8 @@ pragma solidity ^0.8.28;
 
 import {ConditionalTokens} from "../tokens/ConditionalTokens.sol";
 import {IERC20} from "../tokens/ERC20.sol";
-import {IZKEmailVerifier} from "../zkemail/IZKEmail.sol";
+import {IDKIMVerifier} from "../dkim/IDKIMVerifier.sol";
+import {ILLMJudge} from "../judge/ILLMJudge.sol";
 import {HeadlineMarket} from "./HeadlineMarket.sol";
 import {FPMM} from "./FPMM.sol";
 import {Clones} from "../utils/Clones.sol";
@@ -18,8 +19,9 @@ contract MarketFactory {
         // market question
         string question;
         string description; // human-readable resolution rules
-        // settlement conditions
+        // settlement conditions (regex mode: contentRegex; judged mode: criteria + empty regex)
         string contentRegex;
+        string criteria;
         HeadlineMarket.ContentField contentField;
         HeadlineMarket.Source[] sources;
         uint8 threshold; // K of N sources required for YES
@@ -49,23 +51,35 @@ contract MarketFactory {
     );
 
     ConditionalTokens public immutable conditionalTokens;
-    IZKEmailVerifier public immutable verifier;
+    IDKIMVerifier public immutable verifier;
     /// EIP-1167 implementations: every market/FPMM is a 45-byte clone of these.
     address public immutable marketImplementation;
     address public immutable fpmmImplementation;
+    /// @notice LLM verdict oracle for judged markets (address(0) = judged mode unavailable).
+    ILLMJudge public immutable judge;
+    uint256 public immutable protocolFee;
+    address public immutable feeRecipient;
 
     MarketRecord[] internal _markets;
 
     constructor(
         ConditionalTokens _conditionalTokens,
-        IZKEmailVerifier _verifier,
+        IDKIMVerifier _verifier,
         address _marketImplementation,
-        address _fpmmImplementation
+        address _fpmmImplementation,
+        ILLMJudge _judge,
+        uint256 _protocolFee,
+        address _feeRecipient
     ) {
+        require(_protocolFee <= 5e16, "Factory: protocol fee above 5%");
+        require(_protocolFee == 0 || _feeRecipient != address(0), "Factory: missing fee recipient");
         conditionalTokens = _conditionalTokens;
         verifier = _verifier;
         marketImplementation = _marketImplementation;
         fpmmImplementation = _fpmmImplementation;
+        judge = _judge;
+        protocolFee = _protocolFee;
+        feeRecipient = _feeRecipient;
     }
 
     function createMarket(CreateMarketParams calldata params)
@@ -73,25 +87,9 @@ contract MarketFactory {
         returns (HeadlineMarket market, FPMM fpmm)
     {
         market = HeadlineMarket(Clones.clone(marketImplementation));
-        market.initialize(
-            conditionalTokens,
-            verifier,
-            params.collateralToken,
-            msg.sender,
-            HeadlineMarket.InitConfig({
-                question: params.question,
-                description: params.description,
-                contentRegex: params.contentRegex,
-                contentField: params.contentField,
-                sources: params.sources,
-                threshold: params.threshold,
-                windowStart: params.windowStart,
-                deadline: params.deadline,
-                resolutionBuffer: params.resolutionBuffer
-            })
-        );
+        market.initialize(conditionalTokens, verifier, params.collateralToken, msg.sender, judge, _initConfig(params));
         fpmm = FPMM(Clones.clone(fpmmImplementation));
-        fpmm.initialize(conditionalTokens, params.collateralToken, market.conditionId(), params.fee);
+        fpmm.initialize(conditionalTokens, params.collateralToken, market.conditionId(), params.fee, protocolFee, feeRecipient);
 
         if (params.initialLiquidity > 0) {
             require(
@@ -113,6 +111,24 @@ contract MarketFactory {
             address(params.collateralToken),
             params.deadline
         );
+    }
+
+    /// @dev Built in a helper to keep `createMarket` under the EVM stack limit.
+    function _initConfig(CreateMarketParams calldata params)
+        private
+        pure
+        returns (HeadlineMarket.InitConfig memory cfg)
+    {
+        cfg.question = params.question;
+        cfg.description = params.description;
+        cfg.contentRegex = params.contentRegex;
+        cfg.contentField = params.contentField;
+        cfg.sources = params.sources;
+        cfg.threshold = params.threshold;
+        cfg.windowStart = params.windowStart;
+        cfg.deadline = params.deadline;
+        cfg.resolutionBuffer = params.resolutionBuffer;
+        cfg.criteria = params.criteria;
     }
 
     function marketCount() external view returns (uint256) {

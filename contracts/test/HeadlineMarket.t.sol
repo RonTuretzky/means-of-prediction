@@ -5,7 +5,7 @@ import {MarketTestBase} from "./MarketTestBase.sol";
 import {HeadlineMarket} from "../src/market/HeadlineMarket.sol";
 import {MarketFactory} from "../src/market/MarketFactory.sol";
 import {FPMM} from "../src/market/FPMM.sol";
-import {EmailProof} from "../src/zkemail/IZKEmail.sol";
+import {EmailProof} from "../src/dkim/IDKIMVerifier.sol";
 
 contract HeadlineMarketTest is MarketTestBase {
     HeadlineMarket market;
@@ -157,7 +157,7 @@ contract HeadlineMarketTest is MarketTestBase {
     function test_RejectsTamperedProof() public {
         EmailProof memory p = nytProof("n1");
         p.subject = "Breaking News: Fed cuts rates!"; // outputs changed after proving
-        vm.expectRevert(bytes("Market: invalid zkemail proof"));
+        vm.expectRevert(bytes("Market: invalid DKIM proof"));
         market.submitProof(0, p);
     }
 
@@ -165,7 +165,7 @@ contract HeadlineMarketTest is MarketTestBase {
         EmailProof memory p = makeProof(
             "fakenews.example", block.timestamp + 1 days, "nytdirect@nytimes.com", FED_SUBJECT, "", "n1"
         );
-        vm.expectRevert(bytes("Market: invalid zkemail proof"));
+        vm.expectRevert(bytes("Market: invalid DKIM proof"));
         market.submitProof(0, p);
     }
 
@@ -316,7 +316,7 @@ contract HeadlineMarketTest is MarketTestBase {
         tampered.subject = "Breaking News: Fed HIKES rates";
         (ok, reason) = market.checkProof(0, tampered);
         assertFalse(ok);
-        assertEq(reason, "invalid zkemail proof");
+        assertEq(reason, "invalid DKIM proof");
 
         market.submitProof(0, nytProof("n1"));
         (ok, reason) = market.checkProof(0, nytProof("n2"));

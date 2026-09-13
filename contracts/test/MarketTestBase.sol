@@ -5,12 +5,14 @@ import {Test} from "forge-std/Test.sol";
 import {ConditionalTokens} from "../src/tokens/ConditionalTokens.sol";
 import {TestUSDC} from "../src/tokens/TestUSDC.sol";
 import {IERC20} from "../src/tokens/ERC20.sol";
-import {DKIMRegistry} from "../src/zkemail/DKIMRegistry.sol";
-import {DKIMVerifier} from "../src/zkemail/DKIMVerifier.sol";
-import {EmailProof} from "../src/zkemail/IZKEmail.sol";
+import {DKIMRegistry} from "../src/dkim/DKIMRegistry.sol";
+import {DKIMVerifier} from "../src/dkim/DKIMVerifier.sol";
+import {EmailProof} from "../src/dkim/IDKIMVerifier.sol";
 import {HeadlineMarket} from "../src/market/HeadlineMarket.sol";
 import {MarketFactory} from "../src/market/MarketFactory.sol";
 import {FPMM} from "../src/market/FPMM.sol";
+import {ILLMJudge} from "../src/judge/ILLMJudge.sol";
+import {Rfc2822Formatter} from "./helpers/Rfc2822Formatter.sol";
 
 /// @notice Shared fixture: deploys the whole stack and builds REAL DKIM email proofs —
 /// each `makeProof` canonicalizes a header and signs it with the committed dev RSA key
@@ -21,6 +23,7 @@ contract MarketTestBase is Test {
     DKIMRegistry dkim;
     DKIMVerifier verifier;
     MarketFactory factory;
+    Rfc2822Formatter rfc2822;
 
     bytes devModulus;
     bytes devExponent;
@@ -33,10 +36,11 @@ contract MarketTestBase is Test {
 
     function setUp() public virtual {
         ct = new ConditionalTokens();
+        rfc2822 = new Rfc2822Formatter();
         usdc = new TestUSDC();
         dkim = new DKIMRegistry();
         verifier = new DKIMVerifier(dkim);
-        factory = new MarketFactory(ct, verifier, address(new HeadlineMarket()), address(new FPMM()));
+        factory = new MarketFactory(ct, verifier, address(new HeadlineMarket()), address(new FPMM()), ILLMJudge(address(0)), 0, address(0));
 
         (devModulus, devExponent) = devPubKey();
         devKeyHash = keccak256(devModulus);
@@ -61,21 +65,50 @@ contract MarketTestBase is Test {
         string memory body,
         bytes32 nullifier
     ) internal returns (EmailProof memory p) {
-        bytes memory header = bytes(
-            string.concat(
-                "from:", from, "\r\nsubject:", subject, "\r\nmessage-id:<", vm.toString(nullifier), ">"
-            )
-        );
-        bytes memory signature = rsaSign(header);
+        // `body` is ignored: DKIMVerifier now refuses a non-empty bodyExcerpt, because the
+        // header signature does not authenticate the body. Call sites keep passing their
+        // descriptive filler text; it simply never reaches the proof. Use
+        // makeProofWithBody() to exercise the rejection path deliberately.
+        body;
+        return makeProofWithBody(domain, timestamp, from, subject, "", nullifier);
+    }
+
+    /// @dev As makeProof, but carries `body` in bodyExcerpt — which a correct verifier
+    /// rejects. Only for tests that pin that rejection.
+    function makeProofWithBody(
+        string memory domain,
+        uint256 timestamp,
+        string memory from,
+        string memory subject,
+        string memory body,
+        bytes32 nullifier
+    ) internal returns (EmailProof memory p) {
+        // A real signed header carries `date:`, and the verifier binds proof.timestamp to
+        // it, so the fixture must sign the date it claims.
+        p.header = bytes.concat(signedHeader(from, subject, timestamp, nullifier),
+            bytes(string.concat("\r\ndkim-signature:v=1; a=rsa-sha256; c=relaxed/relaxed; d=", domain, "; s=dev2026; b=")));
+        p.signature = rsaSign(p.header);
         p.domainName = domain;
         p.publicKeyHash = devKeyHash;
         p.timestamp = timestamp;
         p.fromAddress = from;
         p.subject = subject;
         p.bodyExcerpt = body;
-        p.emailNullifier = keccak256(signature);
-        p.header = header;
-        p.signature = signature;
+        p.emailNullifier = keccak256(p.signature);
+    }
+
+    /// @dev Kept out of makeProofWithBody: the concat's temporaries blow the stack there.
+    function signedHeader(string memory from, string memory subject, uint256 timestamp, bytes32 nullifier)
+        internal
+        view
+        returns (bytes memory)
+    {
+        return abi.encodePacked(
+            "from:", from,
+            "\r\nsubject:", subject,
+            "\r\ndate:", rfc2822.format(timestamp),
+            "\r\nmessage-id:<", vm.toString(nullifier), ">"
+        );
     }
 
     function rsaSign(bytes memory message) internal returns (bytes memory) {
@@ -124,6 +157,7 @@ contract MarketTestBase is Test {
             description: "Resolves YES if 2 of 3 sources (NYT, WaPo, Reuters) email a breaking-news"
                 " alert matching the pattern before the deadline.",
             contentRegex: "(?i)fed (cuts|lowers|slashes) (interest )?rates",
+            criteria: "",
             contentField: HeadlineMarket.ContentField.SubjectOrBody,
             sources: nytSources(),
             threshold: 2,
