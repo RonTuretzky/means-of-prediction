@@ -1,0 +1,79 @@
+# Remaining real-email answerability review
+
+Prepared September 13, 2026. **No requests have been launched by preparation.**
+This extends the completed 60-pair review to the exact remaining 101 of the 161
+natural development pairs. It is exhaustive completion of that existing set,
+not a new independent sample or a new prompt-training round.
+
+The extension covers 101 markets, 14 emails, and 22 fact families. All 19 legacy
+timing-screen pairs were already included in the first 60, so none remain here.
+The prior study's 1,596 files and its plan, raw audit, labels, and label seal are
+pinned and preserved. No old helper files or module globals are modified.
+
+The two Astra passes use the original instructions, schema, high reasoning
+effort, and complete semantic emails without clipping. Each request includes
+only the four original public market fields and the complete email packet.
+Prior annotations, regex/Qwen predictions, generated rules, expected outcomes,
+payouts, and reserved evaluation data never enter the requests. The two passes
+do not see one another's output. Their agreement is correlated model annotation,
+not human-validated ground truth.
+
+Exactly 202 jobs are prepared, totaling 1,916,599 known input tokens; the maximum
+is 13,735. The original 120,000-token input limit and 20,000-token output reserve
+remain, with no hard output cap. Known counts exclude server framing. The usage
+snapshot was 62% consumed at 22:57:59 UTC; that does not guarantee remaining
+capacity. Existing persistent hosted usage-stop markers remain authoritative.
+
+## Execution and audit gates
+
+The private root is
+`~/.local/share/means-of-prediction/slides/real-answerability-remaining-v1-20260913`.
+Its prepared plan SHA-256 is
+`4abdabd154945c9eb0268c5743b1f31800e6fae0e3be0a94578923eba6060121`.
+It pins 26 source/data dependencies, source copies, and the Python/Codex
+executables. Thirteen focused tests cover complement identity, blind input
+allowlists, full bodies, pass isolation, usage-stop/drain behavior, existing
+attempt refusal, exact raw-audit coverage, failed/unknown artifacts, raw output
+binding, model identity, and unknown-cost accounting.
+
+From `app/scripts/research/blind`, preparation has already run and must not be
+repeated. Verification makes no model requests:
+
+```sh
+uv run --python /opt/homebrew/Cellar/python@3.14/3.14.6/Frameworks/Python.framework/Versions/3.14/bin/python3.14 --with tiktoken==0.14.0 python real_answerability_remaining_v1.py verify
+```
+
+Before launch, the parent reviews the exact plan, sources, and all 202 request
+identities. The private `launch-review.json` must contain `approved: true`, the
+exact `planSha256`, and `noCompetingHostedOwner: true`. Only then may the same
+pinned command invoke `real_answerability_remaining_v1.py run`.
+
+Four bounded workers check the shared hosted usage stop before replacements and
+before calls. An exclusive attempt marker prevents repeated or uncertain work
+from being reused. Already running requests drain after a usage stop; no new
+requests follow it. An interrupted runner is never automatically restarted.
+No local Qwen inference occurs in this extension.
+
+After the runner finishes and its PID exits, run the separate raw auditor:
+
+```sh
+/opt/homebrew/Cellar/python@3.14/3.14.6/Frameworks/Python.framework/Versions/3.14/bin/python3.14 real_answerability_remaining_audit_v1.py
+```
+
+The auditor checks all 202 planned dispositions, preserves every available
+failed/unknown artifact and request hash, rejects duplicate or extra requests,
+and reconciles raw service output, model, validation, and usage. Unattempted jobs
+remain unattempted; unknown usage/duration remains unknown. `--partial` provides
+read-only progress auditing and never grants a completed label gate.
+
+Only pairs with **two raw-verified completed annotations** are eligible for
+subsequent explicit semantic adjudication. Failed, uncertain, unattempted, and
+invalid annotations leave their pair unresolved. Even complete raw validation
+does not establish semantic correctness. The known ordinary-branch versus
+future-fallback interpretation issue must be reviewed during adjudication,
+without modifying frozen prompts or treating an annotator agreement as proof.
+
+No labels or combined 161-pair method results are created by this runner. Those
+require a separately reviewed label seal and a new combined report that preserves
+the original 60-pair labels and all unresolved cases. This preparation makes no
+claim about population coverage, live contract feasibility, or promotion.

@@ -86,3 +86,28 @@ unrelated and unreviewed pairs. That count is neither confirmed coverage nor a
 representative sample of the entire Polymarket platform. Any broader evaluation
 must freeze its universe, observation window and treatment of multiple emails
 before computing coverage.
+
+## Follow-up on the three fixture-linkage cases
+
+A separate read-only inspection selected only public identity and schedule
+fields from four repaired market responses. It excluded prices, outcomes and
+settlement fields and did not alter the sealed 60-pair labels or the running
+source-check inputs.
+
+The NFL market's captured `gameStartTime` is `2026-09-10 00:20:00+00`, which is
+September 9 at 8:20 p.m. in New York. Its slug also explicitly names 2026.
+Thus, the missing market year can be supplied from public metadata in a new
+version of the input. The original four-field pilot did not include those fields.
+The UMass winner, spread and total markets similarly supply
+`2026-09-03 22:00:00+00`. Their metadata establishes the intended fixture year,
+but does not itself add a game date to the newsletter's result report.
+
+These observations distinguish recoverable input omissions from missing email
+evidence. They are not new adjudicated labels or a revised accuracy result.
+Any metadata-enriched evaluation must freeze these allowed fields, handle
+timezones explicitly and adjudicate the revised inputs before joining outputs.
+Current captured metadata also does not prove what every field contained at
+market creation.
+
+Private allowlisted inventory SHA-256:
+`c606b2694b9d5ab4a12832632a24cb90ce2900bfc727256eae456dee2e71f49e`.
