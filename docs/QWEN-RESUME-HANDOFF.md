@@ -1,6 +1,6 @@
 # Qwen research checkpoint and continuation
 
-## Continuation update — 2026-09-13 19:25 UTC
+## Continuation update — 2026-09-13 19:41 UTC
 
 The user subsequently authorized pushing the checkpoint and continuing the
 experiment until the usage limit. Commit `7f2b52ba733018013a3fc0e781e280a430a07afa`
@@ -28,10 +28,14 @@ fresh usage-limit response. All 78 V2 full-body feedback shards are complete.
 The direct V3 optimizer packet would exceed the configured context: its known
 text/schema count is 448,726 tokens. It is preserved privately. Nine reviewed
 second-level summarization jobs cover all 235 earlier lessons and all 12 complete
-diagnostic cases with 48 responses. Three of nine are complete at this snapshot;
-the largest job has 102,848 known input tokens. These summaries are explicitly
-lossy abstractions, and the final optimizer retains their complete lineage.
-The final V3 optimizer packet and replacement prompts require separate review.
+diagnostic cases with 48 responses. All nine are complete and independently
+audited; they consumed 507,031 input and 38,388 output tokens. These summaries
+are explicitly lossy abstractions, and the final optimizer retains their complete
+lineage. The final V3 packet has 78,498 known input tokens and SHA-256
+`feed9abb19de89c1df6c2c7b2d5a9e2706aacd3f9c2370fc23640ce2615fe82e`.
+Root approved its exact structural, lineage and context review; one optimizer
+attempt is now authorized. Replacement prompts still require full review before
+public rule generation.
 
 The local model is idle after the probes. A third diagnostic, under
 `slides/qwen-basis-probe-20260913`, is frozen and independently reviewed with 16
@@ -311,6 +315,15 @@ selection output outside the main root. Freeze selected method/runtime/source;
 generate and freeze **all 48 new Astra rule draws before opening the original
 120 reserved fixtures**. Fresh methods are baseline plus selected nonbaseline;
 if baseline stays selected, compare it to the best development challenger.
+
+Use `qwen_guarded_challenge.py` from the selected `sealed-source` directory for
+these fresh draws, rather than the older eager `challenge` command. Prepare and
+review each exact plan, then run the two selected methods **sequentially**, with
+at most four requests in flight globally. The wrapper retains failures, blocks
+retries and fixture reads, and refuses to create complete artifacts for a partial
+cohort. After both 24-draw cohorts complete, the original `freeze` command performs
+the joint 48-draw verification. If the persistent usage stop has fired, keep this
+stage pending and the fixtures sealed.
 
 After selection and the 48-draw freeze, freeze the supplemental evaluator adapter
 before opening its new email bodies. Run its local model calls only after the
