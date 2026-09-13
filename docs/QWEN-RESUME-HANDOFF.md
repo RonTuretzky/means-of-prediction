@@ -1,5 +1,25 @@
 # Qwen research checkpoint and continuation
 
+## Strategy review — 2026-09-13
+
+The latest user instruction is to re-strategize and improve the research loop.
+Finish and audit the frozen V3 run, but hold further full prompt revisions during
+the strategy review. No V4 optimizer or rule generation has been launched. The
+proposed next sequence is in [RESEARCH-LOOP-REDESIGN.md](RESEARCH-LOOP-REDESIGN.md):
+separate factual and strict labels, audit email answerability, isolate generation
+from judging, screen controlled candidates cheaply, and promote using correct
+coverage and total wrong accepted settlements. This is a proposed redesign,
+not an implemented evaluator or measured improvement. Preserve all existing
+scores, gates and reserved evaluation seals.
+
+V3 has one preserved output-cap failure in an unlabeled coverage case: HTTP 200,
+2,048 output tokens, 11,108 input tokens, unfinished JSON after 276.93 seconds.
+The request and raw response were independently reconciled; no retry occurred.
+The private review is `v3-capped-call-review.private.json`. The root's
+`control-factual-label-qualification-review.private.json` explains why control
+factual agreement with strict labels is not independently validated factual
+accuracy. Both belong in any later approved optimization evidence.
+
 ## Continuation update — 2026-09-13 20:37 UTC
 
 The user subsequently authorized pushing the checkpoint and continuing the
