@@ -14,8 +14,21 @@ MIME support is a separate check. The selected natural factual benchmark uses
 
 No separately captured full NYT articles were found in the inspected holdings.
 The HTML contains 10,518 tracking-link occurrences and 7,919 distinct hrefs;
-these are not article counts. A 20-link article-access pilot is being collected
-separately. Full articles must not be treated as part of the signed email body.
+these are not article counts. A separate 20-link article-access pilot completed:
+all 20 resolved to distinct NYT article paths but returned HTTP 403 challenge
+pages, so zero article texts were added. An ordinary browser fallback was rejected
+before navigation by browser site-safety policy; no permission prompt or automatic
+approval review was attempted. No alternate route was attempted after that
+restriction. Full articles must not be treated as part of the signed email body.
+
+The pilot froze links before requests, spanning 20 newsletter dates and five
+coarse label-based topic groups. It recorded exactly 60 GETs (two redirects and
+one publisher request per article), preserved all 143 source emails, and retained
+missing title/canonical/publication metadata as null. Root verified all 116 sealed
+file hashes, sizes and read-only permissions. Manifest hash:
+`90589daa8e8e6478991bf086a14218fa789f6a5fdad5384c3d148c20f04ed277`.
+This establishes the access result of the tested route and sample, not that the
+articles do not exist or can never be accessed through an authorized route.
 
 ## Public market records
 
@@ -66,7 +79,8 @@ Constructed convenience market-page URLs were not validated; use captured API
 URLs and retained event URLs for provenance. Collection involved no inference,
 reserved evaluation evidence, or changes to frozen experiments.
 
-Next, finish the real-email sufficiency review and the bounded article pilot.
+The first real-email sufficiency review and bounded article pilot are complete;
+see `REAL-ANSWERABILITY-V1-FINDINGS.md` for the separate annotation result.
 The full 241-by-143 development cross-product is 34,463 candidate pairs, including
 unrelated and unreviewed pairs. That count is neither confirmed coverage nor a
 representative sample of the entire Polymarket platform. Any broader evaluation
