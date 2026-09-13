@@ -17,7 +17,7 @@
 <div class="eyebrow">01 / The finding</div>
 <h1 id="title-1">How well can we read<br>market outcomes from email?</h1>
 <p class="muted">We tested Astra-generated regex and Astra-generated rules read by local Qwen on real NYT emails.</p>
-<div class="hero-grid"><div class="tile"><small>WHAT WE HAVE MEASURED</small><div class="big">161 pairs</div><p>Selected email–market pairs with labeled reported facts.</p></div><div class="tile"><small>WHAT WE HAVE NOT MEASURED</small><div class="big">Settlement accuracy</div><p>Performance only where the email satisfies every original market condition.</p></div></div>
+<div class="hero-grid"><div class="tile"><small>WHAT WE HAVE MEASURED</small><div class="big">161 pairs</div><p>Selected email–market pairs with labeled reported facts.</p></div><div class="tile"><small>WHAT WE STILL CANNOT ESTIMATE</small><div class="big">Settlement accuracy</div><p>The first strict pilot has only one clearly answerable case.</p></div></div>
 <p class="note">Selected development data, repeatedly used during optimization. These are pairs, not 161 independent emails or a representative sample of all markets.</p>
 </section>
 <section class="slide" aria-labelledby="title-2" hidden>
@@ -37,7 +37,7 @@
 <h2 id="title-3">Which emails can actually<br>close a market?</h2>
 <p>The current labels say that an email reports a relevant fact. They do not establish that it meets every settlement requirement.</p>
 <div class="steps"><div class="step"><b>01 — SOURCE</b><h3>Is NYT sufficient?</h3><p>Some rules require a specific official source or a broader reporting consensus.</p></div><div class="step"><b>02 — TIME & EVENT</b><h3>Is this the right result?</h3><p>Match the event, stage, deadline and finality. Distinguish event time from evidence availability.</p></div><div class="step"><b>03 — EXCEPTIONS</b><h3>Does the rule permit it?</h3><p>Apply cancellation, fallback and nonbinary outcomes without inventing a Yes or No.</p></div></div>
-<div class="callout"><p><strong>The accuracy on definitively settleable real pairs is still unknown.</strong> The 39% and 47% results cannot be presented as that answer.</p></div>
+<div class="callout"><p><strong>A reliable settlement accuracy estimate is still not established.</strong> The 39% and 47% results cannot be presented as that answer.</p></div>
 <p class="source">Reference: <a href="https://docs.polymarket.com/concepts/resolution" target="_blank" rel="noopener">Polymarket resolution rules</a>. The title asks the question; the full rules determine resolution.</p>
 </section>
 <section class="slide" aria-labelledby="title-4" hidden>
@@ -47,13 +47,13 @@
 <p class="note">This snapshot reflects the original baselines as the provisional best completed methods. V3 was incomplete at the snapshot. The work has optimized prompts and procedures; it has not changed Qwen’s model weights.</p>
 </section>
 <section class="slide" aria-labelledby="title-5" hidden>
-<div class="eyebrow">05 / The next experiment</div>
-<h2 id="title-5">Measure accuracy on emails<br>that genuinely suffice</h2>
-<p>Review the existing real pairs against the original market rules, without using either method’s answer to choose qualifying cases.</p>
-<div class="formula"><span>Recovery =</span><div class="fraction"><div>Correct outcomes recovered</div><div>All independently reviewed, answerable pairs</div></div></div>
-<p class="muted">Then compare both methods on that same subset. Separately report wrong decisions, abstentions and correctness among attempted settlements.</p>
-<div class="callout"><p>Start with a diverse review of about <strong>60 real pairs</strong>, extend to all 161, and keep new evaluation data sealed until selection.</p></div>
-<p class="source">Plan: <a href="https://github.com/RonTuretzky/means-of-prediction/blob/9e84a7f9c/docs/RESEARCH-LOOP-REDESIGN.md" target="_blank" rel="noopener">research loop redesign</a>. Public summary only; underlying emails and private research records are not included.</p>
+<div class="eyebrow">05 / New: the 60-pair strict pilot</div>
+<h2 id="title-5">Only one clearly answerable pair</h2>
+<p>Two isolated Astra reviews per pair, followed by model adjudication. Labels were sealed before comparing the baseline answers.</p>
+<div class="steps"><div class="step"><b>56 PAIRS</b><h3>Source evidence missing</h3><p>The newsletter alone does not establish the required official source or reporting consensus.</p></div><div class="step"><b>3 PAIRS</b><h3>Fixture timing incomplete</h3><p>Two UMass pairs lack a dated-game link. The NFL market’s omitted year remains ambiguous.</p></div><div class="step"><b>1 PAIR</b><h3>Tupac conviction</h3><p>The rules allow credible reporting. The email explicitly reports a first-degree murder conviction.</p></div></div>
+<div class="callout"><p>On that one case: <strong>Qwen 1/1 · Regex 0/1.</strong> One email and one event are too few for a projected accuracy rate.</p></div>
+<p class="note">Under this strict contained-evidence interpretation, quoted Qwen also made claims on 28 of 58 insufficient pairs. These are model-reviewed development labels, not human gold or on-chain settlements. The remaining 101 pairs are not yet adjudicated.</p>
+<p class="source"><a href="https://github.com/RonTuretzky/means-of-prediction/blob/2c1243e48/docs/REAL-ANSWERABILITY-V1-FINDINGS.md" target="_blank" rel="noopener">Pilot findings and limitations</a> · <a href="https://github.com/RonTuretzky/means-of-prediction/blob/9e84a7f9c/docs/RESEARCH-LOOP-REDESIGN.md" target="_blank" rel="noopener">Research plan</a>. Private emails and raw research records are not published.</p>
 </section>
 </main>
 <footer><span class="keyboard">Use ← → to navigate · Print for all slides</span><span class="sr-only" id="announce" aria-live="polite"></span><nav aria-label="Slideshow navigation"><button id="prev" aria-label="Previous slide">← Back</button><span class="counter" id="count">1 / 5</span><button id="next" aria-label="Next slide">Next →</button></nav></footer>
