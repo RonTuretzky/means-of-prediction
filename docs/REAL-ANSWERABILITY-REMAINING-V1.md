@@ -1,6 +1,9 @@
 # Remaining real-email answerability review
 
-Prepared September 13, 2026. **No requests have been launched by preparation.**
+Prepared September 13, 2026. Preparation made no model requests. After exact
+parent review, the 202-call run launched at **23:00:41 UTC**, PID **79995**,
+exec session **15847**. It is running; no completed raw gate or labels are claimed.
+Inspect current artifacts before acting and never restart this attempt set.
 This extends the completed 60-pair review to the exact remaining 101 of the 161
 natural development pairs. It is exhaustive completion of that existing set,
 not a new independent sample or a new prompt-training round.
@@ -48,6 +51,11 @@ identities. The private `launch-review.json` must contain `approved: true`, the
 exact `planSha256`, and `noCompetingHostedOwner: true`. Only then may the same
 pinned command invoke `real_answerability_remaining_v1.py run`.
 
+The completed launch review has SHA-256
+`cafb0bf65d4cf51f3b1df7160bc6f1689aeddce68b5f4db2774682da9ee3d505`.
+The first eight completed responses passed a separate raw integrity check;
+that early check does not establish complete coverage or authorize adjudication.
+
 Four bounded workers check the shared hosted usage stop before replacements and
 before calls. An exclusive attempt marker prevents repeated or uncertain work
 from being reused. Already running requests drain after a usage stop; no new
@@ -77,3 +85,9 @@ No labels or combined 161-pair method results are created by this runner. Those
 require a separately reviewed label seal and a new combined report that preserves
 the original 60-pair labels and all unresolved cases. This preparation makes no
 claim about population coverage, live contract feasibility, or promotion.
+
+The separate `app/scripts/research/answerability/combined_v1.py` seals explicit
+new labels after the full raw gate and then joins the two immutable baselines.
+Seven tests and independent code review cover exact cohort/label/raw coverage,
+incomplete-review exclusions, quotes, and strict versus factual decisions.
+No combined result exists until adjudication and that seal complete.
