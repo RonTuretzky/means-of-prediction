@@ -1,7 +1,8 @@
 # Research loop redesign
 
-Proposed 2026-09-13 after the user requested a strategy review. Further full
-prompt revisions are on hold during that review. Finish and archive
+Proposed 2026-09-13 after the user requested a strategy review; the user then
+approved the direction and requested a real-data primary benchmark. Further full
+prompt revisions under the old design remain on hold. Finish and archive
 the already frozen V3 run. Its prompts, inputs, scores and output cap stay fixed.
 The existing future-round helpers remain available, but no V4 launch is approved
 by this document. The design below is a research proposal, not a measured gain or
@@ -39,6 +40,59 @@ Do not retroactively change the original gate or declare an old revision improve
 V2 also regressed on natural factual recall and strict positive recovery.
 
 ## 1. Establish what the evidence actually permits
+
+### Use real evidence for the primary benchmark
+
+Synthetic fixtures test rare boundaries, negation, wrong entities and unsupported
+claims cheaply. Retain them as a separately reported regression suite, never as
+the headline estimate of live settlement performance. Do not manufacture missing
+positive examples or combine their denominator with natural evidence.
+
+Build the primary benchmark from actual market terms and resolutions paired
+with original NYT evidence. Preserve two evidence tracks: full authenticated
+emails, and separately obtained article text. An article linked from an email is
+not thereby part of its DKIM-authenticated body. Article performance cannot be
+reported as email-contract performance. Inventory accessible full text before
+claiming a collected article corpus; metadata and links alone are not full text.
+
+Freeze a market universe and observation window before retrieval, including
+markets with no relevant NYT coverage. Preserve original rule versions and
+clarifications, resolved outcomes, controlling event deadlines, publication and
+receipt times, and the evidence version actually available at the evaluation
+time. An event deadline is not automatically an evidence-publication deadline:
+apply the original rule's distinction. Later reports may support retrospective
+facts while being unavailable to an earlier attempted settlement.
+
+The public resolved outcome labels which side won; it does not label whether
+this particular document proves that side. Independently adjudicate sufficiency,
+source restrictions and exceptions. Natural unrelated, incomplete, contradictory
+and premature reports provide real negative cases. Keep genuinely insufficient
+evidence distinct from a market's No outcome.
+
+Report three separate quantities: the fraction of all markets with sufficient
+NYT evidence; correct recovery among those answerable markets; and correctness
+among all attempted settlements. Also report end-to-end correct coverage over
+the full frozen market universe. Count each market once for that coverage metric
+and predeclare how multiple emails are combined. Split by event family and time;
+keep the existing reserved data sealed until its approved evaluation stage.
+
+### Current real-data measurements, not deployment projections
+
+The existing selected development cohort contains 161 natural factual pairs
+across 33 fact families. On the full denominator, counting failures as unrecovered,
+the original regex baseline has 63 factual hits (39.1%). The provisional best
+completed Qwen method remains its original baseline: 55 correct factual answers
+with exact supporting quote presence (34.2%), or 75 correct factual answers
+without that quote requirement (46.6%). Quote presence alone does not prove
+entailment, source admissibility or correct settlement. Later completed Qwen
+revisions have not passed the improvement gate; V3 has no completed result yet.
+
+On the 140 pairs completed by both original baselines, regex has 57 factual hits
+(40.7%) and Qwen has 53 quote-grounded factual hits (37.9%). This restricted
+comparison excludes failures and must not replace the full-denominator report.
+These selected, repeatedly exposed pairs are not a representative sample of all
+Polymarket markets. No defensible live strict-settlement success percentage has
+yet been established for either path. The new real benchmark must measure it.
 
 Create a separately versioned, independently reviewed diagnostic set from
 already exposed development data. Start with approximately 60 diverse
