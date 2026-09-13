@@ -38,6 +38,14 @@ One review starts from the reported event; the other starts from rule conditions
 They use the same model and are correlated. Agreement is provisional annotation,
 not independent human validation or permission to publish a settlement rate.
 
+This first panel supplies the four original public-market fields, not the old
+optional contender-roster supplement. Twelve selected markets have such an
+archived roster; it contains candidate names and schedule metadata, not an
+official result or corroborating email. Record any material ambiguity caused by
+this input scope. A later metadata-complete study must be separately versioned;
+do not silently add that information to the running requests or infer it from
+the eventual winner.
+
 Each review separately labels the core reported fact and permitted settlement.
 Settlement supports A, B, a nonbinary contingency, insufficient evidence or
 ambiguous rules. Seven explicit checks cover identity, event, metric, time,
@@ -89,7 +97,8 @@ recovery, wrong sides, conflicts, abstentions and execution failures; an empty
 answerable denominator yields an undefined rate, never zero. Counts of distinct
 answerable emails and families accompany pair counts. The quote-filtered Qwen
 variant remains a separate result, and regex results measure candidate sides,
-not a complete source/time verifier. Eight focused scoring tests pass.
+not a complete source/time verifier. Nine scoring tests include a complete
+synthetic result-joining check that keeps factual and strict Qwen answers apart.
 
 Adjudication is performed by a model reviewer and is marked as such. A credible
 report, an official result and a consensus requirement are distinct. An email

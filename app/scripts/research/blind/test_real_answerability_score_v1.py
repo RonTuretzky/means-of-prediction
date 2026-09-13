@@ -1,4 +1,5 @@
 import unittest
+from unittest.mock import patch
 import real_answerability_score_v1 as s
 
 
@@ -52,6 +53,41 @@ class ScoreTests(unittest.TestCase):
         for decisions in [{}, {'x': 'yes'}]:
             with self.assertRaises(ValueError):
                 s.measure([label('x', 'A')], decisions)
+
+    def test_full_score_uses_strict_qwen_decision_and_preserves_group_counts(self):
+        selected = [{'caseId': 'a', 'marketId': '1', 'emailId': 'mail', 'family': 'event'},
+                    {'caseId': 'b', 'marketId': '2', 'emailId': 'mail', 'family': 'event'}]
+        labels = [label('a', 'A'), label('b', 'B')]
+        qr = [{'caseId': 'a', 'kind': 'factual', 'settlementOutcome': 'NEITHER', 'factualOutcome': 'A', 'exactQuote': True},
+              {'caseId': 'b', 'kind': 'factual', 'settlementOutcome': 'B', 'factualOutcome': 'B', 'exactQuote': False}]
+        rr = [{'marketId': '1', 'status': 'completed', 'factualScore': {'validPair': True, 'status': 'hit', 'matches': [{}, None]}},
+              {'marketId': '2', 'status': 'completed', 'factualScore': {'validPair': True, 'status': 'miss', 'matches': [None, None]}}]
+        sealed = {k: 'hash' for k in ['labelsSha256', 'planSha256', 'rawAuditSha256', 'scorerSha256']}
+        sealed['methodHashes'] = {str(s.QWEN): 'hash', str(s.REGEX): 'hash'}
+        result = {}
+
+        def read(path):
+            if path == s.QWEN: return qr
+            if path == s.REGEX: return rr
+            if path.name == 'adjudicated-labels-seal.json': return sealed
+            if path.name == 'adjudicated-labels.private.json': return labels
+            if path.name == 'adjudicated-baseline-comparison.private.json': return result
+            return {'rows': []}
+
+        with patch.object(s.a, 'verify_plan', return_value={'selected': selected}), \
+             patch.object(s, 'check_labels'), patch.object(s, 'verify_raw_hashes'), \
+             patch.object(s, 'METHOD_HASHES', sealed['methodHashes']), \
+             patch.object(s.a.q.r, 'read', side_effect=read), \
+             patch.object(s.a.q.r, 'digest', return_value='hash'), \
+             patch.object(s.a, 'write_once', side_effect=lambda path, value: result.update(value)), \
+             patch('builtins.print'):
+            s.score()
+        self.assertEqual(result['answerableDistinctEmails'], 1)
+        self.assertEqual(result['answerableDistinctFamilies'], 1)
+        self.assertEqual(result['qwenStrictSide']['correct'], 1)
+        self.assertEqual(result['qwenStrictSide']['abstention'], 1)
+        self.assertEqual(result['qwenStrictSideWithExactQuote']['correct'], 0)
+        self.assertEqual(result['regexCandidateSide']['correct'], 1)
 
 
 if __name__ == '__main__':
