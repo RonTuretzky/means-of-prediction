@@ -8,6 +8,25 @@ def label(cid, side, status='adjudicated'):
 
 
 class ScoreTests(unittest.TestCase):
+    def test_audit_coverage_cannot_substitute_duplicate_rows_for_missing_review(self):
+        plan = {'entries': [{'name': 'a/x'}, {'name': 'b/x'}]}
+        record = {'partial': False, 'pending': [], 'accountedFor': 2,
+                  'rows': [{'name': 'a/x'}, {'name': 'a/x'}]}
+        with self.assertRaisesRegex(RuntimeError, 'Complete unique'):
+            s.check_audit(record, plan)
+
+    def test_complete_audit_binds_current_auditor_and_all_raw_files(self):
+        plan = {'entries': [{'name': 'a/x'}, {'name': 'b/x'}]}
+        record = {'partial': False, 'pending': [], 'accountedFor': 2,
+                  'planSha256': 'hash', 'auditorSha256': 'hash',
+                  'rows': [{'name': 'a/x'}, {'name': 'b/x'}]}
+        with patch.object(s.a.q.r, 'digest', return_value='hash'), patch.object(s, 'verify_raw_hashes') as verify:
+            s.check_audit(record, plan)
+            verify.assert_called_once_with(record)
+            record['auditorSha256'] = 'changed'
+            with self.assertRaisesRegex(RuntimeError, 'auditor changed'):
+                s.check_audit(record, plan)
+
     def test_empty_answerable_subset_is_unknown_not_zero(self):
         result = s.measure([label('x', 'INSUFFICIENT')], {'x': 'NEITHER'})
         self.assertIsNone(result['recoveryAmongAnswerable'])

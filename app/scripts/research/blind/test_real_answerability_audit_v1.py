@@ -73,6 +73,30 @@ class AuditTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, 'identity mismatch'):
             audit.reconcile(self.entry)
 
+    def test_failed_attempt_retains_all_hashes_and_available_usage(self):
+        self.write(self.d/'review.private.json', {**self.entry, 'status': 'failed', 'error': 'parse failed'})
+        row = audit.reconcile(self.entry)
+        self.assertFalse(row['rawVerified'])
+        self.assertEqual(row['inputTokens'], 100)
+        self.assertEqual(row['outputTokens'], 20)
+        self.assertIn('responses/a/000/review.private.json', row['fileHashes'])
+        self.assertIn('responses/a/000/model-request.json', row['fileHashes'])
+
+    def test_failed_attempt_rejects_extra_http_request(self):
+        self.write(self.d/'review.private.json', {**self.entry, 'status': 'failed'})
+        self.transport['requests'] *= 2
+        self.write(self.d/'transport-result.json', self.transport)
+        with self.assertRaisesRegex(RuntimeError, 'Failed request count'):
+            audit.reconcile(self.entry)
+
+    def test_failed_attempt_without_transport_keeps_usage_unknown(self):
+        self.write(self.d/'review.private.json', {**self.entry, 'status': 'failed'})
+        (self.d/'transport-result.json').unlink()
+        row = audit.reconcile(self.entry)
+        self.assertIsNone(row['inputTokens'])
+        self.assertIsNone(row['outputTokens'])
+        self.assertTrue(row['fileHashes'])
+
 
 if __name__ == '__main__':
     unittest.main()

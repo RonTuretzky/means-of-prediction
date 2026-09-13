@@ -4,6 +4,7 @@ import collections
 from pathlib import Path
 
 import real_answerability_v1 as a
+import real_answerability_audit_v1 as auditor
 
 QWEN = a.q.ROOT/'methods/baseline/development-scores.private.json'
 REGEX = a.q.r.ROOT/'methods/baseline/development-scores.private.json'
@@ -20,6 +21,16 @@ def verify_raw_hashes(audit):
             path = a.ROOT/name
             if not path.resolve().is_relative_to(a.ROOT.resolve()) or a.q.r.digest(path) != digest:
                 raise RuntimeError('Raw annotation artifact changed after audit')
+
+
+def check_audit(audit, plan):
+    expected = {e['name'] for e in plan['entries']}
+    names = [r['name'] for r in audit['rows']]
+    if audit['partial'] or audit['pending'] or audit['accountedFor'] != len(expected) or len(names) != len(expected) or set(names) != expected:
+        raise RuntimeError('Complete unique planned audit rows required before label sealing')
+    if audit['planSha256'] != a.q.r.digest(a.ROOT/'plan.private.json') or audit['auditorSha256'] != a.q.r.digest(Path(auditor.__file__)):
+        raise RuntimeError('Raw audit plan or auditor changed')
+    verify_raw_hashes(audit)
 
 
 def check_labels(labels, plan):
@@ -48,12 +59,14 @@ def seal():
     plan = a.verify_plan()
     audit_path = a.ROOT/'raw-audit.private.json'
     audit = a.q.r.read(audit_path)
-    if audit['partial'] or audit['accountedFor'] != len(plan['entries']) or audit['planSha256'] != a.q.r.digest(a.ROOT/'plan.private.json'):
-        raise RuntimeError('Complete raw audit required before label sealing')
-    verify_raw_hashes(audit)
+    check_audit(audit, plan)
     labels_path = a.ROOT/'adjudicated-labels.private.json'
     labels = a.q.r.read(labels_path)
     check_labels(labels, plan)
+    audited = {r['name']: r for r in audit['rows']}
+    for row in labels:
+        if row['reviewStatus'] == 'adjudicated' and any(not audited[p+'/'+row['caseId']]['rawVerified'] or audited[p+'/'+row['caseId']]['status'] != 'completed' for p in a.PASSES):
+            raise RuntimeError('Incomplete or invalid dual review must stay unresolved')
     for file, digest in METHOD_HASHES.items():
         if a.q.r.digest(file) != digest:
             raise RuntimeError('Frozen baseline scores changed')

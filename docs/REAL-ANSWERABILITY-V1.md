@@ -78,8 +78,9 @@ unmet conditions, nonbinary outcomes and exclusive attempt markers.
 The plan was independently reviewed and launched. The separate
 `real_answerability_audit_v1.py` reconciles each saved annotation against the
 actual service request, raw response, model identifier, one-attempt lineage,
-token usage and recomputed quote/condition validation. Five additional tests
-reject changed annotations, extra requests, changed tools and identity swaps.
+token usage and recomputed quote/condition validation. Eight audit tests
+reject changed annotations, extra requests, changed tools and identity swaps,
+and preserve failed-attempt hashes and unknown usage explicitly.
 A complete audit is required before any annotations can be used in adjudication
 or scoring; the ordinary annotation summary alone is not this gate.
 
@@ -97,8 +98,10 @@ recovery, wrong sides, conflicts, abstentions and execution failures; an empty
 answerable denominator yields an undefined rate, never zero. Counts of distinct
 answerable emails and families accompany pair counts. The quote-filtered Qwen
 variant remains a separate result, and regex results measure candidate sides,
-not a complete source/time verifier. Nine scoring tests include a complete
+not a complete source/time verifier. Eleven scoring tests include a complete
 synthetic result-joining check that keeps factual and strict Qwen answers apart.
+The seal checks exact unique audit-row coverage, the current auditor hash, and
+both completed raw-verified reviews before accepting an adjudicated disposition.
 
 Adjudication is performed by a model reviewer and is marked as such. A credible
 report, an official result and a consensus requirement are distinct. An email

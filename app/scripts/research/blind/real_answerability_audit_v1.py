@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 
 import real_answerability_v1 as a
+from astra_transport import build_request
 
 
 def reconcile(entry):
@@ -15,9 +16,29 @@ def reconcile(entry):
     saved = a.q.r.read(directory/'review.private.json')
     if (saved.get('name'), saved.get('caseId'), saved.get('pass')) != (entry['name'], entry['caseId'], entry['pass']):
         raise RuntimeError('Annotation identity mismatch')
+    hashes = {str(p.relative_to(root)): a.q.r.digest(p) for p in directory.rglob('*') if p.is_file()}
     if saved['status'] not in ['completed', 'invalid_annotation']:
+        if saved['status'] != 'failed':
+            raise RuntimeError('Unexpected failure disposition')
+        if (directory/'job.json').exists() and a.q.r.read(directory/'job.json') != job:
+            raise RuntimeError('Failed request input differs')
+        request_path = directory/'model-request.json'
+        if request_path.exists() and a.q.r.read(request_path) != build_request(job):
+            raise RuntimeError('Failed actual model request differs')
+        transport_path = directory/'transport-result.json'
+        transport = a.q.r.read(transport_path) if transport_path.exists() else {}
+        requests = transport.get('requests', [])
+        if len(requests) > 1 or any(not request_path.exists() or r.get('requestSha256') != a.q.r.digest(request_path) for r in requests):
+            raise RuntimeError('Failed request count/hash differs')
+        events = transport.get('events', [])
+        usage_events = [e['response'] for e in events if isinstance(e.get('response'), dict) and e['response'].get('usage')]
+        if len(usage_events) > 1 or any(r.get('model') != 'gpt-6-astra' for r in usage_events):
+            raise RuntimeError('Failed response model/usage lineage differs')
+        usage = usage_events[0]['usage'] if usage_events else {}
         return {'name': entry['name'], 'status': saved['status'], 'rawVerified': False,
-                'qualification': 'Failed annotation is retained and cannot supply an accepted label'}
+                'fileHashes': hashes, 'requestCount': len(requests), 'usage': usage,
+                'inputTokens': usage.get('input_tokens'), 'outputTokens': usage.get('output_tokens'),
+                'qualification': 'Available failed-attempt files and request lineage preserved; missing usage remains unknown. This attempt cannot supply an accepted annotation.'}
     actual_job, effective = a.q.verify_teacher(directory)
     if actual_job != job or effective['selectedAttempt'] != 0 or len(effective['attempts']) != 1:
         raise RuntimeError('Unexpected input or extra teacher attempt')
@@ -53,8 +74,7 @@ def reconcile(entry):
             'validationErrors': errors, 'inputTokens': usage.get('input_tokens'),
             'outputTokens': usage.get('output_tokens'), 'usage': usage,
             'seconds': transport.get('seconds'),
-            'fileHashes': {str(p.relative_to(root)): a.q.r.digest(p)
-                           for p in directory.iterdir() if p.is_file()}}
+            'fileHashes': hashes}
 
 
 def audit(partial=False):
