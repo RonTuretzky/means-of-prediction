@@ -19,10 +19,16 @@ was explicitly released in the continuation directory.
 V3 is not promoted: on common completed factual pairs grounded hits declined
 55 to 44, while negative false claims and wrong-side synthetic claims increased.
 The separate 60-pair real-email answerability review is complete under model
-adjudication; consult its sealed findings and the narrower source-check protocol
-before any further experiment. Full V4 revisions, selection, and reserved-data
-evaluation remain on hold. Source-check execution is separately root-owned and
-must be read from its own current gates; this handoff does not launch it.
+adjudication. The paired source-check experiment is also complete and twice raw
+audited: quoted unsupported claims fell from 32 to 26 on 53 common completed
+insufficient-evidence cases, while both variants recovered the one answerable
+case. Replay variability and persistent unsupported claims prevent promotion.
+See [QWEN-SOURCE-CHECK-V1.md](QWEN-SOURCE-CHECK-V1.md); do not rerun it.
+
+The 202-call dual-Astra extension covering the remaining 101 real pairs is active;
+[REAL-ANSWERABILITY-REMAINING-V1.md](REAL-ANSWERABILITY-REMAINING-V1.md) owns its
+exact gate and attempt set. Preserve invalid annotations and do not retry them.
+Full V4 revisions, selection, and reserved-data evaluation remain on hold.
 
 ## Historical strategy snapshot — 2026-09-13
 

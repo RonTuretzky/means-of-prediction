@@ -86,6 +86,50 @@ python3 -m unittest test_qwen_source_check_v1 -v
 python3 qwen_source_check_v1.py verify
 ```
 
-Preparation has already occurred. `run` requires a hash-bound launch review and
-released local ownership. It is not a resume command. Results are added only
-after raw-response and runtime audits finish.
+Execution and two raw-response audits are complete. Do not rerun `run`: it is
+write-once execution, not a resume command. Local inference ownership is released.
+
+
+## Audited result
+
+All 110 requests completed with valid structured outputs. The five unavailable
+baseline rules remain five execution failures per variant; they were not replaced.
+The same 55 completed pairs contain 53 insufficient-evidence cases, one answerable
+case and one unresolved case.
+
+| Measure on the 55 common completed pairs | Baseline replay | Source-check paragraph |
+| --- | ---: | ---: |
+| Directional/conflicting claims on 53 insufficient cases | 41 | 36 |
+| Such claims surviving the exact-quote filter | 32 | 26 |
+| Correct answers on the one answerable case | 1 | 1 |
+
+Across the full 60-pair panel, the claim counts are unchanged, but the insufficient
+case denominator is 58 and each method retains five unavailable-rule failures.
+Neither denominator is population accuracy. One positive case cannot establish
+conditional accuracy or positive-case nonregression.
+
+The strict paired changes comprise eight withdrawn unsupported claims and three
+new ones; 33 persist and nine pairs abstain in both variants. With exact quotes,
+eight claims disappear and two appear. Two quoted withdrawals are only quote
+formatting losses; both quoted additions repair formatting without correcting the
+unsupported raw claim. Several abstentions still rely partly on hardened or
+invented prerequisites. The new paragraph does not reliably enforce source rules.
+
+The original historical baseline had 40 strict and 28 quoted claims on this pilot;
+its replay has 41 and 32. Only 50/55 strict decisions and 28/55 complete canonical
+JSON outputs agree across the old run and replay. Temperature zero and a fixed
+seed did not make this concurrently executed procedure reproduce every answer.
+The observed paired reduction therefore needs replication and more real positives;
+it is not evidence to promote this prompt or revise the published baseline bars.
+
+Input totals are 622,432 tokens for baseline replay and 636,732 for source-check
+(+2.30%); output totals are 5,718 and 6,017. Summed request times overlap under
+concurrency and are not wall-clock latency comparisons. This experiment did not
+change model weights, generated rules, private labels, contracts or live markets.
+
+Root raw audit SHA-256:
+`11faa7c3a2feee5494fae2d0addb3bf2db9249ed0e33bd23fd4533788cb4a5fa`.
+Independent reconstruction of all calls, unavailable rows, runtime, tokens and
+scores: `1fdee2b8ba9a7036788c7df47b192b5c0df0c13a606f5f52e684188fe2602d99`.
+Paired change review:
+`309d962f638c0d47b48011406f0d8e905faaf7d4b7b20a2f85c183a3c62f64f9`.
