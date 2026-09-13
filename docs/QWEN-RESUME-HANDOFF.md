@@ -1,6 +1,6 @@
 # Qwen research checkpoint and continuation
 
-## Continuation update — 2026-09-13 20:19 UTC
+## Continuation update — 2026-09-13 20:37 UTC
 
 The user subsequently authorized pushing the checkpoint and continuing the
 experiment until the usage limit. Commit `7f2b52ba733018013a3fc0e781e280a430a07afa`
@@ -60,7 +60,7 @@ and source/runtime-bound `v3-loop-launch-protocol.json` were independently
 reviewed. The V3 coordinator PID 86209 launched at 19:45:40 UTC. All 241 rules
 succeeded, and all 1,915 full requests passed the token preflight: 6,593,643 input
 tokens in total, maximum 16,154 per request. Judge PID 86480 and serial feedback
-PID 86481 started at 19:55:15 UTC. At this snapshot, 344 judgments and 15 feedback
+PID 86481 started at 19:55:15 UTC. At this snapshot, 591 judgments and 25 feedback
 shards were complete, with no fresh usage stop. The explicit
 `v3-local-released.json` marker
 permits root's later diagnostic while remaining remote feedback completes.
@@ -86,12 +86,12 @@ The separate dataset task checked NYT intake through 20:00:10 UTC and found no
 new messages since the 12:49 snapshot, with no failures. The empty check snapshot
 is `nyt-future-data-snapshot-20260913-200000`; root verified its four reported
 manifest hashes without reading email contents. Existing reservations remain
-unchanged. Root also preserved three finalized V3 control-error reviews, concerning
-unsupported administrative No decisions despite factual NEITHER; these are
-streaming observations, not aggregate performance or a reason to change inputs.
+unchanged. Root preserved five raw-audited V3 control-error reviews covering twelve cases: unsupported administrative No decisions, numeric comparisons, reversed participant roles, excluded actions and nonbinary deadline outcomes. The child also reviewed five correlated Apple abstentions. These are streaming observations, not aggregate performance or a reason to change frozen inputs.
 
 The future V4–V6 hierarchy helper is independently reviewed, with 15 focused
-tests and 74 total Qwen tests passing. No future optimizer inputs or calls exist.
+tests. The future full-round coordinator has 18 focused tests; 92 total Qwen
+tests pass. Root independently reran the coordinator tests after reviewing its
+failure-stop and in-flight-drain behavior. No future optimizer inputs or calls exist.
 Its mandatory audit/selection entry points and complete-review prerequisites are
 documented below. A read-only milestone watcher refreshes `PROGRESS.json`; reap it
 and all other writers before any selection.
@@ -446,6 +446,47 @@ After the selected source seal and all evaluation gates, change into
 `ROOT/sealed-source` and invoke the same pinned command with `final-audit`.
 Finalization rejects unsealed helpers or imported dependencies. Do not run the
 old final auditor directly for a study containing these future revisions.
+
+### Future full-round coordinator (reviewed preparation; not launched)
+
+After the future optimizer finishes and both complete prompts receive their exact
+`prompt-reviewed-v4.json` gate, prepare the guarded rule requests and the new
+`qwen_future_round_v1.py` launch protocol from `app/scripts/research/blind`:
+
+```sh
+uv run --python /opt/homebrew/bin/python3 --with tiktoken==0.14.0 python qwen_guarded_rules.py prepare --method v4 --workers 10
+uv run --python /opt/homebrew/bin/python3 --with tiktoken==0.14.0 python qwen_future_round_v1.py prepare --method v4
+# Root reviews the exact generation plan and full launch protocol before:
+uv run --python /opt/homebrew/bin/python3 --with tiktoken==0.14.0 python qwen_future_round_v1.py run --method v4
+```
+
+The generation directory's `reviewed.json` requires `approved: true` and
+`planSha256`. `ROOT/future-round-v1/v4/reviewed.json` requires `approved: true`,
+`protocolSha256`, `localQuiescenceConfirmed: true`, `predecessorCompletionHashes`
+matching the protocol, and distinct `retiredProcessIds`. Include every predecessor
+stage PID and all retired coordinator/probe/watcher PIDs relevant to local
+quiescence. V4 explicitly requires the known V3 coordinator PID **86209**; every
+listed PID must actually be dead. V5–V6 additionally verify the prior future
+coordinator's completed marker and PID. These are review gates, not autoapprovals.
+
+The protocol captures source snapshots, Python/Node identities, tokenizer,
+runtime, optimizer and generation plans, prompts, and predecessor completion
+hashes. A global coordinator lock and exclusive launch markers prevent duplicate
+owners or implicit restart. The sequence is scoped lineage audit, guarded rules,
+raw rule audit, full token preflight, then unchanged four-worker Qwen inference
+alongside one-worker full-evidence Astra feedback. An immutable feedback-stop
+marker handles a failed judge or invalid full-cohort release: the isolated
+feedback worker checks during wait sleeps and around each hosted call, drains any
+in-flight request, preserves its artifacts, and sends no next request. Global
+`time.sleep` and all pinned V3 sources remain unchanged.
+
+`v4-local-released.json` appears only after successful judge process exit and
+complete cohort validation, even while feedback continues. A fresh hosted usage
+stop prevents new requests; an already running judge can finish. Final audit uses
+the future dispatcher. The coordinator never selects a method, starts another
+round, opens reserved data, or launches a probe. Replace `v4` with `v5` or `v6`
+only after that method's own preparation and reviews; preserve every failed stage
+and reconcile explicitly before any recovery.
 
 Research tests, contract tests and app/script checks are recorded with the final
 checkpoint result. Unit tests use synthetic fixtures; they do not reopen sealed
