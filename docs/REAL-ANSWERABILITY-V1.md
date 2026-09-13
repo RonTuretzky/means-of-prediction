@@ -82,6 +82,23 @@ before joining old method outputs. Report the full panel, the adjudicated
 answerable subset, errors, abstentions and unreviewed cases separately. Show
 source and timing blockers rather than folding them into extraction failure.
 
+The separate `real_answerability_score_v1.py` enforces the order: complete raw
+audit, explicit disposition of every panel pair, a write-once label seal, then
+loading the frozen original baseline outputs. It reports answerable-pair
+recovery, wrong sides, conflicts, abstentions and execution failures; an empty
+answerable denominator yields an undefined rate, never zero. Counts of distinct
+answerable emails and families accompany pair counts. The quote-filtered Qwen
+variant remains a separate result, and regex results measure candidate sides,
+not a complete source/time verifier. Eight focused scoring tests pass.
+
+Adjudication is performed by a model reviewer and is marked as such. A credible
+report, an official result and a consensus requirement are distinct. An email
+must contain enough evidence for a permitted branch; a link or unrelated photo
+credit does not establish corroboration. A missing calendar year or conflicting
+schedule must remain visible rather than being silently filled from old labels.
+Do not treat an untriggered fallback as an extra prerequisite for the ordinary
+branch. Missing evidence and ambiguous terms are not No outcomes.
+
 This stage does not touch reserved evaluation evidence or launch V4. The earlier
 V3 run was interrupted at 1,717 finalized records and remains incomplete pending
 reconciliation; no partial V3 quality score is used in this study.
