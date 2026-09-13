@@ -1,6 +1,6 @@
 # Qwen research checkpoint and continuation
 
-## Continuation update — 2026-09-13 19:53 UTC
+## Continuation update — 2026-09-13 20:19 UTC
 
 The user subsequently authorized pushing the checkpoint and continuing the
 experiment until the usage limit. Commit `7f2b52ba733018013a3fc0e781e280a430a07afa`
@@ -41,7 +41,7 @@ the judge is 4,927 characters, SHA-256
 `38fd8e474870deb938f8c3785e12d3956dffe92ef26ef22d546ae6229004747a`.
 This remains the same full-email, single-call, five-field judgment procedure.
 
-The local model is idle after the probes. A third diagnostic, under
+V3 local evaluation is now running. A third diagnostic, under
 `slides/qwen-basis-probe-20260913`, is frozen and independently reviewed with 16
 synthetic tests. It adds a compact entity/value/comparison record before the
 original five outputs, without repairing final answers from that record. It
@@ -57,24 +57,44 @@ public-only feeder after exact prompt review, with at most ten requests in
 flight and a persistent stop on the first usage-limit error. The exact plan
 `431bc0902a70b5bb9b53e78093eaabcb59e338c5417bb2d4b80bf79725f056e5`
 and source/runtime-bound `v3-loop-launch-protocol.json` were independently
-reviewed. The V3 coordinator PID 86209 launched at 19:45:40 UTC; 192/241 rules
-were complete at this snapshot, with no fresh usage stop. It proceeds through
-rule audit, exact full-input token preflight, four-worker local judging and
-serial full-body Astra feedback. The explicit `v3-local-released.json` marker
+reviewed. The V3 coordinator PID 86209 launched at 19:45:40 UTC. All 241 rules
+succeeded, and all 1,915 full requests passed the token preflight: 6,593,643 input
+tokens in total, maximum 16,154 per request. Judge PID 86480 and serial feedback
+PID 86481 started at 19:55:15 UTC. At this snapshot, 344 judgments and 15 feedback
+shards were complete, with no fresh usage stop. The explicit
+`v3-local-released.json` marker
 permits root's later diagnostic while remaining remote feedback completes.
 Do not run the older eager generation command for V3. Inspect current processes
 and private artifacts before resuming; this paragraph is a timestamped snapshot.
 
 A fourth diagnostic, `slides/qwen-crossed-probe-20260913`, crosses baseline/V3
 rules and judge prompts on the same twelve old-development cases. Its panel and
-cyclic order are already frozen, and the code passed independent review and nine
-tests. Exact requests are prepared only after all V3 rule records are frozen;
-preparation never reads V3 judgments. Actual inference must follow full V3
+cyclic order are frozen, and the code passed independent review and nine tests.
+All 48 exact requests were prepared after V3 rule freezing and independently
+verified without reading V3 judgments. Its input freeze is
+`446cf7feab76dd857050efe9113e1bee7d2bef93b76b264be27c18bcd796a3ea`,
+and review SHA-256 is
+`9c9120d5cc618280bdfbea0ea062828d8b17e449cbf8551f96e5a8bbaa4c0ec9`.
+Actual inference must follow full V3
 completion, local release, basis-probe completion and a separate execution gate.
 All 48 planned rows remain in reporting, including unavailable rules without
 replacement calls. Original baseline and V3 replays help qualify observed
 differences. This diagnostic has no automatic selection eligibility. Source-only
 copies are archived under `docs/research-checkpoint/crossed-probe`.
+
+The separate dataset task checked NYT intake through 20:00:10 UTC and found no
+new messages since the 12:49 snapshot, with no failures. The empty check snapshot
+is `nyt-future-data-snapshot-20260913-200000`; root verified its four reported
+manifest hashes without reading email contents. Existing reservations remain
+unchanged. Root also preserved three finalized V3 control-error reviews, concerning
+unsupported administrative No decisions despite factual NEITHER; these are
+streaming observations, not aggregate performance or a reason to change inputs.
+
+The future V4–V6 hierarchy helper is independently reviewed, with 15 focused
+tests and 74 total Qwen tests passing. No future optimizer inputs or calls exist.
+Its mandatory audit/selection entry points and complete-review prerequisites are
+documented below. A read-only milestone watcher refreshes `PROGRESS.json`; reap it
+and all other writers before any selection.
 
 New private root reviews are `v2-and-order-probe-review.private.json` and
 `predicate-probe-review.private.json` in `slides/parallel-track-review-20260913`.
@@ -372,6 +392,60 @@ on final selection, fresh audit and completed supplemental evaluation; it cannot
 reselect. Date metadata comes from the signed email Date header, not DKIM `t`.
 
 ## Checkpoint validation and limits
+
+### Future V4–V6 hierarchy (reviewed 2026-09-13; not started)
+
+`qwen_future_hierarchy_v1.py` preserves the pinned V3 implementation. Do not
+prepare V4 until V3's full local evaluation and feedback are complete and the
+order, predicate, basis and crossed probes have completed raw-response and score
+audits. Its private directory is `ROOT/future-hierarchy-v1/v4` (then `v5` or `v6`).
+Create the reviewed `focus.txt` and `focus-reviewed.json` there first. The review
+requires `approved: true`, `focusSha256`, an existing `anchorMethod`,
+`v3LocalReleaseSha256`, and `probeSummaryHashes` keyed by all four probe names.
+It also requires `probeAuditReviews` under the same names: each entry has `path`,
+`sha256`, and `fullRawResponseAndScoreAudit: true`, binding the prior independent
+audit. Optional `additionalReviewHashes` maps approved development review paths
+to exact hashes. These fields attest to completed reviews, never prospective ones.
+
+From `app/scripts/research/blind`, use the pinned tokenizer with the existing
+Python 3.14.6 executable; Python 3.12 fails the archived probe runtime seals:
+
+```sh
+mop_future() {
+  uv run --python /opt/homebrew/bin/python3 --with tiktoken==0.14.0 python qwen_future_hierarchy_v1.py "$@"
+}
+mop_future capture --method v4
+# Review proposed-job.private.json and proposal-sources.json; write
+# proposal-reviewed.json: approved, proposalSha256, sourcesSha256.
+mop_future prepare --method v4
+# Review all exact shards and token counts; write
+# meta-reviewed.json: approved, planSha256.
+mop_future meta --method v4
+mop_future prepare-final --method v4
+# Review final job and preflight; write
+# optimizer-reviewed.json: approved, planSha256, jobSha256.
+mop_future optimize --method v4
+```
+
+Every prior full teacher lesson is covered once, with current fragment manifests
+and source hashes. Each probe contributes its same 12 cases and every declared
+variant, including unavailable records. Raw responses remain complete and request
+factoring reconstructs original content. Snapshot verifies seals, response coverage
+and raw hashes; it does **not** independently rederive the previously audited probe
+scores. The final optimizer sees explicitly lossy meta summaries. Hosted meta and
+optimizer calls are serial, single-attempt and obey the persistent usage stop.
+Review the resulting prompts and guarded rule plan separately before any full
+development run; this helper does not launch it.
+
+Once a future hierarchical optimizer exists, use `mop_future audit` and
+`mop_future select`, including from later coordinators. The scoped dispatcher
+retains V3's original verifier, audits V4–V6 independently and rejects unknown
+methods. Bare `qwen_round1.py audit` deliberately fails closed for future jobs.
+Quiesce every writer before selection and keep selection stdout outside `ROOT`.
+After the selected source seal and all evaluation gates, change into
+`ROOT/sealed-source` and invoke the same pinned command with `final-audit`.
+Finalization rejects unsealed helpers or imported dependencies. Do not run the
+old final auditor directly for a study containing these future revisions.
 
 Research tests, contract tests and app/script checks are recorded with the final
 checkpoint result. Unit tests use synthetic fixtures; they do not reopen sealed
