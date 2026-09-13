@@ -91,3 +91,10 @@ new labels after the full raw gate and then joins the two immutable baselines.
 Seven tests and independent code review cover exact cohort/label/raw coverage,
 incomplete-review exclusions, quotes, and strict versus factual decisions.
 No combined result exists until adjudication and that seal complete.
+
+After the full raw audit, `app/scripts/research/answerability/prepare_review_v1.py`
+exports every complete email, original market terms and both annotations to a
+private reading directory. It refuses to overwrite existing review material.
+The export creates no labels and never loads baseline predictions. Review every
+pair explicitly, including annotator agreements, and preserve incomplete pairs
+as unresolved before running `combined_v1.py seal`, then `combined_v1.py score`.
