@@ -1,6 +1,30 @@
 # Qwen research checkpoint and continuation
 
-## Strategy review — 2026-09-13
+## Current handoff — 2026-09-13, after the bounded V3 continuation
+
+**Read [QWEN-V3-INTERRUPTION-CONTINUATION.md](QWEN-V3-INTERRUPTION-CONTINUATION.md)
+first. The older run instructions and snapshots below are historical. Do not
+restart V2, the completed probes, or the original V3 coordinator.**
+
+The user approved the real-data-first redesign. The original V3 run terminated
+before completion; its exact cause is unverified. A separately reviewed runner
+completed only its 194 provably unattempted local requests, all successfully.
+The combined accounting has 1,910 valid judgments, one original capped failure,
+and four uncertain original requests that were never retried. All 11,751 original
+artifacts remain unchanged; original V3 completion/release/summary markers remain
+absent. Seventy teacher shards are complete and one is uncertain; no hosted
+feedback was resumed. The separate raw/runtime audit passed and local ownership
+was explicitly released in the continuation directory.
+
+V3 is not promoted: on common completed factual pairs grounded hits declined
+55 to 44, while negative false claims and wrong-side synthetic claims increased.
+The separate 60-pair real-email answerability review is complete under model
+adjudication; consult its sealed findings and the narrower source-check protocol
+before any further experiment. Full V4 revisions, selection, and reserved-data
+evaluation remain on hold. Source-check execution is separately root-owned and
+must be read from its own current gates; this handoff does not launch it.
+
+## Historical strategy snapshot — 2026-09-13
 
 The latest user instruction is to re-strategize and improve the research loop.
 Finish and audit the frozen V3 run, but hold further full prompt revisions during
@@ -518,7 +542,7 @@ preserved privately; do not restart them or copy their fresh labels into Qwen.
 The current deployed market path has one affirmative predicate plus deadline NO;
 it does not implement the research two-predicate conflict policy.
 
-Suggested opening instruction for a different coordinator model:
+Historical opening instruction (superseded; retained for provenance):
 
 > Read docs/QWEN-RESUME-HANDOFF.md and the private ROOT-REVIEW-STATUS.md. Continue
 > from the existing immutable artifacts. Inspect live processes before restarting.
@@ -527,3 +551,14 @@ Suggested opening instruction for a different coordinator model:
 > and decide the next useful development method before opening any reserved data.
 > Preserve failures, account for all calls, do not publish private email material,
 > and do not deploy or promote a live settlement method.
+
+Current opening instruction for a different coordinator model:
+
+> Read docs/QWEN-V3-INTERRUPTION-CONTINUATION.md, the current banner above,
+> docs/RESEARCH-LOOP-REDESIGN.md, and the current source-check handoff. Inspect
+> actual processes and immutable artifacts before acting. V2 and its two probes
+> are done; original V3 remains interrupted, with a completed 194-only continuation
+> and four unretried unknown responses. Do not recreate old completion markers,
+> restart those requests, run V4, or open reserved data. Continue only the reviewed
+> real-data-first work within its current exact gates. Preserve failures and all
+> provenance; never publish private email material or imply live promotion.
