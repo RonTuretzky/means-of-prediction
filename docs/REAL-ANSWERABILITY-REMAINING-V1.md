@@ -2,8 +2,11 @@
 
 Prepared September 13, 2026. Preparation made no model requests. After exact
 parent review, the 202-call run launched at **23:00:41 UTC**, PID **79995**,
-exec session **15847**. It is running; no completed raw gate or labels are claimed.
-Inspect current artifacts before acting and never restart this attempt set.
+exec session **15847**, and exited successfully at **23:32:46 UTC**.
+The full raw audit passed all 202 responses: 200 valid annotations and two
+invalid exact-quote responses, leaving **99 of 101 pairs eligible for
+adjudication**. No requests were retried and no usage-limit stop occurred.
+The process has exited; never restart this attempt set.
 This extends the completed 60-pair review to the exact remaining 101 of the 161
 natural development pairs. It is exhaustive completion of that existing set,
 not a new independent sample or a new prompt-training round.
@@ -56,6 +59,13 @@ The completed launch review has SHA-256
 The first eight completed responses passed a separate raw integrity check;
 that early check does not establish complete coverage or authorize adjudication.
 
+The completed full raw audit has SHA-256
+`32c01acf1a24a901c3d8fdabb7b1336bbfabfc3a477c95936a9d76b0c6211ce5`.
+It verifies all 202 unique attempts, complete raw lineage, pinned sources, and
+the unchanged prior study. Actual usage was 1,943,429 input tokens and 224,048
+output tokens, with 7,662.807 summed request seconds and no missing accounting.
+The two invalid responses affect distinct pairs, which must remain unresolved.
+
 Four bounded workers check the shared hosted usage stop before replacements and
 before calls. An exclusive attempt marker prevents repeated or uncertain work
 from being reused. Already running requests drain after a usage stop; no new
@@ -98,3 +108,9 @@ private reading directory. It refuses to overwrite existing review material.
 The export creates no labels and never loads baseline predictions. Review every
 pair explicitly, including annotator agreements, and preserve incomplete pairs
 as unresolved before running `combined_v1.py seal`, then `combined_v1.py score`.
+
+
+The subsequent root adjudication and combined baseline comparison are complete.
+See [full findings](REAL-ANSWERABILITY-FULL-V1-FINDINGS.md): the 161-pair union has
+one answerable, 157 insufficient and three unresolved pairs. This completion
+does not authorize retries, overwrite the original pilot, or promote a model.

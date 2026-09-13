@@ -18,13 +18,16 @@ an age interrupts the expected name/verb adjacency, and victim context appears
 in the headline rather than the adjacent summary. Matching keywords globally
 would combine unrelated stories in that same newsletter.
 
-## Finish the evidence benchmark before another full optimization round
+## Completed evidence review; preserve its boundaries
 
-Complete the exact remaining-pair annotation attempt set, raw-audit every
-planned disposition, adjudicate both valid reviews against original terms and
-full email, and seal labels before joining the unchanged baseline scores.
-Invalid or incomplete dual reviews remain unresolved. Publish the full selected
-161-pair accounting, not only the successful annotations or answerable cases.
+The full selected inventory is now accounted for: one answerable pair, 157
+insufficient and three unresolved. See [the completed findings](REAL-ANSWERABILITY-FULL-V1-FINDINGS.md).
+The procedure below is complete and must not be rerun as a new attempt set.
+
+The review accounted for every planned annotation, adjudicated valid pairs
+against original terms and full email, and sealed labels before joining
+unchanged baseline scores.
+Invalid or incomplete dual reviews remain unresolved. The published 161-pair accounting retains every disposition.
 Retain the original 60-pair result as a separate historical pilot.
 
 Use the new public market captures to prepare a separately versioned input with

@@ -25,9 +25,13 @@ insufficient-evidence cases, while both variants recovered the one answerable
 case. Replay variability and persistent unsupported claims prevent promotion.
 See [QWEN-SOURCE-CHECK-V1.md](QWEN-SOURCE-CHECK-V1.md); do not rerun it.
 
-The 202-call dual-Astra extension covering the remaining 101 real pairs is active;
-[REAL-ANSWERABILITY-REMAINING-V1.md](REAL-ANSWERABILITY-REMAINING-V1.md) owns its
-exact gate and attempt set. Preserve invalid annotations and do not retry them.
+The 202-call dual-Astra extension is complete and raw-audited. The combined
+161-pair result is one answerable, 157 insufficient and three unresolved, including
+two retained invalid-review pairs. Quoted baseline Qwen claims settlement on
+80 insufficient pairs. Read [REAL-ANSWERABILITY-FULL-V1-FINDINGS.md](REAL-ANSWERABILITY-FULL-V1-FINDINGS.md)
+and [RESEARCH-NEXT-STEPS-20260913.md](RESEARCH-NEXT-STEPS-20260913.md) before
+continuing. All local/hosted runs in this continuation have exited; do not restart
+write-once attempts or repair invalid reviews in place.
 Full V4 revisions, selection, and reserved-data evaluation remain on hold.
 
 ## Historical strategy snapshot — 2026-09-13
