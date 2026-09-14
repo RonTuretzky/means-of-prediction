@@ -1,5 +1,14 @@
 # Qwen research checkpoint and continuation
 
+## Start with the consolidated September 14 handoff
+
+Read [AGENT-HANDOFF-20260914.md](AGENT-HANDOFF-20260914.md) first. The historical
+market import, 3,308,079-market catalog, and separate dispute mapping are now
+complete. That handoff contains verified final counts, exact private paths,
+the NYT access diagnosis, and next actions. Older progress snapshots and launch
+commands below are historical; they are not instructions to restart completed
+work or open reserved data.
+
 ## Latest addition — separate dispute index
 
 See [DISPUTED-MARKETS-INDEX-20260914.md](DISPUTED-MARKETS-INDEX-20260914.md) and
