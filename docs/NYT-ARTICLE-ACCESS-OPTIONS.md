@@ -4,6 +4,23 @@ September 13, 2026. This is an access-and-rights note, not a claim that an
 article corpus has been collected. It follows the recorded result that the
 20-link publisher-request pilot produced no article text.
 
+## Clarification after the user signed in — September 14
+
+The user reports having an NYT subscription and being signed in. The archived
+browser-policy event is
+`~/.local/share/means-of-prediction/article-access-pilot-20260913T223148Z/browser-access-policy-event.v1.json`.
+It records `blocked_before_navigation` with the reason: “The site-safety policy
+blocks browser use on the requested www.nytimes.com article.” No navigation,
+login inspection, automatic approval review or user permission prompt occurred.
+This does not establish that the user's subscription or session failed.
+
+Separately, the 20 ordinary HTTP retrieval chains were unauthenticated and
+received terminal 403 challenge responses. They did not use the user's browser
+session. The immediate obstacle is the lack of a working permitted full-text
+retrieval path through these tools. Do not describe a publisher licence or
+missing subscription as the diagnosed technical failure. Locally supplied
+article exports can use the existing importer.
+
 ## Finding
 
 The public NYT developer APIs can build a **metadata index**, but their
@@ -68,8 +85,8 @@ not a reason to seek a mirror, proxy, cache, or another bypass.
 ## Minimal-cost next actions
 
 1. Keep the already-held newsletters as the only retained NYT full-text
-   evidence and label all linked articles as unavailable until rights are
-   obtained.
+   evidence and label linked article bodies as unavailable until usable text
+   is obtained through an allowed route.
 2. If article selection/coverage work is useful before licensing, have an
    authorized project owner create one developer API application/key and make
    a low-rate metadata-only registry. Preserve raw JSON, retrieval time,
