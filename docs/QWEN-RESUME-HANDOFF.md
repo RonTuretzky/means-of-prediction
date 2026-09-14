@@ -1,5 +1,14 @@
 # Qwen research checkpoint and continuation
 
+## Latest addition — separate dispute index
+
+See [DISPUTED-MARKETS-INDEX-20260914.md](DISPUTED-MARKETS-INDEX-20260914.md) and
+[DISPUTED-MARKETS-TRAINING.md](DISPUTED-MARKETS-TRAINING.md) for source coverage,
+private artifact paths and the disabled-by-default curriculum. Raw dispute
+history is not a training label. Both current and later-settled disputes remain
+in scope; all old experiments remain frozen.
+
+
 ## Latest continuation — article data preparation, September 14
 
 Read [ARTICLE-EXPANSION-20260914.md](ARTICLE-EXPANSION-20260914.md),

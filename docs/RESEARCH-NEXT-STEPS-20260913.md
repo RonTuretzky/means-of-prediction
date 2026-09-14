@@ -4,6 +4,23 @@ September 13, 2026. This is a continuation plan, not a launched training run,
 production change or measured improvement. Keep the existing regex and Qwen
 baselines, raw failures and reserved evaluation data unchanged.
 
+## Disputed-market cohort — September 14
+
+The user also requested a separate all-history dispute index and future training
+against it. See [the dispute index](DISPUTED-MARKETS-INDEX-20260914.md) and
+[training admission](DISPUTED-MARKETS-TRAINING.md). Index first challenges as well
+as escalated disputes, including requests that later settled and those still
+unresolved. Report exact source coverage and unresolved market joins; do not
+call a current-status filter a complete historical dataset.
+
+Use this as a separately reported challenge cohort for both regex and Qwen.
+Preserve observed oracle settlements separately from reviewed factual and
+answerability labels. Keep connected markets and repeat requests together,
+quarantine prior evaluation overlaps, and admit no case without an evidence and
+label review. The proposed 20% cap for reviewed disputed training cases is an
+initial configuration, not a measured optimum; evaluation strata stay separate.
+This addition does not reopen or modify existing frozen experiments.
+
 ## Article expansion update — September 14
 
 See the [article expansion checkpoint](ARTICLE-EXPANSION-20260914.md) for exact
