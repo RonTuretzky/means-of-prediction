@@ -1,0 +1,16 @@
+{
+  "synthetic_fixture": true,
+  "response": {
+    "docs": [
+      {
+        "_id": "nyt://article/synthetic-001",
+        "web_url": "https://www.nytimes.com/2026/09/01/example.html",
+        "pub_date": "2026-09-01T12:00:00+00:00",
+        "headline": {"main": "Synthetic archive headline"},
+        "abstract": "Synthetic metadata abstract, not an article body.",
+        "snippet": "Synthetic metadata snippet.",
+        "lead_paragraph": "Synthetic lead metadata."
+      }
+    ]
+  }
+}

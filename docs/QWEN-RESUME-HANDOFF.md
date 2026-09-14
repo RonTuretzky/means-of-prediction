@@ -1,5 +1,20 @@
 # Qwen research checkpoint and continuation
 
+## Latest continuation — article data preparation, September 14
+
+Read [ARTICLE-EXPANSION-20260914.md](ARTICLE-EXPANSION-20260914.md),
+[RESEARCH-NEXT-STEPS-20260913.md](RESEARCH-NEXT-STEPS-20260913.md) and
+[ARTICLE-CORPUS-PIPELINE.md](ARTICLE-CORPUS-PIPELINE.md) first. The new RSS registry
+has 178 distinct article URL identities, 215 metadata occurrences and zero full
+bodies. The corrected market universe is
+`~/.local/share/means-of-prediction/article-market-universe-20260913-v3/`.
+Use neither earlier freezer output nor metadata as article-body evidence.
+All prior regex/Qwen results and sealed attempts remain unchanged. Full-text
+access is still missing; no inference/training was started in this phase.
+The collection and market-freeze commands are write-once and already completed;
+do not rerun them into their existing directories.
+
+
 ## Current handoff — 2026-09-13, after the bounded V3 continuation
 
 **Read [QWEN-V3-INTERRUPTION-CONTINUATION.md](QWEN-V3-INTERRUPTION-CONTINUATION.md)

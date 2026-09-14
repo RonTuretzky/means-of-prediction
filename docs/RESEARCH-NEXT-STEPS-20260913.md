@@ -4,6 +4,35 @@ September 13, 2026. This is a continuation plan, not a launched training run,
 production change or measured improvement. Keep the existing regex and Qwen
 baselines, raw failures and reserved evaluation data unchanged.
 
+## Article expansion update — September 14
+
+See the [article expansion checkpoint](ARTICLE-EXPANSION-20260914.md) for exact
+artifacts and the remaining steps. The source preparation phase has advanced. Eight publisher RSS feeds yielded
+215 metadata occurrences representing 178 distinct URL identities. Zero full
+article bodies were collected. Raw feeds and normalized records were privately
+archived and independently reconstructed. See [RSS capture](NYT-RSS-REGISTRY-20260913.md).
+
+A separate 1,000-market development sample is frozen from 422,952 eligible
+cached markets, with one market per sampled event and all 253 previously
+exposed/reserved IDs excluded. Only the v3 freeze is valid for further work.
+See [market inventory](ARTICLE-DATASET-INVENTORY-20260913.md).
+
+The [local article importer](ARTICLE-CORPUS-PIPELINE.md) now preserves API
+metadata separately from declared complete or partial article exports. It
+retains versions, hashes original and normalized bytes, rejects tampering, and
+records unknown publication precision. It does not obtain full text or establish
+source admissibility. The RSS registry was collected before the market v3
+freeze; this batch is retrospective discovery, not a prospective blind test.
+
+The remaining critical path is unchanged: obtain usable article text, review
+source admissibility and answerability against original market terms, separate
+event groups, freeze evaluation inputs and gates, then compare both candidate
+paths with a contemporary baseline. No new model evaluation or weight training
+was launched for this metadata expansion. Earlier accuracy results remain
+unchanged. A local export or permitted content service is the missing input;
+the public NYT APIs do not supply full bodies. Do not repeat blocked article
+requests or replace missing bodies with feed summaries.
+
 ## What the completed diagnostics changed
 
 More prompt detail has not reliably improved settlement. The source-check
