@@ -67,6 +67,11 @@ a new test set to support a fresh unseen-performance claim.
 
 ## Model and token accounting
 
+> **Update 2026-09-14:** new generations use Claude Fable 5.1 through
+> `app/scripts/research/blind/fable_transport.py`; see
+> `docs/FABLE-GENERATOR-TRANSPORT.md`. The Astra transport described below
+> produced every completed round and remains in place for their reconciliation.
+
 `app/scripts/research/blind/astra_transport.py` uses the installed Codex sign-in
 as an isolated, tool-free model transport. A capability-protected loopback
 adapter replaces all incoming workspace/history context with an audited

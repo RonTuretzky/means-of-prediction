@@ -187,6 +187,7 @@ cd app && pnpm e2e                # 9 Playwright flows on an isolated anvil (por
 - [Connect your mailbox and enable settlement](docs/EMAIL-ACCESS.md).
 - [Daily Polymarket/email retrospective research](docs/DAILY-RESEARCH.md).
 - [NYT-specific Astra prompt optimization and blind rule generation](docs/BLIND-NYT-PROMPT-RESEARCH.md).
+- [Blind generator transport: Claude Fable 5.1 replaces Astra](docs/FABLE-GENERATOR-TRANSPORT.md).
 - [Platform fee configuration and collection](docs/FEES.md).
 
 The unused ZK circuit experiment and its dependencies have been removed. Settlement

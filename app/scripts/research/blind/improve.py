@@ -5,7 +5,7 @@ Research metrics are text-detector metrics, not authorization to settle markets.
 """
 import argparse, collections, concurrent.futures, datetime, hashlib, json, os, statistics
 from pathlib import Path
-from astra_transport import run
+from fable_transport import run
 from experiment import BASE, ROOT, PUBLIC_KEYS, generate, hash_value, load, output_from, save, select_panel, base_prompt
 from matcher import score, compile_pattern, search
 

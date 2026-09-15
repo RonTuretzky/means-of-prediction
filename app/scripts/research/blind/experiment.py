@@ -1,7 +1,12 @@
-"""Resumable Astra/NYT experiment. Progress logs contain counters, not email text."""
+"""Resumable blind-generator/NYT experiment. Progress logs contain counters, not email text.
+
+New generations use the Claude Fable 5.1 transport. Frozen rounds were generated
+through the Astra transport; their artifacts are still read by output_from.
+"""
 import argparse, collections, concurrent.futures, datetime, hashlib, json, os, time
 from pathlib import Path
-from astra_transport import run
+import fable_transport
+from fable_transport import run
 from matcher import score
 
 BASE=Path.home()/'.local/share/means-of-prediction/slides'
@@ -17,6 +22,8 @@ def save(path,value):
     temporary.write_text(json.dumps(value,ensure_ascii=False,indent=2));temporary.replace(path)
 
 def output_from(result,directory=None):
+    if result.get('provider')==fable_transport.PROVIDER:return fable_transport.output_from(result,directory)
+    # Legacy Astra (Codex Responses) transport shape, kept for frozen-round reconciliation.
     events=result.get('events',[])
     if not events:return None,{},'transport_failed'
     response=events[-1].get('response',{})
