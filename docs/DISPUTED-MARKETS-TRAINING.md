@@ -114,3 +114,19 @@ one underlying event, and propagate overlap quarantine across them. Missing
 event-family metadata must be reviewed before calling any future test split
 independent. Public packets include an opaque `cohortGroup` to link them to the
 private admission audit without exposing dispute or payout fields.
+
+## Version 2 admission input (2026-09-14)
+
+`app/scripts/research/disputes/prepare_gamma_from_map.py` turns the completed
+dispute-to-catalog map into the Gamma-style input this pipeline expects: one
+row per distinct catalog market version and `eventGroupId`, bound in
+`sourceRefs` to the mapping manifest, the catalog version and every dispute
+event that mapped to it, with only the classifier-read status fields lifted
+from private state. It verifies every input hash and every event's raw line
+hash and question ID before emitting a row, and writes `plan.json` and
+`observations.json` (unmatched and unmapped requests, never admissions).
+The v2 artifact lives beside v1 under a new write-once directory; its counts
+are recorded in `docs/AGENT-HANDOFF-20260914.md`. Nothing is admitted to
+training by it: every record stays `evidence_pending` with label review
+required.
+

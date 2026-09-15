@@ -161,9 +161,21 @@ occurrences are distinct from the 34 requests without verified question keys.
 The earlier admission artifact at
 `/Users/wk/.local/share/means-of-prediction/disputed-training-cohort-20260914-v1`
 still says all 3,879 groups are `mapping_pending`. That old artifact was not
-rewritten. A future version must integrate the new mapping, propagate prior-ID
-quarantines across connected events, and review evidence/labels. Current reviewed
-training admissions remain zero. Proposed 20% disputed-case curriculum share is
+rewritten. The integrated version is
+`/Users/wk/.local/share/means-of-prediction/disputed-training-cohort-20260914-v2`
+(built 2026-09-14 by `app/scripts/research/disputes/prepare_gamma_from_map.py`
+plus the unchanged cohort CLI, seed `disputed-cohort-v2`): the mapping is
+reshaped into 2,401 catalog-version Gamma rows bound to every dispute event,
+giving 3,025 connected groups, 1,531 of them with evidence-pending records
+(4,912 records; 2,892 event-confirmed, 2,020 API-history-only; grouped
+80/10/10 split 3,931/464/517) and 2,385 public judge packets. Quarantine:
+1,494 `mapping_pending` groups are exactly the 1,601 unmatched map rows with
+no catalog version; 381 `api_status_unknown_linked_to_affirmative_evidence`
+entries; zero prior-ID overlaps (checked against all four registries), zero
+event conflicts. `observations.json` retains the 1,601 unmatched rows and the
+34 unmapped requests (23 pending ancillary-hash joins, 11 other requesters)
+as coverage observations. Reviewed training admissions remain zero and no
+training was launched. Proposed 20% disputed-case curriculum share is
 a starting configuration, not a measured optimum, and is disabled.
 
 Source modules:
