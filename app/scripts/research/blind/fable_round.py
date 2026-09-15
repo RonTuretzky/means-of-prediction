@@ -90,7 +90,8 @@ def leak_terms(root):
 
 def review_prompts(generator, judge, terms):
     checks = {'generatorNonEmpty': bool(generator.strip()), 'judgeNonEmpty': bool(judge.strip()),
-              'generatorFields': all(f in generator for f in GENERATOR_FIELDS), 'judgeFields': all(f in judge for f in JUDGE_FIELDS),
+              # The judge's strict JSON schema enforces its fields; the prompt must still name most of them (the Astra baseline names four).
+              'generatorFields': all(f in generator for f in GENERATOR_FIELDS), 'judgeFields': sum(f in judge for f in JUDGE_FIELDS) >= 4,
               'generatorLength': len(generator) <= PROMPT_LIMITS['generator'], 'judgeLength': len(judge) <= PROMPT_LIMITS['judge'],
               'noPrivateIdentifiers': not any(t in generator or t in judge for t in terms),
               'noAnswerTable': not any(marker in generator for marker in ['expectedOutcome', 'lookup table', 'answer key'])}

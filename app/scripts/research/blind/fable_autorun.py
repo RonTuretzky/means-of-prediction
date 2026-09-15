@@ -47,8 +47,12 @@ def guards(protocol):
     if len(ps) != 1 or not loaded or (loaded[0].get('contextLength') or loaded[0].get('loadConfig', {}).get('contextLength')) != runtime['contextLength']:
         raise RuntimeError('Pinned judge is not the single loaded LM Studio model with the pinned context')
     mine = ancestors()
-    others = subprocess.run(['pgrep', '-fl', 'python.*(qwen_round1.py|qwen_guarded|fable_autorun|fable_round)'], capture_output=True, text=True).stdout.splitlines()
-    others = [x for x in others if x.split(' ', 1)[0].isdigit() and int(x.split(' ', 1)[0]) not in mine]
+    def foreign(line):
+        pid, _, command = line.partition(' ')
+        if not pid.isdigit() or int(pid) in mine or command.startswith(('caffeinate', 'nohup')): return False
+        parent = subprocess.run(['ps', '-o', 'ppid=', '-p', pid], capture_output=True, text=True).stdout.strip()
+        return not (parent.isdigit() and int(parent) in mine)
+    others = [x for x in subprocess.run(['pgrep', '-fl', 'python.*(qwen_round1.py|qwen_guarded|fable_autorun|fable_round)'], capture_output=True, text=True).stdout.splitlines() if foreign(x)]
     if others: raise RuntimeError('Other round processes are running: '+'; '.join(others)[:500])
 
 def phase_done(phase, method):
