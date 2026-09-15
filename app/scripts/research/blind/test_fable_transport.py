@@ -69,6 +69,18 @@ class OutputFromTests(unittest.TestCase):
         self.assertEqual(output_from(self.wrap(envelope(None, text='not json')))[2], 'invalid_json')
         self.assertEqual(output_from({'provider': fable_transport.PROVIDER, 'events': []}), (None, {}, 'transport_failed'))
 
+    def test_usage_limits_are_a_distinct_pause_status_with_a_reset_time(self):
+        limited = envelope(None, text="You've hit your session limit · resets 12:50am (America/New_York)", subtype='error_during_execution', is_error=True, models=())
+        self.assertEqual(output_from(self.wrap(limited))[2], 'usage_limited')
+        self.assertEqual(fable_transport.usage_limit(envelope({'a': 'x'})), None)
+        import datetime, zoneinfo
+        tz = zoneinfo.ZoneInfo('America/New_York'); now = datetime.datetime(2026, 9, 15, 0, 5, tzinfo=tz).timestamp()
+        reset = fable_transport.limit_reset_epoch(limited['result'], now=now)
+        self.assertEqual(datetime.datetime.fromtimestamp(reset, tz).strftime('%Y-%m-%d %H:%M'), '2026-09-15 00:50')
+        later = datetime.datetime(2026, 9, 15, 1, 0, tzinfo=tz).timestamp()
+        self.assertEqual(datetime.datetime.fromtimestamp(fable_transport.limit_reset_epoch(limited['result'], now=later), tz).strftime('%Y-%m-%d %H:%M'), '2026-09-16 00:50')
+        self.assertIsNone(fable_transport.limit_reset_epoch('no reset info'))
+
     def test_experiment_dispatches_by_provider_and_keeps_legacy_shape(self):
         self.assertEqual(experiment.output_from(self.wrap(envelope({'a': 'x'})))[0], {'a': 'x'})
         legacy = {'events': [{'response': {'model': 'gpt-6-astra', 'status': 'completed', 'usage': {},
@@ -104,9 +116,32 @@ class RunTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             state = run(JOB, d, runner=runner(envelope(None, text='Budget exceeded', subtype='error_max_budget_usd', is_error=True), exit_code=1))
             self.assertEqual(len(FakeProcess.calls), 1)
-            self.assertEqual(state['requests'][0]['status'], 'error'); self.assertEqual(state['subtype'], 'error_max_budget_usd')
-            self.assertIn('error_max_budget_usd', state['serviceErrors'][0])
-            self.assertEqual(experiment.output_from(state)[2], 'error_max_budget_usd')
+            self.assertEqual(state['requests'][0]['status'], 'error'); self.assertEqual(state['subtype'], 'error_max_budget_usd'); self.assertNotIn('usageLimit', state)
+            self.assertIn('error_max_budget_usd', state['serviceErrors'][0]); self.assertEqual(experiment.output_from(state)[2], 'error_max_budget_usd')
+            with patch.object(fable_transport, 'LIMIT_GATE', Path(d)/'gate.json'), patch.object(fable_transport, 'LIMIT_POLICY', 'stop'):
+                limited = run(JOB, Path(d)/'l', runner=runner(envelope(None, text="You've hit your session limit · resets 1pm (America/New_York)", subtype='error_during_execution', is_error=True, models=()), exit_code=1), sleeper=lambda s: None)
+            self.assertEqual(limited['usageLimit']['message'][:22], "You've hit your sessio"); self.assertIsNotNone(limited['usageLimit']['resetsAtEpoch'])
+            self.assertEqual(len(limited['requests']), 1); self.assertNotIn('limitWaits', limited)
+            self.assertEqual(experiment.output_from(limited)[2], 'usage_limited')
+
+    def test_wait_policy_pauses_until_reset_then_resubmits_the_same_request(self):
+        import datetime, zoneinfo
+        tz = zoneinfo.ZoneInfo('America/New_York'); base = datetime.datetime(2026, 9, 15, 12, 0, tzinfo=tz).timestamp()
+        limited = envelope(None, text="You've hit your session limit · resets 1pm (America/New_York)", subtype='error_during_execution', is_error=True, models=())
+        answers = iter([limited, envelope({'a': 'after-reset'})]); slept = []
+        def popen(argv, **kw): return FakeProcess(argv, exit_code=0, out=json.dumps(next(answers)), **kw)
+        with tempfile.TemporaryDirectory() as d, patch.object(fable_transport, 'LIMIT_GATE', Path(d)/'gate.json'), patch.object(fable_transport, 'LIMIT_POLICY', 'wait'):
+            state = run(JOB, Path(d)/'w', runner=popen, sleeper=slept.append, clock=lambda: base)
+            self.assertEqual([r['status'] for r in state['requests']], ['error', 'ok'])
+            self.assertEqual(state['requests'][0]['requestSha256'], state['requests'][1]['requestSha256'])
+            self.assertEqual(state['limitWaits'][0]['reason'], 'usage-limit'); self.assertAlmostEqual(sum(slept), 3600+fable_transport.RESET_GRACE_SECONDS, delta=1)
+            self.assertEqual(experiment.output_from(state, Path(d)/'w'), ({'a': 'after-reset'}, state['events'][-1]['usage'], 'completed'))
+            self.assertEqual(json.loads((Path(d)/'gate.json').read_text())['resetsAtEpoch'], base+3600)
+            # A concurrent worker sees the published gate and waits before submitting.
+            slept.clear(); FakeProcess.calls.clear()
+            state2 = run(JOB, Path(d)/'x', runner=runner(envelope({'a': 'y'})), sleeper=slept.append, clock=lambda: base+600)
+            self.assertEqual(state2['limitWaits'][0]['reason'], 'shared-gate'); self.assertAlmostEqual(sum(slept), 3000+fable_transport.RESET_GRACE_SECONDS, delta=1)
+            self.assertEqual(len(FakeProcess.calls), 1)
 
     def test_unparseable_client_output_and_missing_executable_are_receipts(self):
         with tempfile.TemporaryDirectory() as d:

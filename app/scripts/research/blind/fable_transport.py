@@ -37,7 +37,7 @@ content or workspace text were present. Claude Code also makes one small
 Haiku side-call per run (session bookkeeping); it is recorded in
 ``modelUsage`` and does not contribute to the generated output.
 """
-import argparse, hashlib, json, os, shutil, subprocess, tempfile, time
+import argparse, hashlib, json, os, re, shutil, subprocess, tempfile, time
 from pathlib import Path
 
 MODEL = 'claude-fable-5-1'
@@ -45,6 +45,15 @@ PROVIDER = 'claude-code-cli'
 EFFORTS = ('low', 'medium', 'high', 'xhigh', 'max')
 DEFAULT_MAX_BUDGET_USD = float(os.environ.get('MOP_FABLE_MAX_BUDGET_USD', '8'))
 TIMEOUT_SECONDS = float(os.environ.get('MOP_FABLE_TIMEOUT_SECONDS', '1800'))
+# Sign-in usage limits are gates, not model answers. Under the 'wait' policy a
+# limited call sleeps until the reset named in the receipt and submits the same
+# frozen request again; every attempt is recorded. 'stop' keeps the single receipt.
+LIMIT_POLICY = os.environ.get('MOP_FABLE_LIMIT_POLICY', 'wait')
+MAX_LIMIT_WAITS = int(os.environ.get('MOP_FABLE_MAX_LIMIT_WAITS', '4'))
+MAX_LIMIT_WAIT_SECONDS = float(os.environ.get('MOP_FABLE_MAX_LIMIT_WAIT_SECONDS', str(6*3600)))
+LIMIT_GATE = Path(os.environ.get('MOP_FABLE_LIMIT_GATE', str(Path.home()/'.local/share/means-of-prediction/fable-hosted-limit-gate.json')))
+UNKNOWN_RESET_WAIT_SECONDS = 900.0
+RESET_GRACE_SECONDS = 120.0
 # Session-binding variables of the calling Claude Code process; the child must not inherit them.
 STRIP_ENV = {'CLAUDECODE', 'CLAUDE_CODE_ENTRYPOINT', 'CLAUDE_CODE_SESSION_ID', 'CLAUDE_CODE_CHILD_SESSION',
              'CLAUDE_CODE_MESSAGING_SOCKET', 'CLAUDE_CODE_MESSAGING_TOKEN', 'CLAUDE_PID', 'CLAUDE_CODE_EMIT_SESSION_STATE_EVENTS'}
@@ -99,13 +108,73 @@ def event_from(result):
     event['model'] = generation_model(result)
     return event
 
+LIMIT_PATTERN = re.compile(r"hit your (session|usage|weekly|daily) limit|usage limit|rate limit|out of (extra )?usage|resets? (at|in) ", re.IGNORECASE)
+RESET_PATTERN = re.compile(r"resets? (?:at )?(\d{1,2}(?::\d{2})?\s*[ap]m)(?:\s*\(([^)]+)\))?", re.IGNORECASE)
+
+def usage_limit(event):
+    """The limit message when the sign-in is usage-limited, else None. Never a model answer."""
+    text = str(event.get('result') or '')
+    if (event.get('is_error') or event.get('subtype') != 'success') and LIMIT_PATTERN.search(text):
+        return text[:500]
+    return None
+
+def limit_reset_epoch(message, now=None):
+    """Best-effort epoch seconds of the next reset named in a limit message; None if unparseable."""
+    import datetime, zoneinfo
+    match = RESET_PATTERN.search(message or '')
+    if not match:
+        return None
+    clock, zone = match.group(1).replace(' ', '').lower(), match.group(2) or 'America/New_York'
+    try:
+        tz = zoneinfo.ZoneInfo(zone)
+    except (KeyError, ValueError):
+        tz = zoneinfo.ZoneInfo('America/New_York')
+    fmt = '%I:%M%p' if ':' in clock else '%I%p'
+    try:
+        stamp = datetime.datetime.strptime(clock, fmt)
+    except ValueError:
+        return None
+    current = datetime.datetime.fromtimestamp(now if now is not None else time.time(), tz)
+    target = current.replace(hour=stamp.hour, minute=stamp.minute, second=0, microsecond=0)
+    if target <= current:
+        target += datetime.timedelta(days=1)
+    return target.timestamp()
+
+def gate_reset_epoch():
+    """Reset time of a limit observed by any concurrent call; None when clear."""
+    if not LIMIT_GATE.exists():
+        return None
+    try:
+        until = json.loads(LIMIT_GATE.read_text()).get('resetsAtEpoch')
+    except ValueError:
+        return None
+    return float(until) if until else None
+
+def gate_wait_seconds(now=None, cleared=0.0):
+    """Seconds until the published limit resets; 0 when clear or already waited out."""
+    until = gate_reset_epoch()
+    now = now if now is not None else time.time()
+    return max(0.0, until-now) if until and until > cleared else 0.0
+
+def record_gate(message, now=None):
+    """Publish the observed limit so concurrent workers pause instead of burning requests."""
+    now = now if now is not None else time.time()
+    reset = limit_reset_epoch(message, now) or now+UNKNOWN_RESET_WAIT_SECONDS
+    LIMIT_GATE.parent.mkdir(parents=True, exist_ok=True)
+    temporary = LIMIT_GATE.with_suffix('.tmp.'+str(os.getpid()))
+    temporary.write_text(json.dumps({'observedAt': now, 'message': message, 'resetsAtEpoch': reset}))
+    temporary.replace(LIMIT_GATE)
+    return reset
+
 def output_from(result, directory=None):
     """(parsed JSON output, usage, status) from a transport result of this provider."""
     events = result.get('events', [])
     if not events:
-        return None, {}, 'transport_failed'
+        return None, {}, 'usage_limited' if result.get('usageLimit') else 'transport_failed'
     event = events[-1]
     usage = event.get('usage') or {}
+    if usage_limit(event):
+        return None, usage, 'usage_limited'
     if event.get('model') != MODEL:
         return None, usage, 'model_mismatch'
     if event.get('stop_reason') == 'refusal':
@@ -123,60 +192,84 @@ def output_from(result, directory=None):
             return None, usage, 'invalid_json'
     return output, usage, 'completed'
 
-def run(job, output_dir, runner=None):
+def run(job, output_dir, runner=None, sleeper=time.sleep, clock=time.time):
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
     request = build_request(job)
     payload = json.dumps(request, ensure_ascii=False).encode()
     (output_dir/'model-request.json').write_bytes(payload)
-    started = time.time()
-    state = {'provider': PROVIDER, 'model': MODEL, 'requests': [], 'events': [],
+    started = clock()
+    state = {'provider': PROVIDER, 'model': MODEL, 'requests': [], 'events': [], 'limitPolicy': LIMIT_POLICY,
              'requestedMaxOutputTokens': job.get('maxOutputTokens'), 'maxBudgetUsd': request['maxBudgetUsd']}
-    record = {'requestSha256': hashlib.sha256(payload).hexdigest(), 'exitCode': None, 'status': None}
-    state['requests'].append(record)
     def checkpoint():
         temporary = output_dir/'transport-checkpoint.json.tmp'
         temporary.write_text(json.dumps(state, indent=2))
         temporary.replace(output_dir/'transport-checkpoint.json')
+    def pause(seconds, reason):
+        seconds = min(seconds, max(0.0, MAX_LIMIT_WAIT_SECONDS-waited[0]))
+        state.setdefault('limitWaits', []).append({'reason': reason, 'seconds': seconds, 'at': clock()})
+        checkpoint()
+        remaining = seconds
+        while remaining > 0:
+            step = min(60.0, remaining); sleeper(step); remaining -= step
+        waited[0] += seconds
+    waited, cleared = [0.0], [0.0]
     checkpoint()
     try:
         binary = executable()
         state['executable'] = binary
-        with tempfile.TemporaryDirectory(prefix='mop-blind-client-') as cwd:
-            # No repository context, settings, memory, MCP servers, tools or saved session.
-            with (output_dir/'client-stderr.log').open('w') as stderr:
-                process = (runner or subprocess.Popen)([binary, *request['argv']], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                                                       stderr=stderr, text=True, cwd=cwd, env=child_env())
-                (output_dir/'process.json').write_text(json.dumps({'pid': process.pid, 'startedAt': started, 'model': MODEL}))
-                try:
-                    stdout, _ = process.communicate(request['input'], timeout=TIMEOUT_SECONDS)
-                except subprocess.TimeoutExpired:
-                    process.kill(); stdout, _ = process.communicate()
-                    state.setdefault('transportErrors', []).append('TimeoutExpired')
-        record['exitCode'] = process.returncode
-        (output_dir/'client-output.json').write_text(stdout or '')
-        try:
-            result = json.loads(stdout)
-        except ValueError:
-            state.setdefault('transportErrors', []).append('UnparseableClientOutput')
-        else:
+        for attempt in range(MAX_LIMIT_WAITS+1):
+            gate = gate_wait_seconds(clock(), cleared[0])
+            if gate > 0 and LIMIT_POLICY == 'wait':
+                cleared[0] = gate_reset_epoch() or 0.0
+                pause(gate+RESET_GRACE_SECONDS, 'shared-gate')
+            record = {'requestSha256': hashlib.sha256(payload).hexdigest(), 'exitCode': None, 'status': None, 'attempt': attempt}
+            state['requests'].append(record); checkpoint()
+            with tempfile.TemporaryDirectory(prefix='mop-blind-client-') as cwd:
+                # No repository context, settings, memory, MCP servers, tools or saved session.
+                with (output_dir/'client-stderr.log').open('a') as stderr:
+                    process = (runner or subprocess.Popen)([binary, *request['argv']], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                                                           stderr=stderr, text=True, cwd=cwd, env=child_env())
+                    (output_dir/'process.json').write_text(json.dumps({'pid': process.pid, 'startedAt': started, 'model': MODEL, 'attempt': attempt}))
+                    try:
+                        stdout, _ = process.communicate(request['input'], timeout=TIMEOUT_SECONDS)
+                    except subprocess.TimeoutExpired:
+                        process.kill(); stdout, _ = process.communicate()
+                        state.setdefault('transportErrors', []).append('TimeoutExpired')
+            record['exitCode'] = process.returncode
+            with (output_dir/'client-output.json').open('a') as raw:
+                raw.write((stdout or '')+'\n')
+            try:
+                result = json.loads(stdout)
+            except ValueError:
+                state.setdefault('transportErrors', []).append('UnparseableClientOutput')
+                break
             event = event_from(result)
             state['events'].append(event)
             record['status'] = 'ok' if not event.get('is_error') and event.get('subtype') == 'success' else 'error'
             record['sessionId'] = event.get('session_id')
             state['stopReason'] = event.get('stop_reason'); state['subtype'] = event.get('subtype')
-            state['costUsd'] = event.get('total_cost_usd')
+            state['costUsd'] = sum(e.get('total_cost_usd') or 0 for e in state['events'])
             if event.get('is_error') or event.get('subtype') != 'success':
                 state.setdefault('serviceErrors', []).append(json.dumps({'subtype': event.get('subtype'), 'result': str(event.get('result'))[:2000],
-                                                                          'apiErrorStatus': event.get('api_error_status')}))
+                                                                          'apiErrorStatus': event.get('api_error_status'), 'attempt': attempt}))
             (output_dir/'output.txt').write_text(str(event.get('result') or ''))
+            limited = usage_limit(event)
+            if not limited:
+                break
+            reset = record_gate(limited, clock())
+            state['usageLimit'] = {'message': limited, 'resetsAtEpoch': reset, 'attempt': attempt}
+            if LIMIT_POLICY != 'wait' or attempt >= MAX_LIMIT_WAITS or waited[0] >= MAX_LIMIT_WAIT_SECONDS:
+                break
+            cleared[0] = reset
+            pause(max(0.0, reset-clock())+RESET_GRACE_SECONDS, 'usage-limit')
     except RuntimeError as exc:
         state.setdefault('transportErrors', []).append(type(exc).__name__ + ': ' + str(exc))
     except OSError as exc:
         state.setdefault('transportErrors', []).append(type(exc).__name__ + ': ' + str(exc))
     finally:
         checkpoint()
-    state['seconds'] = time.time()-started
+    state['seconds'] = clock()-started
     (output_dir/'transport-result.json').write_text(json.dumps(state, indent=2))
     return state
 
@@ -197,6 +290,6 @@ if __name__ == '__main__':
     parser.add_argument('job', nargs='?', help='job JSON path'); parser.add_argument('output'); args = parser.parse_args()
     if args.smoke == (args.job is not None): parser.error('give exactly one of --smoke or a job path')
     result = run(smoke_job() if args.smoke else json.loads(Path(args.job).read_text()), args.output)
-    print(json.dumps({'model': result['model'], 'exitCodes': [r['exitCode'] for r in result['requests']], 'stopReason': result.get('stopReason'),
+    print(json.dumps({'model': result['model'], 'exitCodes': [r['exitCode'] for r in result['requests']], 'stopReason': result.get('stopReason'), 'limitWaits': len(result.get('limitWaits', [])),
                       'subtype': result.get('subtype'), 'costUsd': result.get('costUsd'), 'seconds': round(result['seconds'], 2),
                       'errors': result.get('transportErrors', []) + result.get('serviceErrors', [])}))

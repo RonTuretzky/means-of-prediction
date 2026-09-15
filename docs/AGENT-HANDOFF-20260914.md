@@ -283,7 +283,9 @@ Claude Fable 5.1 (`claude-fable-5-1`), selected by
 `gpt-6-astra` through `astra_transport.py`, which stays unchanged as the
 request-shape witness for those frozen artifacts. The Fable transport runs
 headless Claude Code under the user's sign-in (no API key), verified live on
-2026-09-14 with a synthetic smoke call.
+2026-09-14 with a synthetic smoke call. The first Fable round (autonomous
+improvement loop, own private root, validation-based selection) is described
+in `docs/FABLE-ROUND-20260915.md`.
 Blind rule generation sees only frozen public market inputs, never this
 conversation, target evidence, payouts, or labels. A historical market can also
 be familiar from pretraining; public-only prompting is not proof of absence of

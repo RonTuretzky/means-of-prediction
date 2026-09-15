@@ -11,6 +11,7 @@ from round2_matcher import compile_pattern, score, score_controls, search
 from round3 import SYNTAX_REPAIR_INSTRUCTIONS
 from witness import witness
 from astra_transport import build_request
+import fable_transport
 
 ROOT=BASE/'astra-nyt-round4-20260912'
 R1=BASE/'astra-blind-20260910'
@@ -658,9 +659,12 @@ def verify_model_artifact(directory,job,record):
     directory=Path(directory)
     for name in ['job.json','model-request.json','transport-result.json']:
         if not (directory/name).exists():raise RuntimeError('Missing model source artifact: '+name)
-    if read(directory/'job.json')!=job or read(directory/'model-request.json')!=build_request(job):
+    result=read(directory/'transport-result.json')
+    # Fable artifacts carry their provider; frozen Astra artifacts keep the Astra request shape.
+    expected=fable_transport.build_request(job) if result.get('provider')==fable_transport.PROVIDER else build_request(job)
+    if read(directory/'job.json')!=job or read(directory/'model-request.json')!=expected:
         raise RuntimeError('Actual model request differs from authorized inputs')
-    out,usage,status=output_from(read(directory/'transport-result.json'),directory)
+    out,usage,status=output_from(result,directory)
     if record['output']!=out or record['status']!=status or record['usage']!=usage:
         raise RuntimeError('Candidate differs from raw model output')
 

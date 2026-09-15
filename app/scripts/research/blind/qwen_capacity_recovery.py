@@ -12,7 +12,12 @@ def usage_limited(directory):
     path = Path(directory) / 'transport-result.json'
     if not path.exists():
         return False
-    for error in q.r.read(path).get('serviceErrors', []):
+    result = q.r.read(path)
+    if result.get('provider') == 'claude-code-cli':
+        # Only a limit that the transport could not wait out counts; a waited-out limit ended in an answer.
+        import fable_transport
+        return fable_transport.output_from(result, path.parent)[2] == 'usage_limited'
+    for error in result.get('serviceErrors', []):
         try:
             value = json.loads(error) if isinstance(error, str) else error
         except (ValueError, TypeError):

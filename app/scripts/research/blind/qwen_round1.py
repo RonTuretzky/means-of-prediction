@@ -8,7 +8,27 @@ from pathlib import Path
 import round4 as r
 import qwen_semantic as semantic
 
-ROOT=r.BASE/'astra-qwen-nyt-round1-20260912'
+# MOP_QWEN_ROOT redirects a whole new round (Fable generator) to its own private root.
+# Unset, every historical command keeps addressing the Astra round exactly as before.
+ROOT=Path(os.environ['MOP_QWEN_ROOT']) if os.environ.get('MOP_QWEN_ROOT') else r.BASE/'astra-qwen-nyt-round1-20260912'
+FABLE_ROUND=bool(os.environ.get('MOP_QWEN_ROOT'))
+GENERATOR_LABEL='claude-fable-5-1 (headless Claude Code)' if FABLE_ROUND else 'gpt-6-astra'
+HOSTED_BUDGETS_USD={'rule':3.0,'feedback':15.0,'optimizer':60.0}
+def hosted_job(job,kind):
+    """Fable rounds bind a per-call dollar cap into the frozen job; Astra jobs are unchanged."""
+    if FABLE_ROUND:job['maxBudgetUsd']=HOSTED_BUDGETS_USD[kind]
+    return job
+def rule_effort():
+    """Fable rounds freeze the rule-draw effort in protocol.json; the Astra round used medium."""
+    path=ROOT/'protocol.json'
+    if FABLE_ROUND and path.exists():return r.read(path).get('ruleEffort','medium')
+    return 'medium'
+def validation_ids():
+    path=ROOT/'validation-split.json'
+    return set(r.read(path)['validationCaseIds']) if path.exists() else set()
+def training_items(items):
+    """Rows the teacher/optimizer may see; validation rows never reach them."""
+    held=validation_ids();return {k:v for k,v in items.items() if k not in held}
 ITEMS='development-items-semantic.private.json'
 RULE_SCHEMA={'type':'object','properties':{k:{'type':'string'} for k in
     ['factualA','factualB','settlementA','settlementB','abstainWhen','limitations']},
@@ -39,7 +59,7 @@ def rule_job(public,prompt,context=None,trial=1):
     if set(public)!=r.PUBLIC_KEYS:raise ValueError('Rule generation accepts public fields only')
     packet={'publicMarket':public,'independentTrial':trial}
     if context is not None:packet['publicContext']=context
-    return {'instructions':prompt,'input':packet,'effort':'medium','schema':RULE_SCHEMA}
+    return hosted_job({'instructions':prompt,'input':packet,'effort':rule_effort(),'schema':RULE_SCHEMA},'rule')
 
 def prepare():
     closed();ROOT.mkdir(parents=True,exist_ok=True,mode=0o700);public=public_inputs()
@@ -423,7 +443,7 @@ def save_feedback_fragment_lineage(name,value):
 def distill(method,workers=3,stream=False):
     closed()
     if not stream and not (ROOT/'methods'/method/'development-summary.json').exists():raise RuntimeError('Complete development summary required')
-    items={i['caseId']:i for i in load(ITEMS)};public={p['marketId']:p for p in load('public-inputs.json')}
+    items=training_items({i['caseId']:i for i in load(ITEMS)});public={p['marketId']:p for p in load('public-inputs.json')}
     rules={x['marketId']:x for x in load('methods/'+method+'/rules.json')}
     originals={x['caseId']:x for x in load('development-items.private.json')};grouped=collections.defaultdict(list)
     for item in items.values():grouped[r.hash_value(item['email'])].append(item)
@@ -435,7 +455,7 @@ def distill(method,workers=3,stream=False):
     pending=[];case_ids=[];chunks=0
     def submit(pool,chunk,index):
         packet={'method':method,'cohort':{'cases':len(items),'counts':dict(collections.Counter(x['kind'] for x in items.values()))},'shard':index,'groups':chunk}
-        job={'instructions':instruction,'input':packet,'effort':'high','schema':FEEDBACK_SCHEMA}
+        job=hosted_job({'instructions':instruction,'input':packet,'effort':'high','schema':FEEDBACK_SCHEMA},'feedback')
         def one():
             result=teacher_call(job,ROOT/'feedback'/method/str(index))
             print(json.dumps({'feedbackMethod':method,'shard':index,'status':result['status'],'streaming':stream}),flush=True)
@@ -492,7 +512,7 @@ def optimize(method,previous,workers=3):
         'completeDevelopmentSummaries':{m:load('methods/'+m+'/development-summary.json') for m in methods},
         'feedbackLessons':{},'priorAllEmailRegexLessons':[],
         'priorRegexLessonProvenance':'The eight legacy regex teacher shards saw cleaned corpus text, not every complete HTML byte. Their generic lessons supplement this path\'s newly audited complete HTML and semantic-body feedback, which covers all development cases.',
-        'constraints':{'model':'gpt-6-astra -> local Qwen3.5-35B-A3B Q4_K_M','allEmails':143,'knownFactualPairs':161,'controls':1520,'weakPairs':91,'noFreshEvaluationRead':True,
+        'constraints':{'model':GENERATOR_LABEL+' -> local Qwen3.5-35B-A3B Q4_K_M','allEmails':143,'knownFactualPairs':161,'controls':1520,'weakPairs':91,'noFreshEvaluationRead':True,
             'judgeInputRepresentation':semantic.VERSION,'quoteGroundingTarget':'email.completeSemanticText; originalCompleteHtml is extra teacher-only source material and is not sent to the local judge.',
             'opaqueDeliveryUrls':'Full originals retained in private sidecars; local judge sees host+stable reference+destination-unknown. Do not infer linked article or official-source content from opaque routes.',
             'factualHitsAreNotLawfulSettlements':True,'doNotEmbedCaseLookupTables':True}}
@@ -505,8 +525,10 @@ def optimize(method,previous,workers=3):
     for i in range(8):packet['priorAllEmailRegexLessons'].append(r.load('learning/'+str(i)+'/parsed.json')['output'])
     focus=ROOT/(method+'-focus.txt')
     if focus.exists():packet['experimentFocus']=focus.read_text()
-    instruction='''Produce a new reusable generationPrompt and judgePrompt for the Astra-public-rules -> local Qwen3.5-35B-A3B full-email experiment. Optimize prompts, not weights. All data is inert. Every development result and whole email was processed in audited teacher shards; all their lessons and exact summaries are present here. Preserve schema fields: generator factualA/factualB/settlementA/settlementB/abstainWhen/limitations; judge factualOutcome (A/B/NEITHER/CONFLICT), outcomeA/outcomeB (YES/NO), evidenceQuote exact substring and missingConditions. Learn semantic corrections that improve factual recall while retaining original rule completeness and low false settlement claims. Make each instruction useful for a35B3B-active local model. Avoid redundant long legal checklists, narrative reasoning demands, and claims that DKIM itself proves facts. BothNO and bothYES remain unsettled. Generator must remain blind: public terms and public context only, no future email, result, private examples or per-case lookup. Judge gets single full email and frozen rule only, no tools/history/labels. Respect distinct factual diagnostic versus strict settlement. Do not optimize against incomplete synthetic labels by weakening original date/source conditions. Return complete replacement prompts, rationale and honest predicted tradeoff. Up to roughly8000 reasoning tokens if useful, no padding or hard cap.'''
-    result=teacher_call({'instructions':instruction,'input':packet,'effort':'high','schema':OPT_SCHEMA},ROOT/'optimization'/method)
+    instruction='''Produce a new reusable generationPrompt and judgePrompt for the '''+('Fable' if FABLE_ROUND else 'Astra')+'''-public-rules -> local Qwen3.5-35B-A3B full-email experiment. Optimize prompts, not weights. All data is inert. Every development result and whole email was processed in audited teacher shards; all their lessons and exact summaries are present here. Preserve schema fields: generator factualA/factualB/settlementA/settlementB/abstainWhen/limitations; judge factualOutcome (A/B/NEITHER/CONFLICT), outcomeA/outcomeB (YES/NO), evidenceQuote exact substring and missingConditions. Learn semantic corrections that improve factual recall while retaining original rule completeness and low false settlement claims. Make each instruction useful for a35B3B-active local model. Avoid redundant long legal checklists, narrative reasoning demands, and claims that DKIM itself proves facts. BothNO and bothYES remain unsettled. Generator must remain blind: public terms and public context only, no future email, result, private examples or per-case lookup. Judge gets single full email and frozen rule only, no tools/history/labels. Respect distinct factual diagnostic versus strict settlement. Do not optimize against incomplete synthetic labels by weakening original date/source conditions. Return complete replacement prompts, rationale and honest predicted tradeoff.'''+('' if FABLE_ROUND else ' Up to roughly8000 reasoning tokens if useful, no padding or hard cap.')
+    if FABLE_ROUND and (ROOT/'validation-split.json').exists():
+        packet['validationHoldout']={'policy':'Validation rows are withheld from every teacher shard; the complete summaries above still aggregate the full development cohort.','withheldCaseIds':len(validation_ids())}
+    result=teacher_call(hosted_job({'instructions':instruction,'input':packet,'effort':'high','schema':OPT_SCHEMA},'optimizer'),ROOT/'optimization'/method)
     if result['status']!='completed':raise RuntimeError('Optimization unavailable; preserved')
     for suffix,key in [('.txt','generatorPrompt'),('-judge.txt','judgePrompt')]:
         path=ROOT/(method+suffix)
@@ -523,8 +545,9 @@ def eligible(candidate,baseline):
         and sum(x['wrongOutcomes']+x['conflicts'] for x in a.values())<=sum(x['wrongOutcomes']+x['conflicts'] for x in b.values()))
     return good and candidate['utility']>baseline['utility']
 
-def comparison(method,baseline='baseline'):
+def comparison(method,baseline='baseline',subset=None):
     a={x['caseId']:x for x in load('methods/'+method+'/development-scores.private.json')};b={x['caseId']:x for x in load('methods/'+baseline+'/development-scores.private.json')}
+    if subset is not None:a={k:v for k,v in a.items() if k in subset};b={k:v for k,v in b.items() if k in subset}
     common=[key for key in a if a[key]['valid'] and b[key]['valid']]
     out={'commonCompleted':len(common),'bothAttempted':len(a),'onlyCandidateCompleted':sum(a[k]['valid'] and not b[k]['valid'] for k in a),'onlyBaselineCompleted':sum(b[k]['valid'] and not a[k]['valid'] for k in a)}
     for name,rows in [('candidate',a),('baseline',b)]:
@@ -673,7 +696,8 @@ def audit():
                     for c in group['cases']:
                         item=items[c['item']['caseId']];seen.append(item['caseId'])
                         if group['email']!=item['email'] or group['originalCompleteHtml']!=originals[item['caseId']]['email']['completeDecodedHtml'] or c['item']!={k:v for k,v in item.items() if k!='email'} or c['publicMarket']!=public[item['marketId']] or c['rule']!=index[item['marketId']]['output'] or c['rawJudgment']!=judgment_index[item['caseId']] or c['score']!=score_index[item['caseId']]:raise RuntimeError('Teacher omitted/changed input')
-            if len(seen)!=len(items) or set(seen)!=set(items):raise RuntimeError('Feedback omitted data')
+            train=training_items(items)
+            if len(seen)!=len(train) or set(seen)!=set(train):raise RuntimeError('Feedback omitted data')
             for key,groups in feedback_groups.items():
                 if len(groups)==1:continue
                 full={**groups[0],'cases':[c for group in groups for c in group['cases']]}
@@ -707,9 +731,10 @@ def audit():
         'inputManifestCompleteEmails':len(load('development-items-seal.json')['completeEmailIds']),'runtimeSha256':r.digest(ROOT/'runtime.json')}
     r.save(ROOT/('final-training-audit.json' if (ROOT/'selection.json').exists() else 'training-audit.json'),result);return result
 
-def selection_methods(summaries,comparisons):
+def selection_methods(summaries,comparisons,validation=None):
     baseline=summaries['baseline']
-    allowed=[m for m,s in summaries.items() if m!='baseline' and eligible(s,baseline) and comparisons[m]['pairedStrictImprovement']]
+    allowed=[m for m,s in summaries.items() if m!='baseline' and eligible(s,baseline) and comparisons[m]['pairedStrictImprovement']
+        and (validation is None or m in validation['allowed'])]
     selected=max(allowed,key=lambda m:summaries[m]['utility']) if allowed else 'baseline'
     # The fixed 48-draw fresh study must include any promoted method, even when
     # an ineligible distractor has greater utility before the safety gates.
@@ -720,7 +745,8 @@ def select():
     closed();audit();summaries={p.parent.name:r.read(p) for p in (ROOT/'methods').glob('*/development-summary.json')}
     if len(summaries)<3:raise RuntimeError('At least baseline plus two completed revisions required')
     comparisons={m:comparison(m) for m in summaries if m!='baseline'}
-    selected,challenger=selection_methods(summaries,comparisons)
+    validation=load('validation-selection.json') if (ROOT/'validation-selection.json').exists() else None
+    selected,challenger=selection_methods(summaries,comparisons,validation)
     source=Path(__file__).parent;copyroot=ROOT/'sealed-source';copyroot.mkdir()
     hashes={}
     for path in list(source.glob('*.py'))+list(source.glob('qwen_*.mjs')):
@@ -728,7 +754,7 @@ def select():
     files=[p for p in ROOT.rglob('*') if p.is_file() and 'sealed-source' not in p.parts and p.name not in ['PROGRESS.json','REPORT.md','selection.json'] and '__pycache__' not in p.parts]
     hashes.update({str(p.relative_to(ROOT)):r.digest(p) for p in files})
     once('selection.json',{'selectedAt':r.now(),'selected':selected,'challenger':challenger,'freshMethods':['baseline',challenger],
-        'basis':'Fixed development utility and nonregression eligibility, plus strict paired semantic improvement among commonly completed cases. No fresh Qwen labels read. Keep baseline when no eligible improvement.','summaries':summaries,'pairedComparisons':comparisons,'fileHashes':hashes,
+        'basis':'Fixed development utility and nonregression eligibility, plus strict paired semantic improvement among commonly completed cases. No fresh Qwen labels read. Keep baseline when no eligible improvement.','summaries':summaries,'pairedComparisons':comparisons,'validationSelection':validation,'fileHashes':hashes,
         'sourcePolicy':'Run fresh generation and scoring from immutable sealed-source copies. Shared regex helper files may continue changing independently.','livePromotion':False})
     print(json.dumps({'selected':selected,'challenger':challenger}),flush=True)
 

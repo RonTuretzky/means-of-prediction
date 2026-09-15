@@ -23,15 +23,16 @@ def stopped():
 
 
 def directory(method):
-    if not re.fullmatch(r'v[3-6]', method):
-        raise ValueError('Guarded development runner accepts revisions V3 through V6')
+    pattern = r'(baseline|seed-[a-z0-9]+|v[1-9])' if q.FABLE_ROUND else r'v[3-6]'
+    if not re.fullmatch(pattern, method):
+        raise ValueError('Guarded development runner accepts revisions V3 through V6 (any method in a Fable round)')
     return q.ROOT / 'methods' / method / 'guarded-generation-v1'
 
 
 def sources():
-    return {str(Path(__file__).with_name(name)): q.r.digest(Path(__file__).with_name(name)) for name in
-            ['qwen_guarded_rules.py', 'qwen_round1.py', 'qwen_capacity_recovery.py', 'round4.py',
-             'improve.py', 'experiment.py', 'astra_transport.py']}
+    names = ['qwen_guarded_rules.py', 'qwen_round1.py', 'qwen_capacity_recovery.py', 'round4.py',
+             'improve.py', 'experiment.py', 'astra_transport.py'] + (['fable_transport.py'] if q.FABLE_ROUND else [])
+    return {str(Path(__file__).with_name(name)): q.r.digest(Path(__file__).with_name(name)) for name in names}
 
 
 def prompt_review(method):
