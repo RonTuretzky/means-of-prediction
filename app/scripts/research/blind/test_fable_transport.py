@@ -90,10 +90,14 @@ class OutputFromTests(unittest.TestCase):
 class RunTests(unittest.TestCase):
     def setUp(self):
         FakeProcess.calls = []
-        self.patches = [patch.dict(os.environ, {'MOP_CLAUDE_CODE_BIN': __file__, 'CLAUDECODE': '1', 'CLAUDE_CODE_SESSION_ID': 'parent'})]
+        # Never read the machine's real limit gate or sleep in tests: redirect the gate and default to the stop policy.
+        self.temp = tempfile.TemporaryDirectory()
+        self.patches = [patch.dict(os.environ, {'MOP_CLAUDE_CODE_BIN': __file__, 'CLAUDECODE': '1', 'CLAUDE_CODE_SESSION_ID': 'parent'}),
+                        patch.object(fable_transport, 'LIMIT_GATE', Path(self.temp.name)/'gate.json'), patch.object(fable_transport, 'LIMIT_POLICY', 'stop')]
         for p in self.patches: p.start()
     def tearDown(self):
         for p in self.patches: p.stop()
+        self.temp.cleanup()
 
     def test_run_records_request_isolation_output_and_receipts(self):
         with tempfile.TemporaryDirectory() as d:

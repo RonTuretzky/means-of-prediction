@@ -123,7 +123,14 @@ class FeedbackClock:
             if feedback_stopped(self.method): raise RuntimeError('Feedback stopped after failed judge or usage stop')
             self.original.sleep(min(1.0, remaining)); remaining -= min(1.0, remaining)
 
+DEFER_MARKER = 'feedback-deferred.json'
+
 def feedback_worker(method, workers=3):
+    # An operator may defer hosted feedback (e.g. to give the sign-in budget to another arm);
+    # the worker idles until the marker is removed and never skips or fakes a shard.
+    while (q.ROOT/DEFER_MARKER).exists():
+        if feedback_stopped(method): raise RuntimeError('Feedback stopped while deferred')
+        log(feedbackDeferred=method); time.sleep(300)
     original_clock, original_teacher = q.time, q.teacher_call
     def teacher(job, path):
         if feedback_stopped(method): raise RuntimeError('Feedback stopped')
