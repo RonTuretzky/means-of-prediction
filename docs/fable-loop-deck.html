@@ -1,0 +1,349 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fable round 1 — the running research loop</title>
+<style>
+  :root{
+    color-scheme: dark;
+    --page:#0d0d0d; --surface:#1a1a19;
+    --ink:#ffffff; --ink-2:#c3c2b7; --muted:#898781;
+    --grid:#2c2c2a; --baseline:#383835; --border:rgba(255,255,255,.10);
+    --good:#0ca30c; --warn:#fab219; --serious:#ec835a; --critical:#d03b3b;
+    --clsA:#184f95; --clsB:#3987e5; --clsC:#9ec5f4; --clsD:#cde2fb;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  *{box-sizing:border-box; margin:0; padding:0}
+  html,body{height:100%; overflow:hidden}
+  body{background:var(--page); color:var(--ink); font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    font-size: clamp(13px, 1.25vw, 16px); line-height:1.5}
+  .progress{position:fixed; top:0; left:0; right:0; height:3px; background:var(--grid); z-index:30}
+  .progress i{display:block; height:100%; width:0; background:var(--clsB); transition:width .25s ease}
+  .slide{position:absolute; inset:0; display:none; overflow-y:auto; padding:6vh 6vw 8vh}
+  .slide.active{display:flex; flex-direction:column; justify-content:center; animation:in .35s ease}
+  @keyframes in{from{opacity:0; transform:translateY(10px)}to{opacity:1; transform:none}}
+  .wrap{max-width:1140px; width:100%; margin:0 auto}
+  .kicker{display:flex; align-items:center; gap:10px; font-size:.72em; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); margin-bottom:16px; font-weight:600}
+  .kicker::before{content:""; width:26px; height:2px; background:var(--clsB)}
+  h1{font-size:clamp(30px,4.2vw,54px); line-height:1.08; letter-spacing:-.02em; margin-bottom:20px; font-weight:750}
+  h2{font-size:clamp(22px,2.8vw,36px); line-height:1.12; letter-spacing:-.015em; margin-bottom:18px; font-weight:700}
+  h3{font-size:1.02em; margin-bottom:8px; font-weight:650}
+  .sub{color:var(--ink-2); font-size:clamp(15px,1.5vw,19px); max-width:64ch}
+  .accent{color:var(--clsB)}
+  p{color:var(--ink-2)} strong{color:var(--ink); font-weight:650}
+  code{font-family:var(--mono); font-size:.9em; color:var(--ink); background:var(--surface); border:1px solid var(--border); border-radius:5px; padding:1px 6px}
+  .card{background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:18px 20px}
+  .cards2{display:grid; grid-template-columns:1fr 1fr; gap:14px}
+  .cards3{display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px}
+  @media (max-width:840px){.cards2,.cards3{grid-template-columns:1fr}}
+  .card .tag{display:inline-block; font-size:.7em; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); font-weight:650; margin-bottom:8px}
+  .card p{font-size:.94em}
+  .cards2 + .card, .card + .cards2, .card + .card, .cards3 + .card{margin-top:14px}
+  ul.tight{list-style:none}
+  ul.tight li{padding-left:20px; position:relative; margin:6px 0; color:var(--ink-2); font-size:.95em}
+  ul.tight li::before{content:"—"; position:absolute; left:0; color:var(--clsB)}
+  ul.tight li strong{color:var(--ink)}
+  .formula{font-family:var(--mono); font-size:clamp(14px,1.6vw,20px); color:var(--ink); background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:18px 22px; margin:14px 0}
+  .formula .q{color:var(--muted); font-family:system-ui,-apple-system,"Segoe UI",sans-serif; font-size:.68em; display:block; margin-top:8px}
+  .flow{display:flex; align-items:stretch; gap:0; flex-wrap:wrap}
+  .fnode{background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:14px 16px; flex:1; min-width:150px}
+  .fnode .n{font-size:.7em; letter-spacing:.1em; color:var(--clsB); font-weight:700; text-transform:uppercase}
+  .fnode h3{margin:4px 0 6px}
+  .fnode p{font-size:.82em}
+  .farrow{align-self:center; padding:0 10px; color:var(--muted); font-size:22px; flex:none}
+  .fbranch{display:flex; flex-direction:column; gap:10px; flex:1.3; min-width:200px}
+  .fbranch .fnode{flex:none}
+  .fnode.local{border-color:rgba(12,163,12,.45)} .fnode.hosted{border-color:rgba(57,135,229,.55)}
+  table.haz{width:100%; border-collapse:collapse; font-size:.88em; margin-top:6px}
+  table.haz th, table.haz td{text-align:left; padding:9px 10px; border-bottom:1px solid var(--grid); color:var(--ink-2); vertical-align:top; font-variant-numeric:tabular-nums}
+  table.haz th{color:var(--muted); font-weight:600; font-size:.8em; letter-spacing:.06em; text-transform:uppercase}
+  table.haz td:first-child{color:var(--ink); font-weight:650; white-space:nowrap}
+  .stats{display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-top:20px}
+  @media (max-width:900px){.stats{grid-template-columns:1fr 1fr}}
+  .stat{background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:14px 16px}
+  .stat .v{font-size:clamp(22px,2.6vw,34px); font-weight:750; letter-spacing:-.02em}
+  .stat .l{color:var(--muted); font-size:.78em; margin-top:4px}
+  /* horizontal bar chart: one series, direct labels, recessive baseline */
+  .hbar{margin-top:8px}
+  .hrow{display:grid; grid-template-columns:150px 1fr 70px; align-items:center; height:30px; gap:10px}
+  .hrow .lab{font-size:.85em; color:var(--ink-2); text-align:right}
+  .hrow .track{position:relative; height:100%; border-left:1px solid var(--baseline)}
+  .hrow .b{position:absolute; top:7px; height:16px; background:var(--clsB); border-radius:0 4px 4px 0}
+  .hrow .b.ref{background:var(--clsA)}
+  .hrow .b:hover{filter:brightness(1.18)}
+  .hrow .val{font-size:.85em; color:var(--ink); font-variant-numeric:tabular-nums}
+  .chart-title{font-size:.8em; color:var(--muted); margin-bottom:4px}
+  details.tbl{margin-top:10px}
+  details.tbl summary{cursor:pointer; color:var(--muted); font-size:.8em}
+  details.tbl table{width:100%; border-collapse:collapse; margin-top:8px; font-size:.78em}
+  details.tbl th, details.tbl td{text-align:left; padding:4px 8px; border-bottom:1px solid var(--grid); color:var(--ink-2); font-variant-numeric:tabular-nums}
+  details.tbl th{color:var(--muted); font-weight:600}
+  .chip{display:inline-flex; align-items:center; gap:6px; font-size:.8em; font-weight:650; border-radius:999px; padding:3px 11px; border:1px solid var(--border); color:var(--ink)}
+  .chip.ok{border-color:rgba(12,163,12,.5)} .chip.ok .ic{color:var(--good)}
+  .chip.warn{border-color:rgba(250,178,25,.5)} .chip.warn .ic{color:var(--warn)}
+  .foot{margin-top:22px; color:var(--muted); font-size:.78em; font-family:var(--mono)}
+  .hud{position:fixed; right:18px; bottom:14px; display:flex; align-items:center; gap:10px; z-index:30; color:var(--muted); font-variant-numeric:tabular-nums; font-size:.85em}
+  .hud button{background:var(--surface); color:var(--ink-2); border:1px solid var(--border); border-radius:8px; width:34px; height:30px; font-size:16px; cursor:pointer}
+  .hud button:hover{color:var(--ink); border-color:rgba(255,255,255,.25)}
+  .hint{position:fixed; left:18px; bottom:14px; color:var(--muted); font-size:.75em; z-index:30}
+  #tip{position:fixed; z-index:50; display:none; max-width:340px; pointer-events:none; background:#242423; border:1px solid rgba(255,255,255,.16); border-radius:8px; padding:8px 11px; font-size:.8em; color:var(--ink-2); box-shadow:0 6px 24px rgba(0,0,0,.5)}
+  #tip b{color:var(--ink)}
+</style>
+</head>
+<body>
+<div class="progress"><i id="pbar"></i></div>
+
+<!-- 1 TITLE -->
+<section class="slide" aria-label="Title">
+  <div class="wrap">
+    <div class="kicker">Means of Prediction · research loop · September 15, 2026</div>
+    <h1>Fable round 1: <span class="accent">blind prose rules</span>, judged locally, improved autonomously</h1>
+    <p class="sub">Claude Fable 5.1 replaces Astra as the blind rule generator and teacher. The pinned local Qwen3.5-35B-A3B judge, the 1,915-row development cohort and every frozen artifact stay exactly as they were. A driver now runs the draw → judge → feedback → optimize cycle unattended for at least twelve hours.</p>
+    <div class="stats">
+      <div class="stat"><div class="v">1,915</div><div class="l">development rows per method (161 factual · 1,520 controls · 91 weak · 143 unlabeled)</div></div>
+      <div class="stat"><div class="v">241</div><div class="l">blind public-only rule draws per method</div></div>
+      <div class="stat"><div class="v">56 / 420</div><div class="l">validation factual pairs / controls withheld from the teacher</div></div>
+      <div class="stat"><div class="v">12 h</div><div class="l">wall budget: baseline → v1 → v2 (→ v3 if it fits)</div></div>
+    </div>
+    <div class="foot">Root slides/fable-qwen-nyt-round1-20260915 · docs/FABLE-ROUND-20260915.md · docs/FABLE-GENERATOR-TRANSPORT.md</div>
+  </div>
+</section>
+
+<!-- 2 THE QUESTION -->
+<section class="slide" aria-label="The question">
+  <div class="wrap">
+    <div class="kicker">Why this loop exists</div>
+    <h2>Can a public prediction market settle from NYT evidence?</h2>
+    <div class="cards2">
+      <div class="card"><span class="tag">Path A · frozen</span><h3>Deterministic regex rules</h3><p>Generated blind from public market terms, matched against the email body on chain. Round 4 reached a documented plateau and is frozen; its baseline recovered 63 of 161 known facts.</p></div>
+      <div class="card"><span class="tag">Path B · this loop</span><h3>Plain-language rules + local judge</h3><p>The generator writes factual and settlement predicates from public terms only. A local Qwen judge reads one whole email plus the frozen rule and returns a strict JSON judgment. The Astra baseline recovered 55 of 161 with an exact quote.</p></div>
+    </div>
+    <div class="card"><span class="tag">What is being optimized</span><p>Prompts, never weights. A teacher reads complete development shards and proposes a new generator prompt and judge prompt. Each revision is a new method with frozen prompts, drawn and judged from scratch, then gated against the baseline. Only one real development pair is answerable under its original market rules, so this measures <strong>factual recovery</strong>, not lawful settlement.</p></div>
+  </div>
+</section>
+
+<!-- 3 WHAT CHANGED -->
+<section class="slide" aria-label="What changed">
+  <div class="wrap">
+    <div class="kicker">Generator swap</div>
+    <h2>Astra out, Fable in. Same blindness, same artifacts.</h2>
+    <table class="haz">
+      <thead><tr><th>Property</th><th>Astra round (September 12)</th><th>Fable round (today)</th></tr></thead>
+      <tbody>
+        <tr><td>Generator / teacher</td><td>gpt-6-astra through the Codex sign-in and a loopback adapter</td><td>claude-fable-5-1 through headless Claude Code under the user's sign-in; no API key</td></tr>
+        <tr><td>Isolation</td><td>Tool-free request, workspace context stripped</td><td>Empty temp directory, empty tool list, one turn, no settings, no MCP, no memory, custom system prompt, schema-validated JSON</td></tr>
+        <tr><td>Judge</td><td>Local Qwen3.5-35B-A3B Q4_K_M, temperature 0, 131,072 context</td><td>Unchanged: same loaded instance, same runtime pin, same seed</td></tr>
+        <tr><td>Baseline prompts</td><td>Hand-written baseline</td><td>Byte-identical to the Astra baseline, so the model is the only variable</td></tr>
+        <tr><td>Draw effort</td><td>medium</td><td>medium (probe below); teacher and optimizer at high</td></tr>
+        <tr><td>Receipts</td><td>Raw stream events, token accounting</td><td>Frozen request with argument vector, exit code, session ID, usage, list cost, stop reason; refusals and limits retained</td></tr>
+        <tr><td>Frozen Astra rounds</td><td colspan="2">Untouched. Their transport module stays as the request-shape witness; audits dispatch on the provider named in each artifact.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- 4 THE LOOP -->
+<section class="slide" aria-label="The loop">
+  <div class="wrap">
+    <div class="kicker">One method, end to end</div>
+    <h2>Draw → judge ‖ teach → gate → optimize the next revision</h2>
+    <div class="flow">
+      <div class="fnode hosted"><span class="n">1 · gate</span><h3>Prompt review</h3><p>Automated lexical check: schema fields, length caps, no market IDs, email IDs, fact keys or subjects, no answer tables.</p></div>
+      <div class="farrow">→</div>
+      <div class="fnode hosted"><span class="n">2 · hosted</span><h3>241 blind draws</h3><p>Bounded feeder, 10 workers, public terms plus public context only. Failed draws stay failed; rows on them become rule-unavailable.</p></div>
+      <div class="farrow">→</div>
+      <div class="fnode"><span class="n">3 · audit</span><h3>Rule audit + preflight</h3><p>Every request re-derived from frozen inputs; node token count proves every full email fits the judge context.</p></div>
+      <div class="farrow">→</div>
+      <div class="fbranch">
+        <div class="fnode local"><span class="n">4a · local</span><h3>Judge 1,915 rows</h3><p>4 workers, email-hash order, strict JSON, no retries. About two to three hours.</p></div>
+        <div class="fnode hosted"><span class="n">4b · hosted, in parallel</span><h3>Teacher feedback</h3><p>Train rows only, complete emails, one attempt per shard, effort high.</p></div>
+      </div>
+      <div class="farrow">→</div>
+      <div class="fnode"><span class="n">5 · select</span><h3>Validation gate</h3><p>Score validation rows only; leader = best allowed method, else baseline.</p></div>
+      <div class="farrow">→</div>
+      <div class="fnode hosted"><span class="n">6 · hosted</span><h3>Optimize</h3><p>New prompts from the leader's prompts and all train-only lessons.</p></div>
+    </div>
+    <p style="margin-top:14px;font-size:.9em">Phases run through the existing audited commands with immutable driver markers. A completed phase is skipped on resume; an uncertain one halts the loop. The loop never selects, freezes or opens sealed fixtures.</p>
+  </div>
+</section>
+
+<!-- 5 BLINDNESS -->
+<section class="slide" aria-label="Who sees what">
+  <div class="wrap">
+    <div class="kicker">Information boundaries</div>
+    <h2>Who sees what</h2>
+    <div class="cards3">
+      <div class="card"><span class="tag">Generator</span><h3>Public terms only</h3><p>Market ID, question, rules, ordered outcome labels, optional public context, trial number. Never an email, payout, label or per-case answer. Residual harness context: the signed-in email reminder and an environment block with the date.</p></div>
+      <div class="card"><span class="tag">Judge</span><h3>One rule, one whole email</h3><p>The frozen rule and the complete semantic rendering of a single email with its metadata. No labels, no tools, no history, no other emails.</p></div>
+      <div class="card"><span class="tag">Teacher / optimizer</span><h3>Train rows, complete evidence</h3><p>Every train case with its email, rule, raw judgment and score. Validation rows are withheld. Prompts it returns must pass the lexical review before use.</p></div>
+    </div>
+    <div class="card"><span class="tag">Evaluation reservations</span><p>The sealed 12-question / 120-fixture evaluation and the supplemental natural annotations stay closed. They open only after a selection, a 48-draw freeze and the declared gates, none of which the loop runs.</p></div>
+  </div>
+</section>
+
+<!-- 6 VALIDATION SPLIT -->
+<section class="slide" aria-label="Validation split">
+  <div class="wrap">
+    <div class="kicker">New in this round</div>
+    <h2>A sealed validation split decides which revision to build on</h2>
+    <div class="cards2">
+      <div class="card"><span class="tag">How the units are formed</span><p>A factual market travels with its whole development group: every market in the group and every control, weak and unlabeled row on those markets. Other markets are their own unit. Units are visited in SHA-256 order and added to validation until the targets are met, never exceeding the caps. Sealed before the first hosted call.</p>
+        <table class="haz" style="margin-top:12px"><thead><tr><th>Kind</th><th>Validation</th><th>Train</th></tr></thead>
+        <tbody><tr><td>Factual pairs</td><td>56</td><td>105</td></tr><tr><td>Synthetic controls</td><td>420</td><td>1,100</td></tr><tr><td>Weak pairs</td><td>32</td><td>59</td></tr><tr><td>Unlabeled</td><td>47</td><td>96</td></tr><tr><td>Markets</td><td>82</td><td>159</td></tr></tbody></table></div>
+      <div class="card"><span class="tag">Selection rule</span><p>A revision is <strong>allowed</strong> only if, on validation rows, it passes the existing eligibility gates, shows strict paired improvement on rows both it and the baseline completed, and clears predeclared margins: at least <strong>+3 grounded factual passes</strong> and <strong>+8 strict positive passes</strong>, with false positives not above baseline. The leader is the allowed method with the highest validation utility, else baseline. The next revision chains from the leader, because every Astra revision that chained from a regressed predecessor regressed further.</p>
+        <p style="margin-top:10px"><strong>Disclosed limitation.</strong> The rows form one connected component through shared emails. Validation market labels are withheld, but validation email bodies can still appear in train rows of other markets, and the optimizer packet carries full-cohort aggregates.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 7 METRICS -->
+<section class="slide" aria-label="Metrics">
+  <div class="wrap">
+    <div class="kicker">Scoring</div>
+    <h2>Metrics keep their denominators</h2>
+    <div class="cards2">
+      <div class="card"><span class="tag">Per method, full development</span>
+        <ul class="tight">
+          <li><strong>Grounded factual passes / 161</strong>: factual outcome matches the retrospective label and the evidence quote is an exact substring of the email.</li>
+          <li><strong>Strict positive passes / 608</strong> synthetic positive controls; <strong>false positives / 912</strong> neither-controls.</li>
+          <li><strong>Fact-family macro recall</strong> over 33 families; <strong>timely recall / 19</strong> pairs available by market closure.</li>
+          <li><strong>Unscorable / 1,915</strong>: failed rules, invalid or failed judgments.</li>
+        </ul>
+        <div class="formula">utility = macroRecall + strictPos/608 − 3·falsePos/912 − unscorable/1,915<span class="q">Validation utility uses the same form with the validation denominators (56 factual, 420 controls, 621 rows).</span></div>
+      </div>
+      <div class="card"><span class="tag">Astra round reference (September 12)</span>
+        <div class="chart-title">Grounded factual passes out of 161 · Astra generator</div>
+        <div class="hbar">
+          <div class="hrow"><span class="lab">baseline</span><div class="track"><div class="b ref" style="width:34.2%" data-tip="<b>Astra baseline</b><br>55 / 161 grounded · 447 / 608 strict positives · 14 / 912 false positives · utility 0.972"></div></div><span class="val">55</span></div>
+          <div class="hrow"><span class="lab">v1</span><div class="track"><div class="b ref" style="width:29.8%" data-tip="<b>Astra v1</b><br>48 / 161 grounded · 413 / 608 · 15 / 912 · utility 0.892 · not promoted"></div></div><span class="val">48</span></div>
+          <div class="hrow"><span class="lab">v2</span><div class="track"><div class="b ref" style="width:31.1%" data-tip="<b>Astra v2</b><br>50 / 161 grounded · 305 / 608 · 2 / 912 · utility 0.773 · not promoted"></div></div><span class="val">50</span></div>
+          <div class="hrow"><span class="lab">regex round 4</span><div class="track"><div class="b ref" style="width:39.1%" data-tip="<b>Regex baseline</b><br>63 / 161 factual hits (different question: pattern hit, not judged quote)"></div></div><span class="val">63</span></div>
+        </div>
+        <details class="tbl"><summary>Table</summary><table><thead><tr><th>Method</th><th>Grounded /161</th><th>Strict pos /608</th><th>False pos /912</th><th>Utility</th></tr></thead>
+          <tbody><tr><td>Astra baseline</td><td>55</td><td>447</td><td>14</td><td>0.972</td></tr><tr><td>Astra v1</td><td>48</td><td>413</td><td>15</td><td>0.892</td></tr><tr><td>Astra v2</td><td>50</td><td>305</td><td>2</td><td>0.773</td></tr></tbody></table></details>
+        <p style="margin-top:10px;font-size:.85em">Neither Astra revision was promoted. The Fable baseline is the first new number this loop produces.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 8 EFFORT PROBE + DRAWS -->
+<section class="slide" aria-label="Generator cost and latency">
+  <div class="wrap">
+    <div class="kicker">Measured today</div>
+    <h2>What a Fable draw costs</h2>
+    <div class="cards2">
+      <div class="card"><span class="tag">Effort probe · 6 development questions · unscored</span>
+        <div class="chart-title">Median seconds per draw</div>
+        <div class="hbar">
+          <div class="hrow"><span class="lab">low</span><div class="track"><div class="b" style="width:60%" data-tip="<b>low</b><br>6/6 completed · median 18 s · $0.10 list · 1,247 output tokens"></div></div><span class="val">18 s</span></div>
+          <div class="hrow"><span class="lab">medium</span><div class="track"><div class="b" style="width:100%" data-tip="<b>medium</b><br>6/6 completed · median 30 s · $0.13 list · 2,185 output tokens"></div></div><span class="val">30 s</span></div>
+        </div>
+        <details class="tbl"><summary>Table</summary><table><thead><tr><th>Effort</th><th>Completed</th><th>Median s</th><th>Median list $</th><th>Median output tokens</th></tr></thead>
+          <tbody><tr><td>low</td><td>6/6</td><td>18</td><td>0.10</td><td>1,247</td></tr><tr><td>medium</td><td>6/6</td><td>30</td><td>0.13</td><td>2,185</td></tr></tbody></table></details>
+        <p style="margin-top:10px;font-size:.85em">Medium kept for rule draws, matching the Astra round. Prompts written for Astra are likely too prescriptive for this model; a de-prescribed seed arm is a candidate for a later round.</p>
+      </div>
+      <div class="card"><span class="tag">Baseline draws in flight · snapshot 13:27 UTC</span>
+        <div class="stats" style="grid-template-columns:1fr 1fr; margin-top:6px">
+          <div class="stat"><div class="v">217 / 241</div><div class="l">draws completed, zero failures</div></div>
+          <div class="stat"><div class="v">25 s</div><div class="l">median per draw, 10 workers</div></div>
+          <div class="stat"><div class="v">$0.11</div><div class="l">median list price per draw</div></div>
+          <div class="stat"><div class="v">$24.6</div><div class="l">list total so far (usage counts against the sign-in, not dollars)</div></div>
+        </div>
+        <p style="margin-top:12px;font-size:.85em">Teacher shards are the heavy part: roughly 80 shards of complete emails per method, each well over a hundred thousand input tokens. That is where sign-in limits will bite.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 9 RESILIENCE -->
+<section class="slide" aria-label="Resilience">
+  <div class="wrap">
+    <div class="kicker">Running unattended</div>
+    <h2>Limits are gates, not failures. Everything else is a receipt.</h2>
+    <div class="cards2">
+      <div class="card"><span class="tag">Sign-in usage limits</span><p>A limited call records the receipt, publishes a shared gate so the other workers pause instead of burning requests, sleeps until the reset named in the receipt plus two minutes, then resubmits the same frozen request. Every attempt is recorded. At most four waits and six hours per call; only an unwaitable limit trips the persistent stop marker.</p></div>
+      <div class="card"><span class="tag">Immutability and resume</span><p>Artifacts are write-once. Driver phases leave started and completed markers; a relaunch skips completed phases and refuses to touch an uncertain one. Nothing is deleted; a stop marker is retained under a numbered name with a reconciliation note before any relaunch.</p></div>
+    </div>
+    <div class="card"><span class="tag">Stop conditions</span>
+      <ul class="tight">
+        <li>Wall-clock projection past the 12-hour deadline before a judge pass starts (1.15 × last judge wall + 45 min).</li>
+        <li>Revision cap of three; two consecutive revisions not allowed on validation; a failed prompt review.</li>
+        <li>An incomplete rule cohort, local judge failures above 1 %, any failed phase, or an unwaitable usage stop.</li>
+        <li>Launch guards: pinned 2.1.263 Claude Code binary by hash, exactly one loaded LM Studio model with the pinned context, no other round processes, an owner lock on the root.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- 10 STATUS -->
+<section class="slide" aria-label="Status">
+  <div class="wrap">
+    <div class="kicker">Status at 13:27 UTC, September 15</div>
+    <h2>Where the loop is right now</h2>
+    <div class="cards3">
+      <div class="card"><span class="tag">Method · baseline</span><h3><span class="chip ok"><span class="ic">●</span> guarded rule draws</span></h3><p>217 of 241 completed, all successful. Next: rule audit, judge preflight, then the judge pass (about two to three hours) alongside train-only teacher feedback.</p></div>
+      <div class="card"><span class="tag">Planned sequence</span><h3>baseline → v1 → v2 → v3</h3><p>Each method is three to four and a half hours end to end. Twelve hours covers the baseline and two revisions; a third only if the projection fits.</p></div>
+      <div class="card"><span class="tag">Watching</span><h3>Log, markers, counters</h3><p>Driver log outside the root, DRIVER-PROGRESS.json, content-free counters from qwen_status, and a monitor that wakes the orchestrator on any stop, traceback or process exit.</p></div>
+    </div>
+    <div class="card"><span class="tag">Reading the first result</span><p>The baseline's grounded passes out of 161 land next to Astra's 55. That comparison is a like-for-like generator swap on identical prompts, cohort, judge and seed. It is one development cohort, not an accuracy estimate for any market population.</p></div>
+  </div>
+</section>
+
+<!-- 11 AFTER THE LOOP -->
+<section class="slide" aria-label="After the loop">
+  <div class="wrap">
+    <div class="kicker">What happens next</div>
+    <h2>The loop produces candidates. Promotion is a separate decision.</h2>
+    <div class="cards2">
+      <div class="card"><span class="tag">Automatic</span><ul class="tight"><li>Per-method development summaries, training audit, report, validation selection with leader and allowed list.</li><li>Every hosted receipt: request hash, session ID, usage, cost, stop reason, waits.</li><li>A stop marker naming the reason the loop ended.</li></ul></div>
+      <div class="card"><span class="tag">Only on explicit decision</span><ul class="tight"><li><code>select</code> intersects validation and full-development gates and seals the root.</li><li>48 fresh draws for baseline and challenger, freeze, then open the sealed 120-fixture evaluation.</li><li>Any live settlement promotion, which nothing in this loop performs.</li></ul></div>
+    </div>
+    <div class="card"><span class="tag">Standing caveats</span><p>Only one of 161 real pairs is answerable under its original market rules. Factual recovery is not settlement. Temperature-0 replay of the judge under 4-way concurrency agreed on 50 of 55 strict decisions, so deltas below that noise floor are not interpretable. Full NYT article bodies are still unavailable; the evidence corpus is newsletter email.</p></div>
+  </div>
+</section>
+
+<div id="tip"></div>
+<div class="hint">← → to navigate · hover bars for detail</div>
+<div class="hud"><button id="prev" aria-label="Previous">‹</button><span id="counter">1 / 11</span><button id="next" aria-label="Next">›</button></div>
+
+<script>
+(function(){
+  var slides = Array.prototype.slice.call(document.querySelectorAll('.slide'));
+  var N = slides.length, cur = 0;
+  var counter = document.getElementById('counter');
+  var pbar = document.getElementById('pbar');
+  var tip = document.getElementById('tip');
+  function show(i){
+    i = Math.max(0, Math.min(N-1, i));
+    slides[cur].classList.remove('active'); cur = i; slides[cur].classList.add('active');
+    counter.textContent = (cur+1) + ' / ' + N; pbar.style.width = ((cur+1)/N*100) + '%';
+    if (history.replaceState) history.replaceState(null, '', '#' + (cur+1));
+    hideTip();
+  }
+  var fromHash = parseInt((location.hash||'').replace('#',''), 10);
+  slides[0].classList.add('active'); show(isNaN(fromHash) ? 0 : fromHash - 1);
+  document.getElementById('next').addEventListener('click', function(){ show(cur+1); });
+  document.getElementById('prev').addEventListener('click', function(){ show(cur-1); });
+  document.addEventListener('keydown', function(e){
+    if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') { e.preventDefault(); show(cur+1); }
+    else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); show(cur-1); }
+    else if (e.key === 'Home') { e.preventDefault(); show(0); }
+    else if (e.key === 'End') { e.preventDefault(); show(N-1); }
+  });
+  window.addEventListener('hashchange', function(){ var h = parseInt((location.hash||'').replace('#',''), 10); if (!isNaN(h)) show(h-1); });
+  var tx = null;
+  document.addEventListener('touchstart', function(e){ tx = e.changedTouches[0].clientX; }, {passive:true});
+  document.addEventListener('touchend', function(e){ if (tx === null) return; var dx = e.changedTouches[0].clientX - tx; tx = null; if (dx < -40) show(cur+1); else if (dx > 40) show(cur-1); }, {passive:true});
+  function hideTip(){ if (tip) tip.style.display = 'none'; }
+  function moveTip(e){ var pad = 14, x = e.clientX + pad, y = e.clientY + pad; var r = tip.getBoundingClientRect();
+    if (x + r.width > window.innerWidth - 8) x = e.clientX - r.width - pad; if (y + r.height > window.innerHeight - 8) y = e.clientY - r.height - pad;
+    tip.style.left = x + 'px'; tip.style.top = y + 'px'; }
+  document.addEventListener('mouseover', function(e){ var t = e.target.closest ? e.target.closest('[data-tip]') : null; if (t) { tip.innerHTML = t.getAttribute('data-tip'); tip.style.display = 'block'; moveTip(e); } });
+  document.addEventListener('mousemove', function(e){ if (tip.style.display === 'block') { var t = e.target.closest ? e.target.closest('[data-tip]') : null; if (t) moveTip(e); else hideTip(); } });
+  document.addEventListener('mouseout', function(e){ var t = e.target.closest ? e.target.closest('[data-tip]') : null; if (t && !(e.relatedTarget && t.contains(e.relatedTarget))) hideTip(); });
+})();
+</script>
+</body>
+</html>
