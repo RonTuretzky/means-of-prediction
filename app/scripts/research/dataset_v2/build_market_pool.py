@@ -13,7 +13,11 @@ import argparse, collections, hashlib, json, os, re, sqlite3, time
 from pathlib import Path
 
 CATALOG = Path.home()/'.local/share/means-of-prediction/historical-market-catalog-20260914/catalog.sqlite3'
-TOPICS = [('sports_match', r'\bvs\.?\b|\bwin on\b|\bbeat\b|spread|o/u|over/under|moneyline|\bmap \d|\bgame \d|\bset \d|\bfight night\b|\bhalf\b.*\bpoints\b|\brecord the most\b'),
+SPORTS_PROP = (r'\bvs\.?\b|\bwin on\b|\bbeat\b|spread|o/u|over/under|moneyline|\bmap \d|\bgame \d|\bset \d|\bfight night\b|\bhalf\b.*\bpoints\b|\brecord the most\b'
+               r'|exact score|any other score|\d+\+ ?(goals?|assists?|shots?|points?|rebounds?|yards?|saves?|tackles?|hits?|runs?|strikeouts?|touchdowns?|3-pointers?|threes?|blocks?|steals?|passing|rushing|receiving|kills?|aces)'
+               r'|\bfc\b|\bsc\b|\bcf\b|\bafc\b|\bcd\b|\bsk\b|\bfk\b|united\b|athletic\b|rovers\b|wanderers\b|qualify for|clean sheet|first goal|anytime|both teams|total goals|halftime|winning margin|to score|yellow card|red card|corners?\b|double-double|triple-double'
+               r'|\bhome run\b|\bpitcher\b|\bquarterback\b|\brounds?\b.*\b(fight|bout)\b|\bko\b|\bwin by\b|\bwin the (match|game|race|set|round|bout|fight)\b|\bgrand prix\b|\bpole position\b|\bfastest lap\b|\bpodium\b')
+TOPICS = [('sports_match', SPORTS_PROP),
           ('crypto_price', r'up or down|\b(btc|eth|sol|xrp|bnb|doge|bitcoin|ethereum|solana|dogecoin|hyperliquid)\b.*(price|above|below|hit|reach|\$)|\$[\d,]+.*\b(btc|eth|sol|bitcoin|ethereum)\b'),
           ('sports_season', r'\b(win the|champion|mvp|playoffs|super bowl|world series|stanley cup|nba finals|premier league|ballon|heisman|grand slam|wimbledon|open\b.*\bwin|masters|draft(ed)?|relegat|promot|world cup|olympic)\b'),
           ('elections_politics', r'\b(elect|election|president|senate|congress|governor|mayor|primary|poll|approval|impeach|nominee|cabinet|prime minister|parliament|vote|endorse|resign|confirm)\b'),

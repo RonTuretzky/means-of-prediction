@@ -19,14 +19,18 @@ zero false positives on 237 decoys); the evidence set is.
 Of the 3.3 million catalog markets, 1,397,747 have rules that settle on
 "credible reporting", where a newspaper report is admissible. Restricting to
 markets that resolved decisively between June 2025 and September 2026 and
-dropping sports matches, crypto price ticks and every held-out or reserved
-market leaves a pool of **279,681 markets** with a private payout record
-(`~/.local/share/means-of-prediction/dataset-v2-20260916/market-pool`,
-built by `app/scripts/research/dataset_v2/build_market_pool.py`). Topic
-buckets by keyword: 229,667 other news-shaped questions, 39,480 sports
-season or award questions, 3,910 geopolitics, 2,841 elections, 1,661
-entertainment, 1,521 science and tech, 416 business, 155 courts. The
-keyword buckets are coarse and will be refined at pairing time.
+dropping sports matches and props, crypto price ticks and every held-out or
+reserved market leaves a pool of **63,368 markets** with a private payout
+record (`~/.local/share/means-of-prediction/dataset-v2-20260916/market-pool-v2`,
+built by `app/scripts/research/dataset_v2/build_market_pool.py`; the first
+`market-pool` directory used a looser sports filter and is superseded).
+Topic buckets by keyword: 30,976 sports season or award questions, 22,295
+other news-shaped questions (still containing chess, esports and golf props
+alongside real news such as arrests and leadership changes), 3,627
+geopolitics, 2,773 elections, 1,587 entertainment, 1,511 science and tech,
+415 business, 155 courts, 29 weather. Of the 1,217,155 distinct
+credible-reporting markets in the window, 1,122,667 were sports matches or
+props. The keyword buckets are coarse and will be refined at pairing time.
 
 ## What the mailbox says
 
