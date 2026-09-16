@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Can an AI settle a bet from a newspaper email? What we found</title>
+<style>
+  :root{
+    color-scheme: dark;
+    --page:#0d0d0d; --surface:#1a1a19;
+    --ink:#ffffff; --ink-2:#c3c2b7; --muted:#898781;
+    --grid:#2c2c2a; --baseline:#383835; --border:rgba(255,255,255,.10);
+    --good:#0ca30c; --warn:#fab219; --serious:#ec835a; --critical:#d03b3b;
+    --old:#5f6b7a; --new:#3987e5; --clsC:#9ec5f4;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  *{box-sizing:border-box; margin:0; padding:0}
+  html,body{height:100%; overflow:hidden}
+  body{background:var(--page); color:var(--ink); font-family: system-ui, -apple-system, "Segoe UI", sans-serif; font-size: clamp(14px, 1.3vw, 17px); line-height:1.5}
+  .progress{position:fixed; top:0; left:0; right:0; height:3px; background:var(--grid); z-index:30}
+  .progress i{display:block; height:100%; width:0; background:var(--new); transition:width .25s ease}
+  .slide{position:absolute; inset:0; display:none; overflow-y:auto; padding:6vh 6vw 8vh}
+  .slide.active{display:flex; flex-direction:column; justify-content:center; animation:in .35s ease}
+  @keyframes in{from{opacity:0; transform:translateY(10px)}to{opacity:1; transform:none}}
+  .wrap{max-width:1100px; width:100%; margin:0 auto}
+  .kicker{display:flex; align-items:center; gap:10px; font-size:.72em; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); margin-bottom:16px; font-weight:600}
+  .kicker::before{content:""; width:26px; height:2px; background:var(--new)}
+  h1{font-size:clamp(32px,4.4vw,56px); line-height:1.08; letter-spacing:-.02em; margin-bottom:20px; font-weight:750}
+  h2{font-size:clamp(24px,3vw,38px); line-height:1.12; letter-spacing:-.015em; margin-bottom:18px; font-weight:700}
+  h3{font-size:1.05em; margin-bottom:8px; font-weight:650}
+  .sub{color:var(--ink-2); font-size:clamp(16px,1.6vw,20px); max-width:62ch}
+  .accent{color:var(--new)}
+  p{color:var(--ink-2)} strong{color:var(--ink); font-weight:650}
+  .card{background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:18px 20px}
+  .cards2{display:grid; grid-template-columns:1fr 1fr; gap:14px}
+  .cards3{display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px}
+  @media (max-width:840px){.cards2,.cards3{grid-template-columns:1fr}}
+  .card .tag{display:inline-block; font-size:.7em; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); font-weight:650; margin-bottom:8px}
+  .cards2 + .card, .card + .cards2, .card + .card, .cards3 + .card{margin-top:14px}
+  ul.tight{list-style:none}
+  ul.tight li{padding-left:20px; position:relative; margin:7px 0; color:var(--ink-2)}
+  ul.tight li::before{content:"—"; position:absolute; left:0; color:var(--new)}
+  .flow{display:flex; align-items:stretch; flex-wrap:wrap}
+  .fnode{background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:16px 18px; flex:1; min-width:170px}
+  .fnode .n{font-size:.7em; letter-spacing:.1em; color:var(--new); font-weight:700; text-transform:uppercase}
+  .fnode h3{margin:4px 0 6px}
+  .fnode p{font-size:.88em}
+  .farrow{align-self:center; padding:0 12px; color:var(--muted); font-size:26px; flex:none}
+  .big{display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-top:16px}
+  @media (max-width:840px){.big{grid-template-columns:1fr}}
+  .stat{background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:16px 18px}
+  .stat .v{font-size:clamp(28px,3.4vw,46px); font-weight:750; letter-spacing:-.02em}
+  .stat .v.new{color:var(--new)}
+  .stat .l{color:var(--muted); font-size:.82em; margin-top:4px}
+  /* paired horizontal bars: two states of one measure, fixed colors, direct labels, legend */
+  .pair{margin-top:6px}
+  .pair .title{font-size:.85em; color:var(--muted); margin:14px 0 6px}
+  .pair .row{display:grid; grid-template-columns:130px 1fr 120px; align-items:center; height:26px; gap:10px}
+  .pair .lab{font-size:.85em; color:var(--ink-2); text-align:right}
+  .pair .track{position:relative; height:100%; border-left:1px solid var(--baseline)}
+  .pair .b{position:absolute; top:5px; height:16px; border-radius:0 4px 4px 0}
+  .pair .b.old{background:var(--old)} .pair .b.new{background:var(--new)}
+  .pair .b:hover{filter:brightness(1.2)}
+  .pair .val{font-size:.85em; color:var(--ink); font-variant-numeric:tabular-nums}
+  .legend{display:flex; gap:18px; margin-top:12px; font-size:.8em; color:var(--ink-2)}
+  .legend i{width:12px; height:12px; border-radius:3px; display:inline-block; margin-right:6px; vertical-align:-1px}
+  .legend i.old{background:var(--old)} .legend i.new{background:var(--new)}
+  details.tbl{margin-top:10px}
+  details.tbl summary{cursor:pointer; color:var(--muted); font-size:.8em}
+  details.tbl table{width:100%; border-collapse:collapse; margin-top:8px; font-size:.8em}
+  details.tbl th, details.tbl td{text-align:left; padding:4px 8px; border-bottom:1px solid var(--grid); color:var(--ink-2); font-variant-numeric:tabular-nums}
+  details.tbl th{color:var(--muted); font-weight:600}
+  /* stacked progression */
+  .steps{display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px; margin-top:10px}
+  @media (max-width:840px){.steps{grid-template-columns:1fr}}
+  .steps .stat .v{font-size:clamp(30px,3.8vw,52px)}
+  .pct{height:10px; background:var(--grid); border-radius:5px; margin-top:10px; overflow:hidden}
+  .pct i{display:block; height:100%; background:var(--new); border-radius:5px}
+  .foot{margin-top:22px; color:var(--muted); font-size:.78em}
+  .hud{position:fixed; right:18px; bottom:14px; display:flex; align-items:center; gap:10px; z-index:30; color:var(--muted); font-variant-numeric:tabular-nums; font-size:.85em}
+  .hud button{background:var(--surface); color:var(--ink-2); border:1px solid var(--border); border-radius:8px; width:34px; height:30px; font-size:16px; cursor:pointer}
+  .hud button:hover{color:var(--ink); border-color:rgba(255,255,255,.25)}
+  .hint{position:fixed; left:18px; bottom:14px; color:var(--muted); font-size:.75em; z-index:30}
+  #tip{position:fixed; z-index:50; display:none; max-width:340px; pointer-events:none; background:#242423; border:1px solid rgba(255,255,255,.16); border-radius:8px; padding:8px 11px; font-size:.8em; color:var(--ink-2); box-shadow:0 6px 24px rgba(0,0,0,.5)}
+  #tip b{color:var(--ink)}
+</style>
+</head>
+<body>
+<div class="progress"><i id="pbar"></i></div>
+
+<!-- 1 -->
+<section class="slide">
+  <div class="wrap">
+    <div class="kicker">Means of Prediction · findings · September 16, 2026</div>
+    <h1>Can an AI settle a bet <span class="accent">from a newspaper email?</span></h1>
+    <p class="sub">We give one AI a betting question and ask it to write a rule. We give a second AI that rule and one New York Times newsletter email and ask: does this email prove the answer? This week we swapped both AIs for a stronger model and measured what changed.</p>
+    <div class="big">
+      <div class="stat"><div class="v">161</div><div class="l">real facts hidden in 143 newsletter emails, each tied to a real prediction market</div></div>
+      <div class="stat"><div class="v">1,520</div><div class="l">decoy emails, most of them written so the honest answer is "this proves nothing"</div></div>
+      <div class="stat"><div class="v new">2</div><div class="l">swaps tested: a better rule-writer, then a better reader</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- 2 -->
+<section class="slide">
+  <div class="wrap">
+    <div class="kicker">How it works</div>
+    <h2>Two AIs, one email, no peeking</h2>
+    <div class="flow">
+      <div class="fnode"><span class="n">1 · the bet</span><h3>A market question</h3><p>"Will X happen by date Y?" with its official fine print, exactly as traders see it.</p></div>
+      <div class="farrow">→</div>
+      <div class="fnode"><span class="n">2 · the rule-writer</span><h3>Writes a checklist</h3><p>Sees only the question and fine print. Never sees the email, the outcome or the payout. Writes what an email would have to say for each side to be proven.</p></div>
+      <div class="farrow">→</div>
+      <div class="fnode"><span class="n">3 · the reader</span><h3>Reads one email</h3><p>Gets the checklist and a single complete email. No search, no memory of other emails, no hints. Must quote the exact sentence it relied on.</p></div>
+      <div class="farrow">→</div>
+      <div class="fnode"><span class="n">4 · the score</span><h3>Did it find the fact?</h3><p>We already know which fact each email contains. A pass means the right answer <strong>and</strong> an exact quote from the email.</p></div>
+    </div>
+    <p style="margin-top:16px">The decoy emails are the safety check. If a reader says "proven" about an email that proves nothing, that's a false alarm, and false alarms are what would cost real money.</p>
+  </div>
+</section>
+
+<!-- 3 -->
+<section class="slide">
+  <div class="wrap">
+    <div class="kicker">Finding 1 · rule-writer swap</div>
+    <h2>A stronger rule-writer found more facts and failed far less often</h2>
+    <p class="sub">Same reader, same emails, same instructions. Only the AI writing the checklist changed, from the previous model (Astra) to Claude Fable 5.1.</p>
+    <div class="card">
+      <div class="pair">
+        <div class="title">Facts found with an exact quote, out of 161</div>
+        <div class="row"><span class="lab">before</span><div class="track"><div class="b old" style="width:34.2%" data-tip="<b>Astra rule-writer</b><br>55 of 161 facts found with an exact quote (34%)"></div></div><span class="val">55 (34%)</span></div>
+        <div class="row"><span class="lab">after</span><div class="track"><div class="b new" style="width:40.4%" data-tip="<b>Fable rule-writer</b><br>65 of 161 (40%)"></div></div><span class="val">65 (40%)</span></div>
+        <div class="title">Decoys with a planted answer, correctly caught, out of 608</div>
+        <div class="row"><span class="lab">before</span><div class="track"><div class="b old" style="width:73.5%" data-tip="<b>Astra</b><br>447 of 608 (74%)"></div></div><span class="val">447 (74%)</span></div>
+        <div class="row"><span class="lab">after</span><div class="track"><div class="b new" style="width:83.7%" data-tip="<b>Fable</b><br>509 of 608 (84%)"></div></div><span class="val">509 (84%)</span></div>
+        <div class="title">Emails that couldn't be scored because the rule-writer failed, out of 1,915</div>
+        <div class="row"><span class="lab">before</span><div class="track"><div class="b old" style="width:83.6%" data-tip="<b>Astra</b><br>160 rows lost to 18 failed rules"></div></div><span class="val">160</span></div>
+        <div class="row"><span class="lab">after</span><div class="track"><div class="b new" style="width:23%" data-tip="<b>Fable</b><br>44 rows lost, 42 of them to a rate limit that has since been fixed"></div></div><span class="val">44</span></div>
+        <div class="legend"><span><i class="old"></i>Astra (before)</span><span><i class="new"></i>Claude Fable 5.1 (after)</span></div>
+      </div>
+      <details class="tbl"><summary>All numbers</summary><table><thead><tr><th>Measure</th><th>Astra</th><th>Fable</th></tr></thead><tbody>
+        <tr><td>Facts found with exact quote / 161</td><td>55</td><td>65</td></tr><tr><td>Facts found, quote or not / 161</td><td>75</td><td>89</td></tr>
+        <tr><td>Planted-answer decoys caught / 608</td><td>447</td><td>509</td></tr><tr><td>False alarms on empty decoys / 912</td><td>14</td><td>15</td></tr>
+        <tr><td>Unscorable rows / 1,915</td><td>160</td><td>44</td></tr></tbody></table></details>
+    </div>
+    <p class="foot">False alarms stayed flat (14 vs 15 out of 912). The one thing that got slightly worse: picking the wrong side on a planted decoy, 28 → 40.</p>
+  </div>
+</section>
+
+<!-- 4 -->
+<section class="slide">
+  <div class="wrap">
+    <div class="kicker">Finding 2 · reader swap</div>
+    <h2>The reader was the real bottleneck</h2>
+    <p class="sub">Same Fable-written checklists, same emails. We replaced the reader, a 35-billion-parameter model running on a local Mac (Qwen), with Claude Fable 5.1, and compared them on the exact same rows.</p>
+    <div class="card">
+      <div class="pair">
+        <div class="title">Facts found with an exact quote, out of the 116 facts both readers have judged so far</div>
+        <div class="row"><span class="lab">local Qwen</span><div class="track"><div class="b old" style="width:38.8%" data-tip="<b>Local Qwen reader</b><br>45 of 116 (39%)"></div></div><span class="val">45 (39%)</span></div>
+        <div class="row"><span class="lab">Fable</span><div class="track"><div class="b new" style="width:94%" data-tip="<b>Fable reader</b><br>109 of 116 (94%). Fable found 65 facts Qwen missed; Qwen found 1 Fable missed."></div></div><span class="val">109 (94%)</span></div>
+        <div class="title">False alarms on empty decoys, out of 179</div>
+        <div class="row"><span class="lab">local Qwen</span><div class="track"><div class="b old" style="width:1.2%" data-tip="<b>Qwen</b><br>2 false alarms"></div></div><span class="val">2</span></div>
+        <div class="row"><span class="lab">Fable</span><div class="track"><div class="b new" style="width:0.4%" data-tip="<b>Fable</b><br>0 false alarms"></div></div><span class="val">0</span></div>
+        <div class="title">"Proven" claims on emails that were never about the bet, out of 82</div>
+        <div class="row"><span class="lab">local Qwen</span><div class="track"><div class="b old" style="width:20.7%" data-tip="<b>Qwen</b><br>17 unjustified claims"></div></div><span class="val">17</span></div>
+        <div class="row"><span class="lab">Fable</span><div class="track"><div class="b new" style="width:0.4%" data-tip="<b>Fable</b><br>0 unjustified claims"></div></div><span class="val">0</span></div>
+        <div class="legend"><span><i class="old"></i>Local Qwen reader</span><span><i class="new"></i>Claude Fable 5.1 reader</span></div>
+      </div>
+      <details class="tbl"><summary>All numbers (interim: 512 of 730 planned rows)</summary><table><thead><tr><th>Measure, same rows</th><th>Qwen</th><th>Fable</th></tr></thead><tbody>
+        <tr><td>Facts found with exact quote / 116</td><td>45</td><td>109</td></tr><tr><td>Facts found, quote or not / 116</td><td>63</td><td>114</td></tr>
+        <tr><td>Planted-answer decoys caught / 135</td><td>113</td><td>124</td></tr><tr><td>Wrong side picked on a planted decoy</td><td>8</td><td>0</td></tr>
+        <tr><td>False alarms on empty decoys / 179</td><td>2</td><td>0</td></tr><tr><td>Claims on unrelated or weak emails / 82</td><td>17</td><td>0</td></tr>
+        <tr><td>Agreement on the fact (of 512 rows)</td><td colspan="2">396 (77%)</td></tr></tbody></table></details>
+    </div>
+  </div>
+</section>
+
+<!-- 5 -->
+<section class="slide">
+  <div class="wrap">
+    <div class="kicker">Putting it together</div>
+    <h2>Each swap moved the needle. The reader moved it most.</h2>
+    <div class="steps">
+      <div class="stat"><div class="l">Previous setup</div><div class="v">34%</div><div class="l">Astra writes, local Qwen reads · 55 of 161 facts</div><div class="pct"><i style="width:34%"></i></div></div>
+      <div class="stat"><div class="l">Better rule-writer</div><div class="v">40%</div><div class="l">Fable writes, local Qwen reads · 65 of 161</div><div class="pct"><i style="width:40%"></i></div></div>
+      <div class="stat"><div class="l">Better reader too</div><div class="v new">94%</div><div class="l">Fable writes, Fable reads · 109 of 116 judged so far</div><div class="pct"><i style="width:94%"></i></div></div>
+    </div>
+    <div class="card" style="margin-top:16px"><span class="tag">Plain reading</span><p>The checklists were mostly fine. The local reader was missing facts that were sitting in the email, and it was also the one raising false claims on emails that had nothing to do with the bet. A stronger reader fixed both at once, without becoming trigger-happy: zero false alarms on 179 decoys.</p></div>
+    <p class="foot">The third number is interim (512 of 730 planned rows scored) and uses a smaller denominator; the first two are complete over all 1,915 rows.</p>
+  </div>
+</section>
+
+<!-- 6 -->
+<section class="slide">
+  <div class="wrap">
+    <div class="kicker">What "found the fact" does not mean</div>
+    <h2>Finding the fact is not the same as being allowed to pay out</h2>
+    <div class="cards2">
+      <div class="card"><span class="tag">Example</span><p>A newsletter says a jury convicted someone. The reader correctly finds that fact. But the market's fine print says it settles on "official court records", and a newsletter is a news report, not a court record. The fact is found; the bet still cannot be settled from that email alone.</p></div>
+      <div class="card"><span class="tag">How often that bites</span><p>When we checked all 161 facts against each market's actual fine print, only <strong>1 of 161</strong> could be settled from the email under the original rules. The other 160 needed a source or a detail the email did not contain.</p></div>
+    </div>
+    <div class="card"><span class="tag">So what are we measuring?</span><p>Whether the AI can reliably pull the right fact out of a real newspaper email and prove it with a quote, without inventing anything. That is the necessary first step. Settling real money additionally needs evidence the market's rules accept, which is a data problem, not an AI problem.</p></div>
+  </div>
+</section>
+
+<!-- 7 -->
+<section class="slide">
+  <div class="wrap">
+    <div class="kicker">Honest caveats</div>
+    <h2>Read the numbers with these in mind</h2>
+    <ul class="tight">
+      <li><strong>Emails, not articles.</strong> The evidence is NYT newsletter emails. Full article text is not available to us: the browser route is blocked by policy and the public NYT API returns headlines and abstracts only.</li>
+      <li><strong>One test set.</strong> 161 facts in 143 emails from one mailbox. Good for comparing two systems side by side; not a forecast of accuracy on all markets everywhere.</li>
+      <li><strong>The reader result is partial.</strong> 512 of 730 planned rows are scored; the rest are waiting on an hourly usage limit. The pattern is strong, but the final table may shift a little.</li>
+      <li><strong>Could the AI just "remember" the news?</strong> We guard against it three ways: a pass needs an exact quote from the email, the decoy emails are fictional, and the reader made zero claims on emails unrelated to the bet. But a large model's background knowledge can never be fully ruled out.</li>
+      <li><strong>Small differences are noise.</strong> The local reader gives slightly different answers when run twice (about 1 in 11). Differences smaller than that aren't meaningful. The 39% → 94% gap is far above it.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- 8 -->
+<section class="slide">
+  <div class="wrap">
+    <div class="kicker">Cost and speed</div>
+    <h2>What it takes to run</h2>
+    <div class="cards3">
+      <div class="card"><span class="tag">Rule-writer (Fable)</span><h3>≈25 s and ≈$0.11 per rule</h3><p>241 rules per run, ten at a time. List prices; under the subscription it counts against usage limits instead of dollars.</p></div>
+      <div class="card"><span class="tag">Local reader (Qwen)</span><h3>Free, ≈2.3 h per run</h3><p>1,915 emails judged on a Mac, four at a time. No data leaves the machine.</p></div>
+      <div class="card"><span class="tag">Fable reader</span><h3>≈4 s and ≈$0.2 per email</h3><p>Fast, but every email goes to the model provider and the run paused twice on usage limits.</p></div>
+    </div>
+    <div class="card"><span class="tag">The trade-off</span><p>The local reader is free and private but misses most facts. The hosted reader finds nearly all of them but costs money, needs the emails sent out, and is throttled. The next decision is which reader to run for real, or whether a stronger local model closes the gap.</p></div>
+  </div>
+</section>
+
+<!-- 9 -->
+<section class="slide">
+  <div class="wrap">
+    <div class="kicker">What happens next</div>
+    <h2>Three things, in order</h2>
+    <div class="cards3">
+      <div class="card"><span class="tag">1 · finish the reader test</span><p>Score the remaining 218 rows once the usage limit resets, then publish the final paired table.</p></div>
+      <div class="card"><span class="tag">2 · let the system improve itself</span><p>A teacher AI reads every mistake and rewrites the checklist instructions; a new version is drawn and judged from scratch and only kept if it wins on held-out data.</p></div>
+      <div class="card"><span class="tag">3 · get more evidence</span><p>With a free NYT developer key we can add headlines and abstracts for millions of markets' date ranges. Full articles need an export route we are allowed to use.</p></div>
+    </div>
+    <div class="card"><span class="tag">Bottom line</span><p>Swapping in a stronger model roughly doubled what the system can extract from a newspaper email, and the biggest gain came from the reader, not the rule-writer. The remaining gap to real settlement is about evidence the market rules accept, not about the AI's reading.</p></div>
+  </div>
+</section>
+
+<div id="tip"></div>
+<div class="hint">← → to navigate · hover bars for detail</div>
+<div class="hud"><button id="prev" aria-label="Previous">‹</button><span id="counter">1 / 9</span><button id="next" aria-label="Next">›</button></div>
+
+<script>
+(function(){
+  var slides = Array.prototype.slice.call(document.querySelectorAll('.slide'));
+  var N = slides.length, cur = 0;
+  var counter = document.getElementById('counter'); var pbar = document.getElementById('pbar'); var tip = document.getElementById('tip');
+  function show(i){ i = Math.max(0, Math.min(N-1, i)); slides[cur].classList.remove('active'); cur = i; slides[cur].classList.add('active');
+    counter.textContent = (cur+1) + ' / ' + N; pbar.style.width = ((cur+1)/N*100) + '%'; if (history.replaceState) history.replaceState(null, '', '#' + (cur+1)); hideTip(); }
+  var fromHash = parseInt((location.hash||'').replace('#',''), 10); slides[0].classList.add('active'); show(isNaN(fromHash) ? 0 : fromHash - 1);
+  document.getElementById('next').addEventListener('click', function(){ show(cur+1); });
+  document.getElementById('prev').addEventListener('click', function(){ show(cur-1); });
+  document.addEventListener('keydown', function(e){
+    if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') { e.preventDefault(); show(cur+1); }
+    else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); show(cur-1); }
+    else if (e.key === 'Home') { e.preventDefault(); show(0); } else if (e.key === 'End') { e.preventDefault(); show(N-1); } });
+  window.addEventListener('hashchange', function(){ var h = parseInt((location.hash||'').replace('#',''), 10); if (!isNaN(h)) show(h-1); });
+  var tx = null;
+  document.addEventListener('touchstart', function(e){ tx = e.changedTouches[0].clientX; }, {passive:true});
+  document.addEventListener('touchend', function(e){ if (tx === null) return; var dx = e.changedTouches[0].clientX - tx; tx = null; if (dx < -40) show(cur+1); else if (dx > 40) show(cur-1); }, {passive:true});
+  function hideTip(){ if (tip) tip.style.display = 'none'; }
+  function moveTip(e){ var pad = 14, x = e.clientX + pad, y = e.clientY + pad; var r = tip.getBoundingClientRect();
+    if (x + r.width > window.innerWidth - 8) x = e.clientX - r.width - pad; if (y + r.height > window.innerHeight - 8) y = e.clientY - r.height - pad; tip.style.left = x + 'px'; tip.style.top = y + 'px'; }
+  document.addEventListener('mouseover', function(e){ var t = e.target.closest ? e.target.closest('[data-tip]') : null; if (t) { tip.innerHTML = t.getAttribute('data-tip'); tip.style.display = 'block'; moveTip(e); } });
+  document.addEventListener('mousemove', function(e){ if (tip.style.display === 'block') { var t = e.target.closest ? e.target.closest('[data-tip]') : null; if (t) moveTip(e); else hideTip(); } });
+  document.addEventListener('mouseout', function(e){ var t = e.target.closest ? e.target.closest('[data-tip]') : null; if (t && !(e.relatedTarget && t.contains(e.relatedTarget))) hideTip(); });
+})();
+</script>
+</body>
+</html>

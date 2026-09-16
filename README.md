@@ -190,6 +190,7 @@ cd app && pnpm e2e                # 9 Playwright flows on an isolated anvil (por
 - [Blind generator transport: Claude Fable 5.1 replaces Astra](docs/FABLE-GENERATOR-TRANSPORT.md).
 - [Fable round 1: autonomous prose-rule / local-Qwen improvement loop](docs/FABLE-ROUND-20260915.md).
 - [Slides: the running Fable research loop](docs/fable-loop-deck.html).
+- [Slides for everyone: what we found when we swapped the AIs](docs/findings-for-everyone-deck.html).
 - [Platform fee configuration and collection](docs/FEES.md).
 
 The unused ZK circuit experiment and its dependencies have been removed. Settlement
