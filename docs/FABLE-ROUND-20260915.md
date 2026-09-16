@@ -101,3 +101,28 @@ $V qwen_status.py | head -c 600; tail -3 "$MOP_QWEN_ROOT.driver.log"; ls $MOP_QW
 The Claude Code executable on PATH is 2.0.22 and lacks the headless flags;
 the driver pins the 2.1.263 binary by hash in `protocol.json` and refuses to
 start with any other.
+
+## Results so far (September 16)
+
+**Baseline, Fable generator with the pinned Qwen judge**, full 1,915-row
+cohort, prompts byte-identical to the Astra baseline: grounded factual 65/161
+(Astra 55), raw factual 89/161 (75), fact-family macro recall 0.434 (0.367),
+timely grounded 6/19 (4), strict positive controls 509/608 (447), false
+positives 15/912 (14), wrong-side positive controls 40 (28), unscorable 44
+(160), utility 1.199 (0.972). Judge wall 2 h 19 min. Thirteen draws were
+lost to a model-specific cap message ("reached your Fable limit", HTTP 429)
+that the transport did not recognise as waitable; detection was widened
+afterwards and those 42 rows stay unscorable in this method.
+
+**Judge swap** (`fable_judge.py`, root `slides/fable-judge-baseline-20260915`):
+Claude Fable 5.1 judged the same frozen baseline rules on a deterministic
+730-row subset (all 161 factual, all 91 weak, 419 controls, 59 unlabeled).
+Paired on the 693 rows both judges completed: grounded factual 149/160 vs
+Qwen 65/160 (86 found only by Fable, 2 only by Qwen, 63 by both), raw
+158/160 vs 89, macro recall 0.924 vs 0.434, strict positives 167/181 vs
+152, false positives 0/237 vs 2, wrong-side 0 vs 12, settlement claims on
+weak emails 0/63 vs 19, on unlabeled 0/52 vs 0, factual-outcome agreement
+536/693. Fable judge: median 6 s per row, $123 list for 730 rows, 8 limit
+waits. The judge, not the generator, is the binding constraint on this
+cohort. Judge outputs from this arm do not enter teacher shards or selection.
+

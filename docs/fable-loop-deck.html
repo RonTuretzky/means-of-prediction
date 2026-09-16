@@ -222,7 +222,7 @@
         </div>
         <details class="tbl"><summary>Table</summary><table><thead><tr><th>Method</th><th>Grounded /161</th><th>Strict pos /608</th><th>False pos /912</th><th>Utility</th></tr></thead>
           <tbody><tr><td>Astra baseline</td><td>55</td><td>447</td><td>14</td><td>0.972</td></tr><tr><td>Astra v1</td><td>48</td><td>413</td><td>15</td><td>0.892</td></tr><tr><td>Astra v2</td><td>50</td><td>305</td><td>2</td><td>0.773</td></tr></tbody></table></details>
-        <p style="margin-top:10px;font-size:.85em">Neither Astra revision was promoted. The Fable baseline is the first new number this loop produces.</p>
+        <p style="margin-top:10px;font-size:.85em">Neither Astra revision was promoted. Fable baseline (same prompts, Qwen judge): 65/161 grounded, 509/608 strict, 15/912 false positives, utility 1.199. Fable as judge on the same rules: 149/160 grounded, 0/237 false positives.</p>
       </div>
     </div>
   </div>
@@ -280,10 +280,10 @@
 <!-- 10 STATUS -->
 <section class="slide" aria-label="Status">
   <div class="wrap">
-    <div class="kicker">Status at 13:27 UTC, September 15</div>
+    <div class="kicker">Status at 19:30 UTC, September 16</div>
     <h2>Where the loop is right now</h2>
     <div class="cards3">
-      <div class="card"><span class="tag">Method · baseline</span><h3><span class="chip warn"><span class="ic">●</span> guarded rule draws · waiting for limit reset</span></h3><p>217 of 241 completed, all successful. At 13:17 UTC the sign-in reached its five-hour session limit: three draws hold limit receipts, seven are paused on the shared gate, and all resume at the 17:50 UTC reset. Then: rule audit, judge preflight, the judge pass (two to three hours) alongside train-only teacher feedback.</p></div>
+      <div class="card"><span class="tag">Method · baseline</span><h3><span class="chip ok"><span class="ic">●</span> baseline complete</span></h3><p>241 draws (228 completed; 13 lost to a model-cap message the transport did not yet recognise, since fixed). Qwen judge pass 2 h 19 min. Grounded factual 65/161 (Astra 55), strict positives 509/608 (447), false positives 15/912 (14), unscorable 44 (160), utility 1.199 (0.972). Judge-swap arm on a 730-row subset: Fable judge 149/160 grounded vs Qwen 65/160, 0 vs 2 false positives on 237, 0 vs 12 wrong-side, 0 vs 19 claims on weak emails; $123 list, 8 limit waits. Teacher feedback and v1 now running under a 24-hour driver budget.</p></div>
       <div class="card"><span class="tag">Planned sequence</span><h3>baseline → v1 → v2 → v3</h3><p>Each method is three to four and a half hours end to end. Twelve hours covers the baseline and two revisions; a third only if the projection fits.</p></div>
       <div class="card"><span class="tag">Watching</span><h3>Log, markers, counters</h3><p>Driver log outside the root, DRIVER-PROGRESS.json, content-free counters from qwen_status, and a monitor that wakes the orchestrator on any stop, traceback or process exit.</p></div>
     </div>

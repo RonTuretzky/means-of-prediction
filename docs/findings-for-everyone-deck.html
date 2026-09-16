@@ -97,7 +97,7 @@
     <div class="big">
       <div class="stat"><div class="v">161</div><div class="l">real facts hidden in 143 newsletter emails, each tied to a real prediction market</div></div>
       <div class="stat"><div class="v">1,520</div><div class="l">decoy emails, most of them written so the honest answer is "this proves nothing"</div></div>
-      <div class="stat"><div class="v new">2</div><div class="l">swaps tested: a better rule-writer, then a better reader</div></div>
+      <div class="stat"><div class="v new">34% → 93%</div><div class="l">facts recovered with an exact quote, old pair of AIs versus new pair</div></div>
     </div>
   </div>
 </section>
@@ -156,22 +156,22 @@
     <p class="sub">Same Fable-written checklists, same emails. We replaced the reader, a 35-billion-parameter model running on a local Mac (Qwen), with Claude Fable 5.1, and compared them on the exact same rows.</p>
     <div class="card">
       <div class="pair">
-        <div class="title">Facts found with an exact quote, out of the 116 facts both readers have judged so far</div>
-        <div class="row"><span class="lab">local Qwen</span><div class="track"><div class="b old" style="width:38.8%" data-tip="<b>Local Qwen reader</b><br>45 of 116 (39%)"></div></div><span class="val">45 (39%)</span></div>
-        <div class="row"><span class="lab">Fable</span><div class="track"><div class="b new" style="width:94%" data-tip="<b>Fable reader</b><br>109 of 116 (94%). Fable found 65 facts Qwen missed; Qwen found 1 Fable missed."></div></div><span class="val">109 (94%)</span></div>
-        <div class="title">False alarms on empty decoys, out of 179</div>
-        <div class="row"><span class="lab">local Qwen</span><div class="track"><div class="b old" style="width:1.2%" data-tip="<b>Qwen</b><br>2 false alarms"></div></div><span class="val">2</span></div>
-        <div class="row"><span class="lab">Fable</span><div class="track"><div class="b new" style="width:0.4%" data-tip="<b>Fable</b><br>0 false alarms"></div></div><span class="val">0</span></div>
-        <div class="title">"Proven" claims on emails that were never about the bet, out of 82</div>
-        <div class="row"><span class="lab">local Qwen</span><div class="track"><div class="b old" style="width:20.7%" data-tip="<b>Qwen</b><br>17 unjustified claims"></div></div><span class="val">17</span></div>
-        <div class="row"><span class="lab">Fable</span><div class="track"><div class="b new" style="width:0.4%" data-tip="<b>Fable</b><br>0 unjustified claims"></div></div><span class="val">0</span></div>
+        <div class="title">Facts found with an exact quote, out of the 160 facts both readers judged</div>
+        <div class="row"><span class="lab">local Qwen</span><div class="track"><div class="b old" style="width:40.6%" data-tip="<b>Local Qwen reader</b><br>65 of 160 (41%)"></div></div><span class="val">65 (41%)</span></div>
+        <div class="row"><span class="lab">Fable</span><div class="track"><div class="b new" style="width:93.1%" data-tip="<b>Fable reader</b><br>149 of 160 (93%). Fable found 86 facts Qwen missed; Qwen found 2 Fable missed."></div></div><span class="val">149 (93%)</span></div>
+        <div class="title">False alarms on empty decoys, out of 237</div>
+        <div class="row"><span class="lab">local Qwen</span><div class="track"><div class="b old" style="width:0.9%" data-tip="<b>Qwen</b><br>2 false alarms in 237"></div></div><span class="val">2</span></div>
+        <div class="row"><span class="lab">Fable</span><div class="track"><div class="b new" style="width:0.4%" data-tip="<b>Fable</b><br>0 false alarms in 237"></div></div><span class="val">0</span></div>
+        <div class="title">"Proven" claims on weak or unrelated emails, out of 115</div>
+        <div class="row"><span class="lab">local Qwen</span><div class="track"><div class="b old" style="width:16.5%" data-tip="<b>Qwen</b><br>19 unjustified claims in 115"></div></div><span class="val">19</span></div>
+        <div class="row"><span class="lab">Fable</span><div class="track"><div class="b new" style="width:0.4%" data-tip="<b>Fable</b><br>0 unjustified claims in 115"></div></div><span class="val">0</span></div>
         <div class="legend"><span><i class="old"></i>Local Qwen reader</span><span><i class="new"></i>Claude Fable 5.1 reader</span></div>
       </div>
-      <details class="tbl"><summary>All numbers (interim: 512 of 730 planned rows)</summary><table><thead><tr><th>Measure, same rows</th><th>Qwen</th><th>Fable</th></tr></thead><tbody>
-        <tr><td>Facts found with exact quote / 116</td><td>45</td><td>109</td></tr><tr><td>Facts found, quote or not / 116</td><td>63</td><td>114</td></tr>
-        <tr><td>Planted-answer decoys caught / 135</td><td>113</td><td>124</td></tr><tr><td>Wrong side picked on a planted decoy</td><td>8</td><td>0</td></tr>
-        <tr><td>False alarms on empty decoys / 179</td><td>2</td><td>0</td></tr><tr><td>Claims on unrelated or weak emails / 82</td><td>17</td><td>0</td></tr>
-        <tr><td>Agreement on the fact (of 512 rows)</td><td colspan="2">396 (77%)</td></tr></tbody></table></details>
+      <details class="tbl"><summary>All numbers (final: 693 of 730 rows judged by both; 35 rows had no rule, 2 failed on the local reader)</summary><table><thead><tr><th>Measure, same rows</th><th>Qwen</th><th>Fable</th></tr></thead><tbody>
+        <tr><td>Facts found with exact quote / 160</td><td>65</td><td>149</td></tr><tr><td>Facts found, quote or not / 160</td><td>89</td><td>158</td></tr>
+        <tr><td>Planted-answer decoys caught / 181</td><td>152</td><td>167</td></tr><tr><td>Wrong side picked on a planted decoy</td><td>12</td><td>0</td></tr>
+        <tr><td>False alarms on empty decoys / 237</td><td>2</td><td>0</td></tr><tr><td>Claims on weak or unrelated emails / 115</td><td>19</td><td>0</td></tr>
+        <tr><td>Agreement on the fact (of 693 rows)</td><td colspan="2">536 (77%)</td></tr><tr><td>Fable reader cost, list price, 730 rows</td><td colspan="2">$123 · median 6 s per email · 8 pauses for usage limits</td></tr></tbody></table></details>
     </div>
   </div>
 </section>
@@ -184,10 +184,10 @@
     <div class="steps">
       <div class="stat"><div class="l">Previous setup</div><div class="v">34%</div><div class="l">Astra writes, local Qwen reads · 55 of 161 facts</div><div class="pct"><i style="width:34%"></i></div></div>
       <div class="stat"><div class="l">Better rule-writer</div><div class="v">40%</div><div class="l">Fable writes, local Qwen reads · 65 of 161</div><div class="pct"><i style="width:40%"></i></div></div>
-      <div class="stat"><div class="l">Better reader too</div><div class="v new">94%</div><div class="l">Fable writes, Fable reads · 109 of 116 judged so far</div><div class="pct"><i style="width:94%"></i></div></div>
+      <div class="stat"><div class="l">Better reader too</div><div class="v new">93%</div><div class="l">Fable writes, Fable reads · 149 of 160</div><div class="pct"><i style="width:93%"></i></div></div>
     </div>
-    <div class="card" style="margin-top:16px"><span class="tag">Plain reading</span><p>The checklists were mostly fine. The local reader was missing facts that were sitting in the email, and it was also the one raising false claims on emails that had nothing to do with the bet. A stronger reader fixed both at once, without becoming trigger-happy: zero false alarms on 179 decoys.</p></div>
-    <p class="foot">The third number is interim (512 of 730 planned rows scored) and uses a smaller denominator; the first two are complete over all 1,915 rows.</p>
+    <div class="card" style="margin-top:16px"><span class="tag">Plain reading</span><p>The checklists were mostly fine. The local reader was missing facts that were sitting in the email, and it was also the one raising false claims on emails that had nothing to do with the bet. A stronger reader fixed both at once, without becoming trigger-happy: zero false alarms on 237 decoys and zero claims on 115 weak or unrelated emails.</p></div>
+    <p class="foot">The third number comes from the 730-row comparison subset (160 of the 161 facts); the first two are complete over all 1,915 rows.</p>
   </div>
 </section>
 
@@ -212,9 +212,9 @@
     <ul class="tight">
       <li><strong>Emails, not articles.</strong> The evidence is NYT newsletter emails. Full article text is not available to us: the browser route is blocked by policy and the public NYT API returns headlines and abstracts only.</li>
       <li><strong>One test set.</strong> 161 facts in 143 emails from one mailbox. Good for comparing two systems side by side; not a forecast of accuracy on all markets everywhere.</li>
-      <li><strong>The reader result is partial.</strong> 512 of 730 planned rows are scored; the rest are waiting on an hourly usage limit. The pattern is strong, but the final table may shift a little.</li>
+      <li><strong>The reader result is on a subset.</strong> 730 of the 1,915 rows: every real fact, every weak email, a quarter of the decoys and half the unrelated emails, chosen before any scoring. The full set would cost about three times more.</li>
       <li><strong>Could the AI just "remember" the news?</strong> We guard against it three ways: a pass needs an exact quote from the email, the decoy emails are fictional, and the reader made zero claims on emails unrelated to the bet. But a large model's background knowledge can never be fully ruled out.</li>
-      <li><strong>Small differences are noise.</strong> The local reader gives slightly different answers when run twice (about 1 in 11). Differences smaller than that aren't meaningful. The 39% → 94% gap is far above it.</li>
+      <li><strong>Small differences are noise.</strong> The local reader gives slightly different answers when run twice (about 1 in 11). Differences smaller than that aren't meaningful. The 41% → 93% gap is far above it.</li>
     </ul>
   </div>
 </section>
@@ -239,11 +239,11 @@
     <div class="kicker">What happens next</div>
     <h2>Three things, in order</h2>
     <div class="cards3">
-      <div class="card"><span class="tag">1 · finish the reader test</span><p>Score the remaining 218 rows once the usage limit resets, then publish the final paired table.</p></div>
+      <div class="card"><span class="tag">1 · reader test: done</span><p>All 730 rows scored and the paired table is final. Next is deciding which reader to run for real: free and local but misses most facts, or hosted, throttled and nearly complete.</p></div>
       <div class="card"><span class="tag">2 · let the system improve itself</span><p>A teacher AI reads every mistake and rewrites the checklist instructions; a new version is drawn and judged from scratch and only kept if it wins on held-out data.</p></div>
       <div class="card"><span class="tag">3 · get more evidence</span><p>With a free NYT developer key we can add headlines and abstracts for millions of markets' date ranges. Full articles need an export route we are allowed to use.</p></div>
     </div>
-    <div class="card"><span class="tag">Bottom line</span><p>Swapping in a stronger model roughly doubled what the system can extract from a newspaper email, and the biggest gain came from the reader, not the rule-writer. The remaining gap to real settlement is about evidence the market rules accept, not about the AI's reading.</p></div>
+    <div class="card"><span class="tag">Bottom line</span><p>Swapping in a stronger model took fact recovery from a third to over ninety percent of what is actually in the email, and the biggest gain came from the reader, not the rule-writer. The remaining gap to real settlement is about evidence the market rules accept, not about the AI's reading.</p></div>
   </div>
 </section>
 
