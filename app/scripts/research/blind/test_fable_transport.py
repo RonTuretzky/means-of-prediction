@@ -73,6 +73,10 @@ class OutputFromTests(unittest.TestCase):
         limited = envelope(None, text="You've hit your session limit · resets 12:50am (America/New_York)", subtype='error_during_execution', is_error=True, models=())
         self.assertEqual(output_from(self.wrap(limited))[2], 'usage_limited')
         self.assertEqual(fable_transport.usage_limit(envelope({'a': 'x'})), None)
+        # A model-specific cap returns HTTP 429 inside a 'success' envelope with is_error true and no reset time.
+        fable_cap = {**envelope(None, text="You've reached your Fable limit. Switch to another model, or manage usage credits at claude.ai", is_error=True, models=()), 'api_error_status': 429}
+        self.assertEqual(output_from(self.wrap(fable_cap))[2], 'usage_limited'); self.assertIsNone(fable_transport.limit_reset_epoch(fable_cap['result']))
+        self.assertEqual(output_from(self.wrap({**envelope(None, text='', is_error=True, models=()), 'api_error_status': 429}))[2], 'usage_limited')
         import datetime, zoneinfo
         tz = zoneinfo.ZoneInfo('America/New_York'); now = datetime.datetime(2026, 9, 15, 0, 5, tzinfo=tz).timestamp()
         reset = fable_transport.limit_reset_epoch(limited['result'], now=now)

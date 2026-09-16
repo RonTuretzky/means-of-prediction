@@ -108,14 +108,15 @@ def event_from(result):
     event['model'] = generation_model(result)
     return event
 
-LIMIT_PATTERN = re.compile(r"hit your (session|usage|weekly|daily) limit|usage limit|rate limit|out of (extra )?usage|resets? (at|in) ", re.IGNORECASE)
+LIMIT_PATTERN = re.compile(r"(hit|reached) your [a-z0-9 .-]*limit|usage limit|rate limit|out of (extra )?usage|manage usage credits|resets? (at|in) ", re.IGNORECASE)
 RESET_PATTERN = re.compile(r"resets? (?:at )?(\d{1,2}(?::\d{2})?\s*[ap]m)(?:\s*\(([^)]+)\))?", re.IGNORECASE)
 
 def usage_limit(event):
     """The limit message when the sign-in is usage-limited, else None. Never a model answer."""
     text = str(event.get('result') or '')
-    if (event.get('is_error') or event.get('subtype') != 'success') and LIMIT_PATTERN.search(text):
-        return text[:500]
+    if event.get('is_error') or event.get('subtype') != 'success':
+        if LIMIT_PATTERN.search(text) or event.get('api_error_status') == 429:
+            return text[:500] or 'HTTP 429'
     return None
 
 def limit_reset_epoch(message, now=None):
