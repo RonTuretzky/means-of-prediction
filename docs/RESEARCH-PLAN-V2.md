@@ -16,10 +16,17 @@ gates, the first experiments and the rule template.
    model class the Gas Killer design can re-execute verifiably
    (`docs/GASKILLER-LLM-SETTLEMENT.md`), recovered 65 of 160 on the same
    whole emails and made 19 unjustified claims.
-3. *Hypothesis, not finding:* the small model's weakness is finding the
-   sentence rather than judging it. It scored 97.7% on synthetic headlines
-   with a long rules prompt, but body sentences are harder than headlines
-   and short prompts collapse to about 60%.
+3. *Hypothesis, tested once and not supported in its simple form:* that the
+   small model's weakness is finding the sentence rather than judging it.
+   Given only the passage the frontier model located (same rule, prompt and
+   scorer), the small judge found fewer facts, 45 of 160 grounded against
+   65 on whole emails, while its false claims fell to zero (0 of 237
+   negatives, 0 of 115 weak or unrelated, from 2 and 19). On the 150
+   located factual passages it was right 52 times, answered "neither" 31
+   times, and answered "both outcomes conflict" 65 times. Its dominant
+   failure is the five-field A-versus-B judgment format, which is also not
+   the format the chain would run. The follow-up asks one constrained
+   YES/NO per claim on the same passages.
 4. Our yardstick was wrong for the product. "Answerable under Polymarket's
    original rules" (1 of 161) grades emails against fine print a market we
    author would not contain.
@@ -111,9 +118,11 @@ quote.
 
 **Experiments, cheapest first.**
 
-1. *Recall replay with located quotes* (running now; local). Identical rule,
-   prompt and scorer; only the email is replaced by a 300-character window
-   around the frontier locator's quote. Measures recall only. Control arms
+1. *Recall replay with located quotes* (done September 17; result in "What
+   we learned" item 3: locating alone did not close the gap, and the
+   judgment format is implicated). Re-run in the on-chain call shape: one
+   constrained YES/NO per claim, compact rules prompt, signed Subject and
+   Date (`locate_judge_exp1b.py`, running). Measures recall only. Control arms
    on the same rows: claim with no excerpt (any YES is memory, not
    reading), a random sentence, BM25 top sentences as a non-LLM locator,
    Subject only, and a counterfactual excerpt with the entity swapped.
