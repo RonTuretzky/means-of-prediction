@@ -43,6 +43,41 @@ gates, the first experiments and the rule template.
    scheduled events is the breaking-news alert, where the fact is in the
    Subject line, the headline-sized case the on-chain judge already handles.
 
+## Exploratory results, September 17 (local, free, not pre-registered)
+
+Three quick runs on the 730-row judge-swap subset, all with the local
+Qwen3.5-35B-A3B and the frontier model's located passages (300 characters
+of context each side). They are exploratory and shape the plan; none is a
+gate result.
+
+| Run | What the small judge was asked | Facts found | False claims |
+|---|---|---:|---:|
+| Whole email (baseline) | five-field A/B judgment on the full email | 65 of 160 | 21 |
+| 1a | same judgment, located passage only | 45 of 160 | 0 |
+| 1b | one constrained YES/NO per generated claim | 11 of 161 | 0 |
+| 1c | one constrained YES/NO, claim = the market's own question, yes/no markets only | 2 of 35 true-YES facts; 0 of 63 positive controls | 0 on 81 true-NO facts, 170 empty controls, 100 weak or unrelated |
+
+The harness itself is sound: trivial declarative cases are answered
+correctly in under a second. What the runs say:
+
+- **Locating alone does not rescue the small judge.** In the five-field
+  format it answers "both outcomes conflict" on 65 of 150 located passages.
+- **In the verifiable call shape it is safe and nearly useless** with naive
+  criteria. The generated claims are long (median 425 characters, packed
+  with roles, dates and exceptions) and a strict judge answers NO unless
+  every clause is established; question-form claims fare no better.
+- **Most of our known facts are "No" outcomes**: 81 of the 116 yes/no
+  facts. Newspapers report what happened, not what did not, so a
+  YES-only email settlement cannot prove them directly.
+
+Consequences adopted below: the verifiable judge needs a short declarative
+criterion authored with the market, a calibrated on-chain prompt measured
+on real passages, and probably distillation; Subject-first gains priority;
+and "No" must settle through **exclusivity groups** (the winner's market
+settles YES from an email, its mutually exclusive siblings settle NO by
+construction) or by deadline void, never by asking a model to prove a
+negative.
+
 ## The question
 
 > Can a prediction market settle automatically, correctly and verifiably from
@@ -118,11 +153,12 @@ quote.
 
 **Experiments, cheapest first.**
 
-1. *Recall replay with located quotes* (done September 17; result in "What
-   we learned" item 3: locating alone did not close the gap, and the
-   judgment format is implicated). Re-run in the on-chain call shape: one
-   constrained YES/NO per claim, compact rules prompt, signed Subject and
-   Date (`locate_judge_exp1b.py`, running). Measures recall only. Control arms
+1. *Recall replays with located quotes* (three exploratory runs done
+   September 17, table above). Next, pre-registered: author a short
+   declarative criterion per market side (one event, one entity, dated
+   instance, at most about 120 characters), calibrate the judge prompt in
+   the true on-chain template on a held-out half of the passages, and
+   report recall on the other half. Measures recall only. Control arms
    on the same rows: claim with no excerpt (any YES is memory, not
    reading), a random sentence, BM25 top sentences as a non-LLM locator,
    Subject only, and a counterfactual excerpt with the entity swapped.
@@ -167,6 +203,11 @@ or near-miss sibling markets, so at least half of all markets are truth-NO
 with entity-matching coverage. Every settlement is tagged Subject-carried or
 body-only. Until a judged pipeline exists on-chain this is an off-chain
 simulation and is labelled as one.
+
+**Negatives settle by structure, not by evidence.** Markets are authored in
+mutually exclusive groups where the reportable event is always a YES side;
+a sibling's final YES settles the others NO. Standalone "will X happen by
+T" markets void at par when no YES becomes final.
 
 **Rule template under test.** "Resolves YES when emails from at least K
 listed sources, received between T0 and T1, each state as a completed fact
