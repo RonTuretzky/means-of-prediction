@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The new research plan — settling markets on newspaper emails</title>
+<style>
+  :root{color-scheme:dark; --page:#0d0d0d; --surface:#1a1a19; --ink:#fff; --ink-2:#c3c2b7; --muted:#898781; --grid:#2c2c2a; --baseline:#383835; --border:rgba(255,255,255,.10);
+    --good:#0ca30c; --warn:#fab219; --critical:#d03b3b; --new:#3987e5; --old:#5f6b7a}
+  *{box-sizing:border-box; margin:0; padding:0}
+  html,body{height:100%; overflow:hidden}
+  body{background:var(--page); color:var(--ink); font-family:system-ui,-apple-system,"Segoe UI",sans-serif; font-size:clamp(14px,1.35vw,18px); line-height:1.5}
+  .progress{position:fixed; top:0; left:0; right:0; height:3px; background:var(--grid); z-index:30}
+  .progress i{display:block; height:100%; width:0; background:var(--new); transition:width .25s ease}
+  .slide{position:absolute; inset:0; display:none; overflow-y:auto; padding:6vh 6vw 8vh}
+  .slide.active{display:flex; flex-direction:column; justify-content:center; animation:in .35s ease}
+  @keyframes in{from{opacity:0; transform:translateY(10px)}to{opacity:1; transform:none}}
+  .wrap{max-width:1080px; width:100%; margin:0 auto}
+  .kicker{display:flex; align-items:center; gap:10px; font-size:.72em; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); margin-bottom:16px; font-weight:600}
+  .kicker::before{content:""; width:26px; height:2px; background:var(--new)}
+  h1{font-size:clamp(32px,4.4vw,56px); line-height:1.08; letter-spacing:-.02em; margin-bottom:20px; font-weight:750}
+  h2{font-size:clamp(24px,3vw,38px); line-height:1.12; letter-spacing:-.015em; margin-bottom:18px; font-weight:700}
+  h3{font-size:1.05em; margin-bottom:8px; font-weight:650}
+  .sub{color:var(--ink-2); font-size:clamp(16px,1.6vw,20px); max-width:60ch}
+  .accent{color:var(--new)} p{color:var(--ink-2)} strong{color:var(--ink); font-weight:650}
+  .card{background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:18px 20px}
+  .cards2{display:grid; grid-template-columns:1fr 1fr; gap:14px} .cards3{display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px} .cards4{display:grid; grid-template-columns:repeat(4,1fr); gap:14px}
+  @media (max-width:880px){.cards2,.cards3,.cards4{grid-template-columns:1fr}}
+  .card .tag{display:inline-block; font-size:.7em; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); font-weight:650; margin-bottom:8px}
+  .card p{font-size:.92em}
+  .cards2 + .card,.cards3 + .card,.cards4 + .card,.card + .cards2,.card + .cards3{margin-top:14px}
+  ul.tight{list-style:none} ul.tight li{padding-left:20px; position:relative; margin:7px 0; color:var(--ink-2)} ul.tight li::before{content:"—"; position:absolute; left:0; color:var(--new)}
+  .stat .v{font-size:clamp(28px,3.6vw,48px); font-weight:750; letter-spacing:-.02em} .stat .v.new{color:var(--new)} .stat .v.warn{color:var(--warn)} .stat .l{color:var(--muted); font-size:.82em; margin-top:4px}
+  .flow{display:flex; align-items:stretch; flex-wrap:wrap} .fnode{background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:14px 16px; flex:1; min-width:150px}
+  .fnode .n{font-size:.7em; letter-spacing:.1em; color:var(--new); font-weight:700; text-transform:uppercase} .fnode h3{margin:4px 0 6px} .fnode p{font-size:.85em}
+  .fnode.trusted{border-color:rgba(12,163,12,.5)} .fnode.untrusted{border-color:rgba(250,178,25,.5)}
+  .farrow{align-self:center; padding:0 10px; color:var(--muted); font-size:24px; flex:none}
+  /* single-series bars, direct labels */
+  .bars .title{font-size:.85em; color:var(--muted); margin:6px 0 8px}
+  .bars .row{display:grid; grid-template-columns:150px 1fr 70px; align-items:center; height:30px; gap:10px}
+  .bars .lab{font-size:.85em; color:var(--ink-2); text-align:right} .bars .track{position:relative; height:100%; border-left:1px solid var(--baseline)}
+  .bars .b{position:absolute; top:7px; height:16px; background:var(--new); border-radius:0 4px 4px 0} .bars .b:hover{filter:brightness(1.2)} .bars .val{font-size:.85em; color:var(--ink); font-variant-numeric:tabular-nums}
+  details.tbl{margin-top:8px} details.tbl summary{cursor:pointer; color:var(--muted); font-size:.8em} details.tbl table{width:100%; border-collapse:collapse; margin-top:8px; font-size:.8em}
+  details.tbl th,details.tbl td{text-align:left; padding:4px 8px; border-bottom:1px solid var(--grid); color:var(--ink-2)} details.tbl th{color:var(--muted); font-weight:600}
+  /* timeline */
+  .tl{margin-top:10px} .tl .axis{display:grid; grid-template-columns:170px repeat(8,1fr); font-size:.72em; color:var(--muted); margin-bottom:6px} .tl .axis span{border-left:1px solid var(--grid); padding-left:4px}
+  .tl .lane{display:grid; grid-template-columns:170px 1fr; align-items:center; height:34px} .tl .lab{font-size:.85em; color:var(--ink-2); text-align:right; padding-right:12px}
+  .tl .track{position:relative; height:100%; border-left:1px solid var(--baseline)} .tl .bar{position:absolute; top:8px; height:18px; border-radius:4px; background:var(--new); font-size:.7em; color:#fff; padding:0 8px; line-height:18px; white-space:nowrap; overflow:hidden}
+  .tl .bar.free{background:#2f6fbf} .tl .bar.ship{background:var(--good)} .tl .gate{position:absolute; top:0; bottom:0; width:0; border-left:2px dashed var(--warn)} .tl .gate span{position:absolute; top:-18px; left:4px; font-size:.7em; color:var(--warn); white-space:nowrap}
+  .foot{margin-top:20px; color:var(--muted); font-size:.78em}
+  .hud{position:fixed; right:18px; bottom:14px; display:flex; align-items:center; gap:10px; z-index:30; color:var(--muted); font-size:.85em}
+  .hud button{background:var(--surface); color:var(--ink-2); border:1px solid var(--border); border-radius:8px; width:34px; height:30px; font-size:16px; cursor:pointer}
+  .hint{position:fixed; left:18px; bottom:14px; color:var(--muted); font-size:.75em; z-index:30}
+  #tip{position:fixed; z-index:50; display:none; max-width:340px; pointer-events:none; background:#242423; border:1px solid rgba(255,255,255,.16); border-radius:8px; padding:8px 11px; font-size:.8em; color:var(--ink-2)} #tip b{color:var(--ink)}
+</style>
+</head>
+<body>
+<div class="progress"><i id="pbar"></i></div>
+
+<section class="slide"><div class="wrap">
+  <div class="kicker">Means of Prediction · research plan v2 · September 17, 2026</div>
+  <h1>We proved an AI can read the email.<br><span class="accent">Now we find out if a market can settle on it.</span></h1>
+  <p class="sub">The last two weeks tuned prompts on 161 examples. That answered the easy question. This plan goes after the three things that actually decide the product: is the email real news, does it arrive in time, and can a cheater fool the system.</p>
+</div></section>
+
+<section class="slide"><div class="wrap">
+  <div class="kicker">Where we stand</div>
+  <h2>Three numbers that reset the plan</h2>
+  <div class="cards3">
+    <div class="card stat"><div class="v new">93%</div><div class="l">of known facts found, with an exact quote, by a top-tier AI reading the whole email. Zero false alarms on 237 trick emails.</div></div>
+    <div class="card stat"><div class="v warn">41%</div><div class="l">found by the small AI a blockchain can actually double-check, reading the same emails. It also made 19 claims it shouldn't have.</div></div>
+    <div class="card stat"><div class="v warn">12%</div><div class="l">of facts (19 of 161) reached the inbox before the bet closed. Morning newsletters are slow; breaking-news alerts are fast.</div></div>
+  </div>
+  <div class="card"><span class="tag">So</span><p>Reading is solved if you can trust the reader. The chain can only trust a small one. And most newsletters arrive too late. Better prompts fix none of that, which is why the prompt-tuning loop is stopped.</p></div>
+</div></section>
+
+<section class="slide"><div class="wrap">
+  <div class="kicker">Two wake-up calls from independent reviewers</div>
+  <h2>"Signed" is not "written by the newsroom", and cheaters get many tries</h2>
+  <div class="cards2">
+    <div class="card"><span class="tag">1 · the support-desk trick</span><p>The email signature proves the newspaper's <strong>domain</strong> sent the message. It does not prove a journalist wrote it. Email a paper's help desk the words "BREAKING: X convicted", and the automatic reply quotes your words back, signed by the paper. The key list we built includes help-desk keys, staff mail keys and weak old keys. Markets must name the exact newsletter senders they accept, and require at least two different papers.</p></div>
+    <div class="card"><span class="tag">2 · many tries</span>
+      <div class="bars"><div class="title">Chance of at least one wrong "YES" if the judge is wrong 2% of the time per email</div>
+        <div class="row"><span class="lab">1 email</span><div class="track"><div class="b" style="width:2%" data-tip="<b>1 try</b><br>2%"></div></div><span class="val">2%</span></div>
+        <div class="row"><span class="lab">10 emails</span><div class="track"><div class="b" style="width:18.3%" data-tip="<b>10 tries</b><br>18%"></div></div><span class="val">18%</span></div>
+        <div class="row"><span class="lab">50 emails</span><div class="track"><div class="b" style="width:63.6%" data-tip="<b>50 tries</b><br>64%"></div></div><span class="val">64%</span></div>
+        <div class="row"><span class="lab">100 emails</span><div class="track"><div class="b" style="width:86.7%" data-tip="<b>100 tries</b><br>87%"></div></div><span class="val">87%</span></div>
+      </div>
+      <details class="tbl"><summary>Table</summary><table><thead><tr><th>Emails an attacker can try</th><th>Chance of at least one false YES</th></tr></thead><tbody><tr><td>1</td><td>2%</td></tr><tr><td>10</td><td>18%</td></tr><tr><td>50</td><td>64%</td></tr><tr><td>100</td><td>87%</td></tr></tbody></table></details>
+      <p style="margin-top:8px">A six-week market sees hundreds of relevant emails, and trying costs a cheater almost nothing. So we measure error <strong>per market against someone trying every email</strong>, not per email.</p></div>
+  </div>
+</div></section>
+
+<section class="slide"><div class="wrap">
+  <div class="kicker">The question now</div>
+  <h2>Four unknowns. Everything we do must move one of them.</h2>
+  <div class="cards4">
+    <div class="card"><span class="tag">1 · real news?</span><h3>Admissible evidence</h3><p>Which senders are genuinely the newsroom's newsletters, and which fit what the contract can check?</p></div>
+    <div class="card"><span class="tag">2 · in time?</span><h3>Coverage and timing</h3><p>For which kinds of events does an email arrive, how fast, and is the fact in the subject line or buried in the body?</p></div>
+    <div class="card"><span class="tag">3 · cheat-proof?</span><h3>Verifiable reading</h3><p>Can a settlement that only trusts a small checkable AI match the big one, even against a cheater?</p></div>
+    <div class="card"><span class="tag">4 · clear rules?</span><h3>Rule design</h3><p>What must a market's rules say so an email report is unambiguous evidence?</p></div>
+  </div>
+</div></section>
+
+<section class="slide"><div class="wrap">
+  <div class="kicker">The main idea</div>
+  <h2>Let the big AI point. Let the small AI decide.</h2>
+  <div class="flow">
+    <div class="fnode untrusted"><span class="n">1 · not trusted</span><h3>Big AI finds the sentence</h3><p>It only points at a short passage in the signed email. It cannot invent text.</p></div><div class="farrow">→</div>
+    <div class="fnode trusted"><span class="n">2 · math</span><h3>Contract proves it's real</h3><p>The passage is checked against the newspaper's signature. Already built.</p></div><div class="farrow">→</div>
+    <div class="fnode trusted"><span class="n">3 · checkable</span><h3>Small AI judges the passage</h3><p>One short passage plus the subject and date: the size of task it already does well.</p></div><div class="farrow">→</div>
+    <div class="fnode"><span class="n">4 · safety</span><h3>Two papers, 48-hour wait</h3><p>Needs two different papers. Final after two days unless retracted. No result: money back.</p></div>
+  </div>
+  <div class="cards2" style="margin-top:14px">
+    <div class="card"><span class="tag">Running now</span><p>First test: give the small AI only the passage the big AI found, change nothing else. Shows how much of the 41% → 93% gap pointing alone closes.</p></div>
+    <div class="card"><span class="tag">Next, and more important</span><p>The cheater test: slide every possible passage from the trick emails past the small AI and count how many markets end up with any wrong "YES".</p></div>
+  </div>
+</div></section>
+
+<section class="slide"><div class="wrap">
+  <div class="kicker">Ship something early</div>
+  <h2>Subject lines first</h2>
+  <div class="cards2">
+    <div class="card"><span class="tag">Why</span><p>Breaking-news alerts put the fact in the subject line and arrive within minutes. That is a headline-sized job the small checkable AI already handles, with no body text to publish and far lower cost.</p></div>
+    <div class="card"><span class="tag">By day 14</span><p>Three real test markets on the Sepolia test network, settled from subject lines, requiring two accepted papers each, with the AI judge running silently alongside the existing pattern-matching rules.</p></div>
+  </div>
+  <div class="card"><span class="tag">Decision rule, set in advance</span><p>If at least 70% of timely settlements in the live test come from subject lines, the product launches on subject lines and the point-then-decide design stays in research.</p></div>
+</div></section>
+
+<section class="slide"><div class="wrap">
+  <div class="kicker">The honest test</div>
+  <h2>Write the bets first. Then wait for the news.</h2>
+  <p class="sub" style="margin-bottom:14px">The only test where the AI cannot already know the answer. All markets are written down and locked before the events happen.</p>
+  <div class="cards3">
+    <div class="card"><span class="tag">Group A · 120 markets</span><h3>Scheduled events</h3><p>Votes, verdict dates, award nights, finals, rate decisions, one to four weeks ahead. The easy case.</p></div>
+    <div class="card"><span class="tag">Group B · 120 markets</span><h3>Surprises</h3><p>"Will X happen by date Y" questions picked at random from open markets. The realistic case.</p></div>
+    <div class="card"><span class="tag">Group C · traps</span><h3>Look-alikes</h3><p>For every event, two near-miss markets (wrong person, wrong office, wrong date) so half of all markets should stay "NO".</p></div>
+  </div>
+  <p class="foot">Reported per event type: did an email arrive within 48 hours, how long settlement took, correct, wrong, and unsettled.</p>
+</div></section>
+
+<section class="slide"><div class="wrap">
+  <div class="kicker">Timeline and decision points</div>
+  <h2>Eight weeks, two go/no-go gates</h2>
+  <div class="tl">
+    <div class="axis"><span></span><span>wk 1</span><span>wk 2</span><span>wk 3</span><span>wk 4</span><span>wk 5</span><span>wk 6</span><span>wk 7</span><span>wk 8</span></div>
+    <div class="lane"><span class="lab">Free checks</span><div class="track"><div class="bar free" style="left:0;width:6%" data-tip="<b>Days 1–3, no cost</b><br>Can the contract prove each passage? When did emails arrive? Which senders are real newsletters? Fix the 50 bad patterns.">days 1–3</div><div class="gate" style="left:25%"><span>Gate 1</span></div><div class="gate" style="left:100%"><span>Gate 2</span></div></div></div>
+    <div class="lane"><span class="lab">Subject-line markets</span><div class="track"><div class="bar ship" style="left:4%;width:21%" data-tip="<b>Ship by day 14</b><br>Three test-network markets settled from subject lines">live by day 14</div></div></div>
+    <div class="lane"><span class="lab">Point-then-decide tests</span><div class="track"><div class="bar" style="left:0;width:25%" data-tip="<b>Weeks 1–2</b><br>Passage test, cheater test, attack catalogue">local, free</div></div></div>
+    <div class="lane"><span class="lab">More newspapers</span><div class="track"><div class="bar" style="left:2%;width:98%" data-tip="<b>Ongoing</b><br>Dedicated mailbox subscribed to the accepted outlets; alerts and briefings">subscriptions accrue</div></div></div>
+    <div class="lane"><span class="lab">Bets-first live test</span><div class="track"><div class="bar" style="left:22%;width:78%" data-tip="<b>Weeks 3–8</b><br>Locked markets settle as emails arrive; check-in at week 5">locked markets settle</div></div></div>
+  </div>
+  <div class="cards2" style="margin-top:18px">
+    <div class="card"><span class="tag">Gate 1 · week 2</span><p>Does point-then-decide reach at least 90% of the big AI's recall, with at most 1% of trick markets fooled? If not: train the small AI on the big one's answers, or stay with subject lines.</p></div>
+    <div class="card"><span class="tag">Gate 2 · week 8</span><p>Per event type: did an email arrive within 48 hours often enough? Event types that fail are dropped from the product rather than researched further.</p></div>
+  </div>
+</div></section>
+
+<section class="slide"><div class="wrap">
+  <div class="kicker">What changes today</div>
+  <h2>Stop, keep, and what I need from you</h2>
+  <div class="cards3">
+    <div class="card"><span class="tag">Stop</span><ul class="tight"><li>Prompt tuning on the 161 examples</li><li>Grading against Polymarket's fine print</li><li>Chasing NYT article text</li><li>Treating the big hosted AI as the final judge</li></ul></div>
+    <div class="card"><span class="tag">Keep</span><ul class="tight"><li>Pattern-matching rules as the fallback, now with a test set and the 50 bad patterns fixed</li><li>The receipts and no-peeking discipline</li><li>The sealed final exam, unopened</li></ul></div>
+    <div class="card"><span class="tag">Needed from you</span><ul class="tight"><li>A dedicated mailbox subscribed to the priority papers, alerts included</li><li>Free Guardian and NYT developer keys</li><li>A decision on publishing paywalled newsletter text on-chain</li><li>An owner for the Gas Killer dependency</li></ul></div>
+  </div>
+  <p class="foot">Full plan: docs/RESEARCH-PLAN-V2.md · reviewed by three independent critics before adoption.</p>
+</div></section>
+
+<div id="tip"></div>
+<div class="hint">← → to navigate · hover for detail</div>
+<div class="hud"><button id="prev" aria-label="Previous">‹</button><span id="counter">1 / 9</span><button id="next" aria-label="Next">›</button></div>
+<script>
+(function(){
+  var slides=[].slice.call(document.querySelectorAll('.slide')),N=slides.length,cur=0,counter=document.getElementById('counter'),pbar=document.getElementById('pbar'),tip=document.getElementById('tip');
+  function show(i){i=Math.max(0,Math.min(N-1,i));slides[cur].classList.remove('active');cur=i;slides[cur].classList.add('active');counter.textContent=(cur+1)+' / '+N;pbar.style.width=((cur+1)/N*100)+'%';if(history.replaceState)history.replaceState(null,'','#'+(cur+1));tip.style.display='none';}
+  var h=parseInt((location.hash||'').replace('#',''),10);slides[0].classList.add('active');show(isNaN(h)?0:h-1);
+  document.getElementById('next').onclick=function(){show(cur+1)};document.getElementById('prev').onclick=function(){show(cur-1)};
+  document.addEventListener('keydown',function(e){if(e.key==='ArrowRight'||e.key===' '||e.key==='PageDown'){e.preventDefault();show(cur+1)}else if(e.key==='ArrowLeft'||e.key==='PageUp'){e.preventDefault();show(cur-1)}else if(e.key==='Home'){show(0)}else if(e.key==='End'){show(N-1)}});
+  function move(e){var p=14,x=e.clientX+p,y=e.clientY+p,r=tip.getBoundingClientRect();if(x+r.width>innerWidth-8)x=e.clientX-r.width-p;if(y+r.height>innerHeight-8)y=e.clientY-r.height-p;tip.style.left=x+'px';tip.style.top=y+'px'}
+  document.addEventListener('mouseover',function(e){var t=e.target.closest&&e.target.closest('[data-tip]');if(t){tip.innerHTML=t.getAttribute('data-tip');tip.style.display='block';move(e)}});
+  document.addEventListener('mousemove',function(e){if(tip.style.display==='block'){var t=e.target.closest&&e.target.closest('[data-tip]');if(t)move(e);else tip.style.display='none'}});
+})();
+</script>
+</body>
+</html>
