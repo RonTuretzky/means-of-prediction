@@ -175,7 +175,11 @@ quote.
 4. *Judge ladder and excerpt budget*: 4B, 8B, 35B-A3B at 64 to 512 tokens,
    priced in gas and hours per verdict.
 5. *Only if the above fall short:* distil the small judge on frontier
-   judgments, with new pinned weights.
+   judgments, with new pinned weights. Student candidates include small
+   single-pass encoders such as Laya (421M, deterministic, about 21 ms per
+   call); out of the box it cannot separate true from false on our rows
+   (`docs/LAYA-BENCHMARK-20260921.md`), so it is a fine-tuning target, not
+   a drop-in judge.
 
 ## Track 3: evidence
 
