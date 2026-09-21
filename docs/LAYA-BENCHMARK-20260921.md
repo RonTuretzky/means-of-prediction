@@ -1,4 +1,4 @@
-# Laya as the settlement judge: quick benchmark
+# Typed-decision models as the settlement judge: Laya and Jev
 
 September 21, 2026. [Laya](https://github.com/NandhaKishorM/laya) 0.3.5 is an
 Apache-2.0, non-autoregressive typed-decision model: a 421M-parameter
@@ -57,3 +57,58 @@ drop-in judge today it would settle markets wrongly.
 Speed measured here: median 67 ms per call with four questions batched,
 about 21 ms for one question, on Apple-silicon MPS; 11,584 forward passes
 per checkpoint for the whole benchmark.
+
+## Jev (TypeSafe), same benchmark, through OpenRouter
+
+Jev is the closed, hosted decision model Laya compares itself to. It is not
+in OpenRouter's model catalog; it is served at OpenRouter's alpha endpoint
+`/api/alpha/decisions` with the same typed-question shape (`state`,
+`questions` of type `noul` or `choice`), resolved here as
+`typesafe/jev-1.13-20260917`. The key lives only in
+`~/.config/means-of-prediction/openrouter.json`. The identical 11,584 calls
+ran with eight in parallel: zero failures, median 319 ms per call, **$0.38
+total**. Five sanity cases: 0.98, 0.01, 0.98, 0.01, 0.02.
+
+| Judge, same rows | Facts found | Wrong side | False claims |
+|---|---:|---:|---:|
+| Claude Fable 5.1, whole email | 149 of 160 | 0 | 0 of 237 controls, 0 of 115 weak or unrelated |
+| **Jev, located passage, choice of A / B / neither** | **137 of 161** | **0** | 6 of 237 and 2 of 150 |
+| **Jev, located passage, P(claim) ≥ 0.5** | 97 of 161 | 0 | 5 of 237 and 1 of 150 |
+| Qwen3.5-35B-A3B, whole email | 65 of 160 | 6 | 2 and 19 |
+| Qwen3.5-35B-A3B, located passage, five-field | 45 of 160 | 2 | 0 |
+| Laya `english`, located passage, choice | 56 of 161 | 87 | 6 and 26 |
+
+Positive synthetic controls: Jev 172 of 182 by choice (Fable 167 of 181).
+
+Locator-free window sweep on yes/no markets (a market-email fires if any
+1,200-character window clears the threshold):
+
+| Threshold | Jev: true-YES facts (35) | Jev: true-NO facts (81) | Jev: weak or unrelated (134) | Jev: non-YES controls (238) | Laya at the same threshold |
+|---:|---:|---:|---:|---:|---|
+| 0.5 | 32 | 1 | 6 | 15 | 30 / 74 / 119 / 102 |
+| 0.7 | 27 | 1 | 6 | 6 | — |
+| 0.9 | 9 | 1 | 4 | 0 | 16 / 19 / 47 / 8 |
+| 0.97 | 0 | 0 | 0 | 0 | 0 / 0 / 1 / 1 |
+
+### Reading
+
+- **Jev reads like a judge, not a topic detector.** With the frontier
+  locator's passage it recovers 85% of the facts with no wrong-side calls;
+  with no locator at all it finds 91% of true-YES facts at a 0.5 threshold.
+- **It is not clean enough to settle alone.** Six of 237 negative controls
+  and, in the sweep, 6 of 134 unrelated emails and 15 of 238 non-YES
+  controls fire at 0.5. Those are per-email rates; against a submitter who
+  can try every email in a market's window they compound, so the two-outlet
+  threshold and challenge delay in the plan are still required, and the
+  per-market false-settlement rate still has to be measured.
+- **It does not solve verifiability.** Jev is a closed hosted API: the chain
+  would be trusting TypeSafe's say-so exactly as it would Anthropic's. Its
+  value is elsewhere: a judge about four thousand times cheaper per call
+  than the frontier model, fast, with probabilities to threshold on.
+- **Where it fits:** the payout-and-timing consistency arm on the
+  63,368-market pool becomes nearly free (10,000 judged pairs is roughly a
+  third of a dollar instead of about $1,700); a second independent judge
+  for disagreement rates; and a cheap teacher, alongside the frontier model,
+  for distilling an open single-pass student such as Laya that the chain
+  could re-execute.
+

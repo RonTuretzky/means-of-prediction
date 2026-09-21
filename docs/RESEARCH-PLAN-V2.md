@@ -179,7 +179,10 @@ quote.
    single-pass encoders such as Laya (421M, deterministic, about 21 ms per
    call); out of the box it cannot separate true from false on our rows
    (`docs/LAYA-BENCHMARK-20260921.md`), so it is a fine-tuning target, not
-   a drop-in judge.
+   a drop-in judge. The closed hosted decision model Jev, by contrast,
+   found 137 of 161 facts on located passages with no wrong-side calls for
+   $0.38 per 11,584 calls: not verifiable, but a cheap second judge,
+   dataset labeller and distillation teacher.
 
 ## Track 3: evidence
 
@@ -269,7 +272,7 @@ evaluation reservations, unopened.
 | Track 0 censuses, regex fixtures | — | $0 | 0 | CPU |
 | Recall replay, sweep, Subject harness, ladder | tens of thousands of short calls | $0 | 0 | local judge |
 | Adversarial locator | about 1,500 | about $250 | about 15 | hosted, batched |
-| Payout-arm claims on the pool | 10,000 | about $1,700 | about 100 | hosted, batched over weeks |
+| Payout-arm claims on the pool | 10,000 | about $1,700 with the frontier judge; **under $1 with Jev** (`docs/LAYA-BENCHMARK-20260921.md`) | about 100, or none with Jev | hosted, batched |
 
 Hosted work is batched and never depends on a live chat session; the sign-in
 paused runs three times on September 16. **Dependencies with no owner yet:**
