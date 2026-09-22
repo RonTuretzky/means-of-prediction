@@ -49,6 +49,27 @@ human-label comparison that follows: Jev 49 correct by choice with 0 wrong
 side; base Laya 22 with 26 wrong side; Fable whole-email 50 grounded; Qwen
 whole-email 29.
 
+### Seed student against the human labels (validation split only)
+
+The 730-row benchmark overlaps the training rows, so only its 206
+validation-split rows are a fair test (56 facts, 60 negative controls, 45
+weak or unrelated emails, 3 true-YES and 25 true-NO yes/no facts in the
+sweep):
+
+| Held-out human-label view | Base Laya | Seed student | Jev |
+|---|---:|---:|---:|
+| Facts right by choice / 56 | 22 | 33 | 49 |
+| Wrong side / 56 | 26 | 16 | 0 |
+| False on negative controls / 60 | 1 | 1 | 1 |
+| False on weak or unrelated / 45 | 10 | 4 | 1 |
+| Sweep at 0.5: true-YES fired / 3 | 2 | 3 | 3 |
+| Sweep at 0.5: true-NO falsely fired / 25 | 22 | 2 | 0 |
+| Sweep at 0.5: weak or unrelated fired / 37 | 36 | 8 | 2 |
+
+The seed student is about halfway from base Laya to Jev on correctness and
+most of the way on false fires, after 366 labelled passages. Median 75 ms
+per call with four batched questions on MPS.
+
 ## Full run
 
 `slides/laya-distill-chain.sh` waits for the key's daily budget, then runs
