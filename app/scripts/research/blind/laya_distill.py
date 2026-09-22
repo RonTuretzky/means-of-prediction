@@ -106,7 +106,8 @@ def build_units(max_windows, cross_negatives, seed):
 def label(root, model, max_cost, max_windows, cross_negatives, workers, seed):
     root = Path(root); os.umask(0o077); root.mkdir(parents=True, exist_ok=True, mode=0o700)
     out_path = root/'labels.private.jsonl'; done = set()
-    if out_path.exists(): done = {json.loads(l)['unitId'] for l in out_path.read_text().splitlines() if l.strip()}
+    # Only successfully labelled units count as done; error receipts are retried on relaunch.
+    if out_path.exists(): done = {r['unitId'] for r in (json.loads(l) for l in out_path.read_text().splitlines() if l.strip()) if 'pA' in r}
     units, public, rules = build_units(max_windows, cross_negatives, seed)
     todo = [u for u in units if u['unitId'] not in done]
     (root/'plan.json').write_text(json.dumps({'at': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()), 'teacher': model, 'units': len(units), 'alreadyLabelled': len(done), 'maxWindowsPerItem': max_windows, 'crossNegativesPerEmail': cross_negatives,
