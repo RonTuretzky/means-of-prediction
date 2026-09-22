@@ -45,11 +45,14 @@ def windows(text, size, stride):
 
 class Laya:
     workers = 1
-    def __init__(self, checkpoint, device):
-        import laya, torch
+    def __init__(self, checkpoint, device, model_path=None):
+        import laya, torch, os
         self.device = device if device != 'auto' else ('mps' if torch.backends.mps.is_available() else 'cpu')
-        self.agent = laya.load('convaiinnovations/laya', device=self.device, **({} if checkpoint == 'english' else {'subfolder': checkpoint}))
-        self.label = 'laya:'+checkpoint; self.cost = 0.0
+        if model_path:
+            self.agent = laya.Agent(model_path, device=self.device); self.label = 'laya:'+os.path.basename(model_path.rstrip('/'))
+        else:
+            self.agent = laya.load('convaiinnovations/laya', device=self.device, **({} if checkpoint == 'english' else {'subfolder': checkpoint})); self.label = 'laya:'+checkpoint
+        self.cost = 0.0
     def ask(self, state, questions): return self.agent.predict(state, questions)['answers']
 
 class Jev:
@@ -77,8 +80,8 @@ class Jev:
 def main():
     ap = argparse.ArgumentParser(); ap.add_argument('--root', required=True); ap.add_argument('--backend', default='laya', choices=['laya', 'jev'])
     ap.add_argument('--checkpoint', default='english', choices=['english', 'typed-decisions']); ap.add_argument('--model', default='typesafe/jev-1.13'); ap.add_argument('--max-cost', type=float, default=0.85)
-    ap.add_argument('--device', default='auto'); ap.add_argument('--window', type=int, default=1200); ap.add_argument('--stride', type=int, default=600); a = ap.parse_args()
-    backend = Laya(a.checkpoint, a.device) if a.backend == 'laya' else Jev(a.model, a.max_cost)
+    ap.add_argument('--device', default='auto'); ap.add_argument('--window', type=int, default=1200); ap.add_argument('--stride', type=int, default=600); ap.add_argument('--model-path', help='local fine-tuned Laya directory'); a = ap.parse_args()
+    backend = Laya(a.checkpoint, a.device, a.model_path) if a.backend == 'laya' else Jev(a.model, a.max_cost)
     root = Path(a.root); os.umask(0o077); root.mkdir(parents=True, exist_ok=True, mode=0o700)
     items = {i['caseId']: i for i in read(ROUND/'development-items-semantic.private.json')}
     public = {p['marketId']: p for p in read(ROUND/'public-inputs.json')}
