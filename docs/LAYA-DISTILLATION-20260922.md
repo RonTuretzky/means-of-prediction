@@ -164,6 +164,49 @@ the same recipe; if it does not move the wrong-side count, the next
 lever is the training mix (more positive units with both sides present,
 or a side-contrast loss), not more epochs.
 
+### Student v2 epoch 2, and where the wrong-side errors come from (September 24)
+
+Epoch 2 finished at 16:15 (75 minutes at full speed): held-out soft
+cross-entropy 0.2005, teacher-positive recall 193 of 298 (epoch 1: 211).
+Against Jev on the held-out units it agrees more often (97.4% on
+question A) but fires less (81 positives against Jev's 116; epoch 1
+fired 110). On the human labels it is worse than epoch 1: 26 correct,
+16 wrong side, 14 abstentions of 56 facts. **Epoch 1 is the v2 student
+to keep.** The final `student-v2` directory holds the epoch-2 weights
+with fitted temperatures; `student-v2/checkpoint_epoch1` is the one to
+use.
+
+The wrong-side errors are not side confusion in the model's reading.
+On the 12 held-out facts that v1 and v2 epoch 1 both get wrong, the
+student's own per-side probabilities favour the correct side every time
+(for example pA 0.57 against pB 0.15) while its choice head picks the
+other side. The choice head, trained on Jev's three-way pick
+distribution and dominated by "neither", is the broken part; the
+per-side heads carry most of what was distilled.
+
+Reading the side from the per-side heads instead (pick the larger of
+pA and pB when it clears a threshold, else abstain), with the threshold
+chosen on the 524 training-market rows only, gives on the 206 held-out
+rows:
+
+| pick rule | 56 facts: correct / wrong / abstain | 45 positive controls: correct / wrong | false picks, 60 negative controls | false picks, 45 weak or unlabeled |
+|---|---|---|---|---|
+| v2 epoch 1, choice head | 33 / 14 / 9 | 36 / 8 | 1 | 0 |
+| v2 epoch 1, side heads at 0.4 (chosen on training rows) | 34 / 2 / 20 | 42 / 1 | 1 | 0 |
+| v2 epoch 1, side heads at 0.3 (chosen looking at held-out; not a clean claim) | 41 / 3 / 12 | 42 / 1 | 1 | 0 |
+| v2 epoch 2, side heads at 0.35 (chosen on training rows) | 28 / 1 / 27 | 39 / 0 | 1 | 1 |
+| v1, side heads at 0.3 (chosen on training rows) | 19 / 2 / 35 | 35 / 1 | 0 | 1 |
+| Jev, choice head | 49 / 0 / 7 | 43 / 1 | 1 | 1 |
+
+The clean claim is the second row: wrong-side settlements drop from 14
+to 2 with no change in false fires, at the cost of abstaining on 20
+facts instead of 9. The gap to Jev is now mostly recall (34 against
+49), not safety. Next steps, in order: retrain with the choice
+sequences dropped (`prepare --no-choice`) so the capacity goes to the
+side heads; raise recall with more teacher-positive units rather than
+more epochs (epoch 2 lowered recall); and pre-register the side
+threshold from the training slice before any forward test.
+
 ### Keeping the GPU available while training (September 24)
 
 `laya_distill.py train --gpu-share S` (also `MOP_GPU_SHARE=S` for the
