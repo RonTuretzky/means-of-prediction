@@ -193,8 +193,16 @@ at 12:38 during the epoch-1 benchmark and the laptop went into clamshell
 sleep on AC power; no assertion prevents that without an external
 display, so the chain froze (it ticks only during the 45-second
 maintenance wakes every 15 minutes) until the lid is opened. The resume
-script now holds the idle-sleep assertion for the whole chain rather
-than only the training stage.
+script now holds `caffeinate -i -s` for the whole chain rather than only
+the training stage; with that assertion in place from the start the
+laptop stayed awake with the lid closed and the GPU kept working, so
+the chain was relaunched at 14:39 without opening the lid.
+
+The clamshell sleep also exposed a pacing bug: the pause is proportional
+to the wall time of the last step, and a step that spanned an hour of
+system sleep was charged as an hour of GPU time, so the benchmark slept
+for two more hours after the machine woke. Charged busy time is now
+capped at five seconds per step.
 
 It evaluates epoch 1 on both yardsticks, resumes epoch 2 from the epoch-1
 weights (`--init`, `--start-epoch 1`), evaluates epoch 2, and writes

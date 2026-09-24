@@ -47,7 +47,7 @@ def current_share(share):
 def gpu_pause(t_start, device, share=None):
     if device in ('mps', 'cuda') and (GPU_SHARE if share is None else share) != 1:
         import torch; (torch.mps if device == 'mps' else torch.cuda).synchronize()
-    busy = time.time()-t_start; share = current_share(GPU_SHARE if share is None else share)  # measure the step before the (subprocess) presence probe so probe time is not charged as GPU time
+    busy = min(time.time()-t_start, 5.0); share = current_share(GPU_SHARE if share is None else share)  # measured before the presence probe; capped because wall time spanning a system sleep is not GPU time (uncapped, one clamshell sleep produced a two-hour pause on September 24)
     if share < 1: time.sleep(busy*(1-share)/share)
 def sha(s): return hashlib.sha256(s.encode()).hexdigest()
 
