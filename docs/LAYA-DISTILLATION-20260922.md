@@ -112,3 +112,29 @@ positive-recall check, and buckets batches by length.
 label → prepare → train (3 epochs) → evaluate → benchmark unattended, with
 results in `slides/laya-distill-jev-20260922` and
 `slides/laya-benchmark-20260921/student-v1`.
+
+## Student v2, paused September 24
+
+Epoch 1 (teacher positives weighted 6×, length-bucketed batches) finished
+in 7.4 hours: held-out soft cross-entropy 0.203 and **teacher-positive
+recall 211 of 298** (v1: 168, base Laya: 196). Epoch 2 stopped at update
+1,275 of 2,070 with no error, most likely when the controlling session
+ended; its updates ran at 24 to 32 seconds because the GPU was shared with
+display and browser processes (load average above 100, memory 91% free).
+The epoch-1 checkpoint is complete and loadable; its evaluations against
+Jev and the human labels were interrupted and have not been written.
+
+Night run, one command, unattended (about six to nine hours on a loaded
+machine, two to three on a quiet one):
+
+```sh
+nohup /Users/wk/.local/share/means-of-prediction/slides/laya-distill-resume.sh \
+  > /Users/wk/.local/share/means-of-prediction/slides/laya-distill-resume.log 2>&1 &
+```
+
+It evaluates epoch 1 on both yardsticks, resumes epoch 2 from the epoch-1
+weights (`--init`, `--start-epoch 1`), evaluates epoch 2, and writes
+one line per stage to the log; artifacts land in
+`slides/laya-benchmark-20260921/student-v2-epoch{1,2}` and
+`slides/laya-distill-jev-20260922/eval-*.json`.
+
