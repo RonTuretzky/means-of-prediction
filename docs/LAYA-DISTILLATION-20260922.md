@@ -116,16 +116,34 @@ results in `slides/laya-distill-jev-20260922` and
 ## Student v2, paused September 24
 
 Epoch 1 (teacher positives weighted 6×, length-bucketed batches) finished
-in 7.4 hours: held-out soft cross-entropy 0.203 and **teacher-positive
-recall 211 of 298** (v1: 168, base Laya: 196). Epoch 2 stopped at update
-1,275 of 2,070 with no error, most likely when the controlling session
-ended; its updates ran at 24 to 32 seconds because the GPU was shared with
-display and browser processes (load average above 100, memory 91% free).
-The epoch-1 checkpoint is complete and loadable; its evaluations against
-Jev and the human labels were interrupted and have not been written.
+with held-out soft cross-entropy 0.203 and **teacher-positive recall 211 of
+298** (v1: 168, base Laya: 196). Epoch 2 stopped at update 1,275 of 2,070.
 
-Night run, one command, unattended (about six to nine hours on a loaded
-machine, two to three on a quiet one):
+What actually happened to the run, from the training log and the power
+log (`pmset -g log`): the laptop was on battery the whole time. Whenever
+the lid was open, updates took 3.5 to 5 seconds (an epoch is about 1.2
+hours at that rate). The lid was closed three times (16:02, 19:30,
+00:03 local) and each time the machine went into clamshell sleep;
+`caffeinate -i` does not prevent lid sleep, so the run stalled for about
+seven of its eleven and a half hours. Between 21:30 and 00:00 it ran at
+10 to 18 seconds per update with the battery under 21%. The process died
+at 03:09 with the battery at 3%, during a maintenance wake. Nothing was
+wrong with the model or the code; the epoch-1 checkpoint is complete and
+loadable. Its evaluations against Jev and the human labels were
+interrupted and have not been written.
+
+Cost of the job on this machine (M4 Max, 40 GPU cores, 128 GB), measured
+with two 8-update probes on September 24: process memory 4.7 GB, GPU
+memory in use 12 to 15 GB, about half a CPU core, and the GPU pinned at
+97 to 99% while a step runs. Memory and CPU are not a concern; the GPU is
+the shared resource, so anything the screen draws will feel choppy while
+training runs. Micro-batch 2 with gradient accumulation 8 costs 15%
+throughput (4.3 vs 3.7 seconds per update) and gives the window server
+more gaps. The resume script now refuses to start on battery and uses
+`caffeinate -i -s`; the machine must be plugged in with the lid open
+(the screen may sleep).
+
+Night run, one command, unattended:
 
 ```sh
 nohup /Users/wk/.local/share/means-of-prediction/slides/laya-distill-resume.sh \
@@ -134,7 +152,8 @@ nohup /Users/wk/.local/share/means-of-prediction/slides/laya-distill-resume.sh \
 
 It evaluates epoch 1 on both yardsticks, resumes epoch 2 from the epoch-1
 weights (`--init`, `--start-epoch 1`), evaluates epoch 2, and writes
-one line per stage to the log; artifacts land in
+one line per stage to the log. On a quiet, plugged-in machine the whole
+chain is about two and a half hours. Artifacts land in
 `slides/laya-benchmark-20260921/student-v2-epoch{1,2}` and
 `slides/laya-distill-jev-20260922/eval-*.json`.
 
