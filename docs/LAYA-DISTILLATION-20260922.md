@@ -141,6 +141,29 @@ training runs unpaced. The resume script now refuses to start on battery
 and uses `caffeinate -i -s`; the machine must be plugged in with the lid
 open (the screen may sleep).
 
+### Student v2 epoch 1: results (September 24)
+
+| yardstick | base Laya | student v1 | student v2 epoch 1 | Jev |
+|---|---|---|---|---|
+| vs Jev, 1,824 held-out units, question A positives (Jev fires 116) | | 67 | 110 | |
+| vs Jev, question A agreement at 0.5 / Brier | | 0.972 / 0.012 | 0.970 / 0.017 | |
+| human labels, 56 held-out facts: correct side | 22 | 33 | 33 | 49 |
+| human labels: wrong side | 26 | 14 | 14 | 0 |
+| sweep at 0.5: false fires on 25 true-No rows | 22 | 0 | 0 | 0 |
+| sweep at 0.5: false fires on 37 weak/unlabeled rows | 36 | 2 | 2 | 2 |
+| sweep at 0.5: true Yes found, of 3 | 2 | 2 | 3 | 3 |
+
+The positive re-weighting closed the firing-rate gap to the teacher
+(110 positives against Jev's 116, where v1 fired 67) without changing
+the human-label picture: the student still settles the wrong side on 14
+of 56 facts where Jev settles none wrong. False fires stay at Jev's
+level. So distillation transfers Jev's caution but, so far, not its
+side discrimination; the pick head agrees with Jev on 93% of held-out
+units, a figure dominated by the "neither" majority. Epoch 2 continues
+the same recipe; if it does not move the wrong-side count, the next
+lever is the training mix (more positive units with both sides present,
+or a side-contrast loss), not more epochs.
+
 ### Keeping the GPU available while training (September 24)
 
 `laya_distill.py train --gpu-share S` (also `MOP_GPU_SHARE=S` for the
