@@ -22,6 +22,7 @@ Outputs private JSON under --root; prints content-free counts only.
 """
 import argparse, collections, concurrent.futures, json, os, statistics, threading, time, urllib.error, urllib.request
 from pathlib import Path
+GPU_SHARE = float(os.environ.get('MOP_GPU_SHARE', '1'))  # fraction of wall time local model calls may keep the GPU busy
 
 ROUND = Path.home()/'.local/share/means-of-prediction/slides/fable-qwen-nyt-round1-20260915'
 ARM = Path.home()/'.local/share/means-of-prediction/slides/fable-judge-baseline-20260915'
@@ -52,8 +53,11 @@ class Laya:
             self.agent = laya.Agent(model_path, device=self.device); self.label = 'laya:'+os.path.basename(model_path.rstrip('/'))
         else:
             self.agent = laya.load('convaiinnovations/laya', device=self.device, **({} if checkpoint == 'english' else {'subfolder': checkpoint})); self.label = 'laya:'+checkpoint
-        self.cost = 0.0
-    def ask(self, state, questions): return self.agent.predict(state, questions)['answers']
+        self.cost = 0.0; self.sync = torch.mps.synchronize if self.device == 'mps' else (lambda: None)
+    def ask(self, state, questions):
+        ts = time.time(); out = self.agent.predict(state, questions)['answers']
+        if GPU_SHARE < 1: self.sync(); time.sleep((time.time()-ts)*(1-GPU_SHARE)/GPU_SHARE)  # leave the GPU idle part of the time for the display and other apps
+        return out
 
 class Jev:
     workers = 8

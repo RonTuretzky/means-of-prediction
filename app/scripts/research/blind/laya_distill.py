@@ -24,6 +24,13 @@ RULE = ' Forecasts, odds, plans, hypotheticals, denials and quoted predictions d
 WINDOW, STRIDE = 1200, 600
 
 def read(p): return json.loads(Path(p).read_text())
+GPU_SHARE = float(os.environ.get('MOP_GPU_SHARE', '1'))  # fraction of wall time this process may keep the GPU busy; below 1 it sleeps between steps so the display and other apps stay responsive
+def gpu_pause(t_start, device, share=None):
+    share = GPU_SHARE if share is None else share
+    if share >= 1: return
+    if device in ('mps', 'cuda'):
+        import torch; (torch.mps if device == 'mps' else torch.cuda).synchronize()
+    time.sleep((time.time()-t_start)*(1-share)/share)
 def sha(s): return hashlib.sha256(s.encode()).hexdigest()
 
 def windows(text):
@@ -176,7 +183,7 @@ def fit_temp(sel):
 def forward(model, batch, device):
     return model(batch['input_ids'].to(device), batch['attention_mask'].to(device), batch['marker_pos'].to(device), batch['marker_mask'].to(device), batch['qtype'].to(device))
 
-def train(root, out_dir, epochs, micro_batch, grad_accum, lr_encoder, lr_head, group_size, device, max_steps, seed, positive_weight=1.0, bucket=True, init=None, start_epoch=0):
+def train(root, out_dir, epochs, micro_batch, grad_accum, lr_encoder, lr_head, group_size, device, max_steps, seed, positive_weight=1.0, bucket=True, init=None, start_epoch=0, gpu_share=1.0, grad_checkpoint=True):
     import torch
     from safetensors.torch import load_file, save_file
     from transformers import AutoTokenizer
@@ -186,7 +193,9 @@ def train(root, out_dir, epochs, micro_batch, grad_accum, lr_encoder, lr_head, g
     cfg = read(os.path.join(model_dir, 'rl_agent_config.json')); cfg['max_len'] = meta['maxLen']; cfg['head_max_len'] = meta['headMaxLen']
     tok = AutoTokenizer.from_pretrained(os.path.join(model_dir, 'tokenizer'))
     model = build_model(cfg, encoder_dir=os.path.join(model_dir, 'encoder')); model.load_state_dict(load_file(os.path.join(init or model_dir, 'model.safetensors')), strict=True)
-    model.encoder.gradient_checkpointing_enable(gradient_checkpointing_kwargs={'use_reentrant': False}); model.head_checkpointing = True; model.to(device); model.train()
+    if grad_checkpoint: model.encoder.gradient_checkpointing_enable(gradient_checkpointing_kwargs={'use_reentrant': False}); model.head_checkpointing = True  # trades GPU time for memory; off is faster when memory is plentiful
+    model.to(device); model.train()
+    def pace(t_start): gpu_pause(t_start, device, gpu_share)
     items = torch.load(root/'train_items.pt', weights_only=False); val = torch.load(root/'validation_items.pt', weights_only=False)
     # Teacher-positive sequences are rare (about 6%); weight them so the soft targets are not swamped by negatives.
     def is_positive(it): return it['qtype'] == 2 and it['target'][1] >= 0.5 or (it['qtype'] == 0 and it['label'] != len(it['target'])-1)
@@ -197,15 +206,15 @@ def train(root, out_dir, epochs, micro_batch, grad_accum, lr_encoder, lr_head, g
     total_updates = max(1, (len(items)//(micro_batch*grad_accum))*epochs); sched = torch.optim.lr_scheduler.CosineAnnealingLR(opt, T_max=total_updates, eta_min=1e-6)
     out_dir = Path(out_dir); out_dir.mkdir(parents=True, exist_ok=True); log = (out_dir/'train.log').open('a')
     def say(**f): line = json.dumps({'at': time.strftime('%H:%M:%S'), **f}); print(line, flush=True); log.write(line+'\n'); log.flush()
-    say(device=device, trainItems=len(items), valItems=len(val), epochs=epochs, startEpoch=start_epoch, init=init, microBatch=micro_batch, gradAccum=grad_accum, totalUpdates=total_updates, **say_w)
+    say(device=device, trainItems=len(items), valItems=len(val), epochs=epochs, startEpoch=start_epoch, init=init, microBatch=micro_batch, gradAccum=grad_accum, totalUpdates=total_updates, gpuShare=gpu_share, gradCheckpoint=grad_checkpoint, **say_w)
     for _ in range(start_epoch*max(1, len(items)//(micro_batch*grad_accum))): sched.step()  # resume the cosine schedule where the checkpointed epoch left it
     def val_positive_recall():
         model.eval(); hit = tot = 0
         pos = [it for it in val if is_positive(it) and it['qtype'] == 2]
         with torch.no_grad():
             for i in range(0, len(pos), 16):
-                b = collate(pos[i:i+16], tok.pad_token_id); logits, _ = forward(model, b, device); pr = torch.softmax(logits.float().cpu().masked_fill(~b['marker_mask'], -1e4), -1)
-                hit += int((pr[:, 1] >= 0.5).sum()); tot += len(pos[i:i+16])
+                ts = time.time(); b = collate(pos[i:i+16], tok.pad_token_id); logits, _ = forward(model, b, device); pr = torch.softmax(logits.float().cpu().masked_fill(~b['marker_mask'], -1e4), -1)
+                hit += int((pr[:, 1] >= 0.5).sum()); tot += len(pos[i:i+16]); pace(ts)
         model.train(); return hit, tot
     def batches(seq):
         # Length buckets: shuffle, sort within chunks of 50 micro-batches, cut, shuffle the cuts. Less padding, steadier MPS memory.
@@ -218,8 +227,8 @@ def train(root, out_dir, epochs, micro_batch, grad_accum, lr_encoder, lr_head, g
         model.eval(); tot, n = 0.0, 0
         with torch.no_grad():
             for i in range(0, len(val), 16):
-                b = collate(val[i:i+16], tok.pad_token_id); logits, _ = forward(model, b, device); logits = logits.float().cpu(); mask = b['marker_mask']
-                tot += float(-(b['target']*torch.log_softmax(logits.masked_fill(~mask, -1e4), -1)).sum(-1).sum()); n += len(b['target'])
+                ts = time.time(); b = collate(val[i:i+16], tok.pad_token_id); logits, _ = forward(model, b, device); logits = logits.float().cpu(); mask = b['marker_mask']
+                tot += float(-(b['target']*torch.log_softmax(logits.masked_fill(~mask, -1e4), -1)).sum(-1).sum()); n += len(b['target']); pace(ts)
         model.train(); return tot/max(1, n)
     say(valSoftCE=round(val_loss(), 4), stage='before')
     t0, step, accum = time.time(), 0, 0; sigma_start, sigma_end = 0.4, 0.1
@@ -228,7 +237,7 @@ def train(root, out_dir, epochs, micro_batch, grad_accum, lr_encoder, lr_head, g
         sigma = sigma_start+(sigma_end-sigma_start)*(epoch/max(1, epochs-1))
         all_batches = batches(items)
         for b_idx, chunk in enumerate(all_batches):
-            b = collate(chunk, tok.pad_token_id); w = torch.tensor([it['w'] for it in chunk], device=device)
+            ts = time.time(); b = collate(chunk, tok.pad_token_id); w = torch.tensor([it['w'] for it in chunk], device=device)
             logits, act = forward(model, b, device); logits = logits.float(); mask = b['marker_mask'].to(device); k = mask.sum(-1, keepdim=True).float(); target = b['target'].to(device)
             eps = torch.randn((group_size,)+logits.shape, device=device)*sigma*mask; eps = (eps-eps.sum(-1, keepdim=True)/k)*mask
             z = logits.detach().unsqueeze(0)+eps; q = torch.softmax(z.masked_fill(~mask, -1e4), -1)
@@ -242,7 +251,7 @@ def train(root, out_dir, epochs, micro_batch, grad_accum, lr_encoder, lr_head, g
                 torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0); opt.step(); sched.step(); opt.zero_grad(set_to_none=True); step += 1
                 if step % 25 == 0: say(epoch=epoch+1, update=step, of=total_updates, loss=round(float(loss)*grad_accum, 4), ce=round(float(loss_ce), 4), reward=round(float(r.mean()), 3), lr=sched.get_last_lr()[0], secondsPerUpdate=round((time.time()-t0)/step, 2))
                 if max_steps and step >= max_steps: say(stoppedEarly=True, updates=step, secondsPerUpdate=round((time.time()-t0)/step, 2)); return
-            epoch_loss += float(loss)*grad_accum; nb += 1
+            epoch_loss += float(loss)*grad_accum; nb += 1; pace(ts)
         vl = val_loss(); hit, tot = val_positive_recall(); say(epochDone=epoch+1, avgLoss=round(epoch_loss/max(1, nb), 4), valSoftCE=round(vl, 4), valTeacherPositiveRecall=f'{hit}/{tot}', elapsedMin=round((time.time()-t0)/60, 1))
         ck = out_dir/('checkpoint_epoch'+str(epoch+1)); ck.mkdir(exist_ok=True); save_file({k: v.detach().contiguous().cpu() for k, v in model.state_dict().items()}, ck/'model.safetensors')
         model.encoder.config.save_pretrained(ck/'encoder'); tok.save_pretrained(ck/'tokenizer'); (ck/'checkpoint_meta.json').write_text(json.dumps({'epoch': epoch+1, 'valSoftCE': vl, 'valTeacherPositiveRecall': [hit, tot]}))
@@ -272,7 +281,7 @@ def evaluate(root, model_path, device):
     agent = laya.Agent(model_path, device=dev) if os.path.isdir(model_path) else laya.load('convaiinnovations/laya', device=dev, **({} if model_path == 'english' else {'subfolder': model_path}))
     pairs = collections.defaultdict(list)
     for r in held:
-        ans = agent.predict(r['state'], questions_for(public[r['marketId']], rules[r['marketId']]))['answers']
+        ts = time.time(); ans = agent.predict(r['state'], questions_for(public[r['marketId']], rules[r['marketId']]))['answers']; gpu_pause(ts, dev)
         for qid, key in [('A', 'pA'), ('B', 'pB'), ('q', 'pQuestion')]:
             if r.get(key) is not None and qid in ans: pairs[qid].append((ans[qid]['noul'], r[key]))
         pairs['pick'].append((ans['pick']['choice'], max(r['pick'], key=r['pick'].get)))
@@ -295,9 +304,10 @@ if __name__ == '__main__':
     p = sub.add_parser('train'); p.add_argument('--root', required=True); p.add_argument('--out', required=True); p.add_argument('--epochs', type=int, default=3); p.add_argument('--micro-batch', type=int, default=8); p.add_argument('--grad-accum', type=int, default=4)
     p.add_argument('--lr-encoder', type=float, default=2.5e-5); p.add_argument('--lr-head', type=float, default=1e-4); p.add_argument('--group-size', type=int, default=4); p.add_argument('--device', default='auto'); p.add_argument('--max-steps', type=int, default=0); p.add_argument('--seed', type=int, default=42)
     p.add_argument('--positive-weight', type=float, default=1.0); p.add_argument('--no-bucket', action='store_true'); p.add_argument('--init', help='checkpoint directory to resume weights from'); p.add_argument('--start-epoch', type=int, default=0)
+    p.add_argument('--gpu-share', type=float, default=GPU_SHARE, help='fraction of wall time the trainer may keep the GPU busy (0.5 = sleep as long as each step took); 1 = no pacing'); p.add_argument('--no-grad-checkpoint', action='store_true', help='skip gradient checkpointing (faster steps, more memory)')
     p = sub.add_parser('evaluate'); p.add_argument('--root', required=True); p.add_argument('--model-path', required=True); p.add_argument('--device', default='auto')
     a = ap.parse_args()
     if a.cmd == 'label': label(a.root, a.model, a.max_cost, a.max_windows, a.cross_negatives, a.workers, a.seed)
     elif a.cmd == 'prepare': prepare(a.root, a.max_len, a.head_max_len, not a.no_choice)
-    elif a.cmd == 'train': train(a.root, a.out, a.epochs, a.micro_batch, a.grad_accum, a.lr_encoder, a.lr_head, a.group_size, a.device, a.max_steps, a.seed, a.positive_weight, not a.no_bucket, a.init, a.start_epoch)
+    elif a.cmd == 'train': train(a.root, a.out, a.epochs, a.micro_batch, a.grad_accum, a.lr_encoder, a.lr_head, a.group_size, a.device, a.max_steps, a.seed, a.positive_weight, not a.no_bucket, a.init, a.start_epoch, a.gpu_share, not a.no_grad_checkpoint)
     else: evaluate(a.root, a.model_path, a.device)

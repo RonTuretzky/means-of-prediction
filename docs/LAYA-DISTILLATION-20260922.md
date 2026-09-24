@@ -137,11 +137,31 @@ with two 8-update probes on September 24: process memory 4.7 GB, GPU
 memory in use 12 to 15 GB, about half a CPU core, and the GPU pinned at
 97 to 99% while a step runs. Memory and CPU are not a concern; the GPU is
 the shared resource, so anything the screen draws will feel choppy while
-training runs. Micro-batch 2 with gradient accumulation 8 costs 15%
-throughput (4.3 vs 3.7 seconds per update) and gives the window server
-more gaps. The resume script now refuses to start on battery and uses
-`caffeinate -i -s`; the machine must be plugged in with the lid open
-(the screen may sleep).
+training runs unpaced. The resume script now refuses to start on battery
+and uses `caffeinate -i -s`; the machine must be plugged in with the lid
+open (the screen may sleep).
+
+### Keeping the GPU available while training (September 24)
+
+`laya_distill.py train --gpu-share S` (also `MOP_GPU_SHARE=S` for the
+evaluate stage and `laya_bench.py`) waits for queued GPU work after each
+micro-batch and then sleeps in proportion to how long the step took, so
+the trainer holds the GPU for about a share S of wall time. Five probes
+of 6 to 8 updates each, GPU utilisation sampled every 0.28 s:
+
+| setting | s/update | mean GPU util | idle share | longest busy burst | GPU memory |
+|---|---|---|---|---|---|
+| micro-batch 8, no pacing | 3.8 | 99% | 0% | continuous | 15 GB |
+| micro-batch 8, share 0.5 | 6.9 | 63% | 27% | 3.1 s | 15 GB |
+| micro-batch 2, share 0.5 | 8.3 | 66% | 31% | 1.4 s | 13 GB |
+| micro-batch 2, share 0.3 | 13.8 | 41% | 59% | 1.4 s | 12 GB |
+| micro-batch 8, no gradient checkpointing | 3.2 | 96% | 3% | continuous | 37 GB |
+
+The share knob buys responsiveness with wall time (0.5 is 2.2× slower,
+0.3 is 3.6×). Micro-batch 2 keeps each busy burst short, which is what
+the display compositor notices. Gradient checkpointing off is the fastest
+unattended setting on this 128 GB machine. The resume script takes the
+same choices as environment knobs: `GPU_SHARE`, `MICRO_BATCH`, `NO_CKPT`.
 
 Night run, one command, unattended:
 
@@ -150,10 +170,13 @@ nohup /Users/wk/.local/share/means-of-prediction/slides/laya-distill-resume.sh \
   > /Users/wk/.local/share/means-of-prediction/slides/laya-distill-resume.log 2>&1 &
 ```
 
+Daytime, sharing the machine: `GPU_SHARE=0.5 MICRO_BATCH=2 nohup ...`
+(about five and a half hours). Night, fastest: `NO_CKPT=1 nohup ...`.
+
 It evaluates epoch 1 on both yardsticks, resumes epoch 2 from the epoch-1
 weights (`--init`, `--start-epoch 1`), evaluates epoch 2, and writes
 one line per stage to the log. On a quiet, plugged-in machine the whole
-chain is about two and a half hours. Artifacts land in
+chain is about two and a half hours unpaced. Artifacts land in
 `slides/laya-benchmark-20260921/student-v2-epoch{1,2}` and
 `slides/laya-distill-jev-20260922/eval-*.json`.
 
