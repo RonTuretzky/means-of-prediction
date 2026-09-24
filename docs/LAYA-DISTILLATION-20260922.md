@@ -165,6 +165,13 @@ full speed; a returning user gets the paced GPU back within two seconds.
 The log records each switch with the reason. A video watched without
 touching the machine counts as idle.
 
+Reading the GPU counter: `ioreg`'s "Device Utilization %" over-reports
+fine-grained pacing. A synthetic 30% duty cycle reads about 73% when the
+bursts are 60 ms (the benchmark's pattern) and about 45% when they are
+one second (the trainer's pattern); the same 30% of work either way. To
+know whether a paced job is what the counter is showing, stop it for a
+few seconds (`kill -STOP`, then `kill -CONT`) and watch the counter fall.
+
 The share knob buys responsiveness with wall time (0.5 is 2.2× slower,
 0.3 is 3.6×). Micro-batch 2 keeps each busy burst short, which is what
 the display compositor notices. Gradient checkpointing off is the fastest
