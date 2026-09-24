@@ -24,13 +24,31 @@ RULE = ' Forecasts, odds, plans, hypotheticals, denials and quoted predictions d
 WINDOW, STRIDE = 1200, 600
 
 def read(p): return json.loads(Path(p).read_text())
-GPU_SHARE = float(os.environ.get('MOP_GPU_SHARE', '1'))  # fraction of wall time this process may keep the GPU busy; below 1 it sleeps between steps so the display and other apps stay responsive
+def share_arg(v): return v if v == 'auto' else float(v)
+GPU_SHARE = share_arg(os.environ.get('MOP_GPU_SHARE', '1'))  # fraction of wall time this process may keep the GPU busy; below 1 it sleeps between steps so the display and other apps stay responsive; 'auto' = MOP_GPU_ACTIVE_SHARE while someone is using the machine, full speed once input has been idle MOP_GPU_IDLE_SECS or the display is off
+ACTIVE_SHARE, IDLE_SECS = float(os.environ.get('MOP_GPU_ACTIVE_SHARE', '0.3')), float(os.environ.get('MOP_GPU_IDLE_SECS', '180'))
+_pace = {'checked': 0.0, 'share': None, 'why': None}
+def user_present():
+    # macOS only: seconds since the last keyboard/mouse/trackpad event (a sleeping display implies a long idle). Any failure counts as present (pace conservatively).
+    import subprocess
+    try:
+        out = subprocess.run(['ioreg', '-c', 'IOHIDSystem', '-d', '4'], capture_output=True, text=True, timeout=5).stdout
+        m = re.search(r'"HIDIdleTime" = (\d+)', out); idle = int(m.group(1))/1e9 if m else 0.0
+        return idle < IDLE_SECS, f'input idle {idle:.0f}s'
+    except Exception as exc: return True, f'probe failed: {exc}'
+def current_share(share):
+    if share != 'auto': return share
+    now = time.time()
+    if now-_pace['checked'] >= 2:  # a returning user gets the paced GPU back within about two seconds; the probe costs ~30 ms
+        present, why = user_present(); new = ACTIVE_SHARE if present else 1.0; _pace['checked'] = now
+        if new != _pace['share']: print(json.dumps({'at': time.strftime('%H:%M:%S'), 'gpuShare': new, 'because': why}), flush=True)
+        _pace['share'], _pace['why'] = new, why
+    return _pace['share']
 def gpu_pause(t_start, device, share=None):
-    share = GPU_SHARE if share is None else share
-    if share >= 1: return
-    if device in ('mps', 'cuda'):
+    if device in ('mps', 'cuda') and (GPU_SHARE if share is None else share) != 1:
         import torch; (torch.mps if device == 'mps' else torch.cuda).synchronize()
-    time.sleep((time.time()-t_start)*(1-share)/share)
+    busy = time.time()-t_start; share = current_share(GPU_SHARE if share is None else share)  # measure the step before the (subprocess) presence probe so probe time is not charged as GPU time
+    if share < 1: time.sleep(busy*(1-share)/share)
 def sha(s): return hashlib.sha256(s.encode()).hexdigest()
 
 def windows(text):
@@ -304,7 +322,7 @@ if __name__ == '__main__':
     p = sub.add_parser('train'); p.add_argument('--root', required=True); p.add_argument('--out', required=True); p.add_argument('--epochs', type=int, default=3); p.add_argument('--micro-batch', type=int, default=8); p.add_argument('--grad-accum', type=int, default=4)
     p.add_argument('--lr-encoder', type=float, default=2.5e-5); p.add_argument('--lr-head', type=float, default=1e-4); p.add_argument('--group-size', type=int, default=4); p.add_argument('--device', default='auto'); p.add_argument('--max-steps', type=int, default=0); p.add_argument('--seed', type=int, default=42)
     p.add_argument('--positive-weight', type=float, default=1.0); p.add_argument('--no-bucket', action='store_true'); p.add_argument('--init', help='checkpoint directory to resume weights from'); p.add_argument('--start-epoch', type=int, default=0)
-    p.add_argument('--gpu-share', type=float, default=GPU_SHARE, help='fraction of wall time the trainer may keep the GPU busy (0.5 = sleep as long as each step took); 1 = no pacing'); p.add_argument('--no-grad-checkpoint', action='store_true', help='skip gradient checkpointing (faster steps, more memory)')
+    p.add_argument('--gpu-share', type=share_arg, default=GPU_SHARE, help="fraction of wall time the trainer may keep the GPU busy (0.5 = sleep as long as each step took); 1 = no pacing; 'auto' = MOP_GPU_ACTIVE_SHARE while the machine is in use, full speed when input is idle or the display is off"); p.add_argument('--no-grad-checkpoint', action='store_true', help='skip gradient checkpointing (faster steps, more memory)')
     p = sub.add_parser('evaluate'); p.add_argument('--root', required=True); p.add_argument('--model-path', required=True); p.add_argument('--device', default='auto')
     a = ap.parse_args()
     if a.cmd == 'label': label(a.root, a.model, a.max_cost, a.max_windows, a.cross_negatives, a.workers, a.seed)

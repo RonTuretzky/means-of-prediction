@@ -157,6 +157,14 @@ of 6 to 8 updates each, GPU utilisation sampled every 0.28 s:
 | micro-batch 2, share 0.3 | 13.8 | 41% | 59% | 1.4 s | 12 GB |
 | micro-batch 8, no gradient checkpointing | 3.2 | 96% | 3% | continuous | 37 GB |
 
+`--gpu-share auto` (env `MOP_GPU_SHARE=auto`) reads the seconds since
+the last keyboard, mouse or trackpad event every two seconds: while
+someone is using the machine it paces at `MOP_GPU_ACTIVE_SHARE` (0.3),
+and once input has been idle for `MOP_GPU_IDLE_SECS` (180) it runs at
+full speed; a returning user gets the paced GPU back within two seconds.
+The log records each switch with the reason. A video watched without
+touching the machine counts as idle.
+
 The share knob buys responsiveness with wall time (0.5 is 2.2× slower,
 0.3 is 3.6×). Micro-batch 2 keeps each busy burst short, which is what
 the display compositor notices. Gradient checkpointing off is the fastest
@@ -170,8 +178,10 @@ nohup /Users/wk/.local/share/means-of-prediction/slides/laya-distill-resume.sh \
   > /Users/wk/.local/share/means-of-prediction/slides/laya-distill-resume.log 2>&1 &
 ```
 
-Daytime, sharing the machine: `GPU_SHARE=0.5 MICRO_BATCH=2 nohup ...`
-(about five and a half hours). Night, fastest: `NO_CKPT=1 nohup ...`.
+Launched September 24 at 11:56 local with `GPU_SHARE=auto NO_CKPT=1
+MICRO_BATCH=2`: paced to 0.3 while the machine is in use, full speed
+otherwise, no gradient checkpointing. The first presence switch to full
+speed happened at 185 s of idle input, as designed.
 
 It evaluates epoch 1 on both yardsticks, resumes epoch 2 from the epoch-1
 weights (`--init`, `--start-epoch 1`), evaluates epoch 2, and writes
