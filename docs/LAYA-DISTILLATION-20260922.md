@@ -188,7 +188,13 @@ nohup /Users/wk/.local/share/means-of-prediction/slides/laya-distill-resume.sh \
 Launched September 24 at 11:56 local with `GPU_SHARE=auto NO_CKPT=1
 MICRO_BATCH=2`: paced to 0.3 while the machine is in use, full speed
 otherwise, no gradient checkpointing. The first presence switch to full
-speed happened at 185 s of idle input, as designed.
+speed happened at 185 s of idle input, as designed. The lid was closed
+at 12:38 during the epoch-1 benchmark and the laptop went into clamshell
+sleep on AC power; no assertion prevents that without an external
+display, so the chain froze (it ticks only during the 45-second
+maintenance wakes every 15 minutes) until the lid is opened. The resume
+script now holds the idle-sleep assertion for the whole chain rather
+than only the training stage.
 
 It evaluates epoch 1 on both yardsticks, resumes epoch 2 from the epoch-1
 weights (`--init`, `--start-epoch 1`), evaluates epoch 2, and writes
