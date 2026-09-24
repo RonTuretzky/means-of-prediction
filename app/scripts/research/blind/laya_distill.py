@@ -176,7 +176,7 @@ def fit_temp(sel):
 def forward(model, batch, device):
     return model(batch['input_ids'].to(device), batch['attention_mask'].to(device), batch['marker_pos'].to(device), batch['marker_mask'].to(device), batch['qtype'].to(device))
 
-def train(root, out_dir, epochs, micro_batch, grad_accum, lr_encoder, lr_head, group_size, device, max_steps, seed, positive_weight=1.0, bucket=True):
+def train(root, out_dir, epochs, micro_batch, grad_accum, lr_encoder, lr_head, group_size, device, max_steps, seed, positive_weight=1.0, bucket=True, init=None, start_epoch=0):
     import torch
     from safetensors.torch import load_file, save_file
     from transformers import AutoTokenizer
@@ -185,7 +185,7 @@ def train(root, out_dir, epochs, micro_batch, grad_accum, lr_encoder, lr_head, g
     device = device if device != 'auto' else ('mps' if torch.backends.mps.is_available() else 'cuda' if torch.cuda.is_available() else 'cpu')
     cfg = read(os.path.join(model_dir, 'rl_agent_config.json')); cfg['max_len'] = meta['maxLen']; cfg['head_max_len'] = meta['headMaxLen']
     tok = AutoTokenizer.from_pretrained(os.path.join(model_dir, 'tokenizer'))
-    model = build_model(cfg, encoder_dir=os.path.join(model_dir, 'encoder')); model.load_state_dict(load_file(os.path.join(model_dir, 'model.safetensors')), strict=True)
+    model = build_model(cfg, encoder_dir=os.path.join(model_dir, 'encoder')); model.load_state_dict(load_file(os.path.join(init or model_dir, 'model.safetensors')), strict=True)
     model.encoder.gradient_checkpointing_enable(gradient_checkpointing_kwargs={'use_reentrant': False}); model.head_checkpointing = True; model.to(device); model.train()
     items = torch.load(root/'train_items.pt', weights_only=False); val = torch.load(root/'validation_items.pt', weights_only=False)
     # Teacher-positive sequences are rare (about 6%); weight them so the soft targets are not swamped by negatives.
@@ -197,7 +197,8 @@ def train(root, out_dir, epochs, micro_batch, grad_accum, lr_encoder, lr_head, g
     total_updates = max(1, (len(items)//(micro_batch*grad_accum))*epochs); sched = torch.optim.lr_scheduler.CosineAnnealingLR(opt, T_max=total_updates, eta_min=1e-6)
     out_dir = Path(out_dir); out_dir.mkdir(parents=True, exist_ok=True); log = (out_dir/'train.log').open('a')
     def say(**f): line = json.dumps({'at': time.strftime('%H:%M:%S'), **f}); print(line, flush=True); log.write(line+'\n'); log.flush()
-    say(device=device, trainItems=len(items), valItems=len(val), epochs=epochs, microBatch=micro_batch, gradAccum=grad_accum, totalUpdates=total_updates, **say_w)
+    say(device=device, trainItems=len(items), valItems=len(val), epochs=epochs, startEpoch=start_epoch, init=init, microBatch=micro_batch, gradAccum=grad_accum, totalUpdates=total_updates, **say_w)
+    for _ in range(start_epoch*max(1, len(items)//(micro_batch*grad_accum))): sched.step()  # resume the cosine schedule where the checkpointed epoch left it
     def val_positive_recall():
         model.eval(); hit = tot = 0
         pos = [it for it in val if is_positive(it) and it['qtype'] == 2]
@@ -222,7 +223,7 @@ def train(root, out_dir, epochs, micro_batch, grad_accum, lr_encoder, lr_head, g
         model.train(); return tot/max(1, n)
     say(valSoftCE=round(val_loss(), 4), stage='before')
     t0, step, accum = time.time(), 0, 0; sigma_start, sigma_end = 0.4, 0.1
-    for epoch in range(epochs):
+    for epoch in range(start_epoch, epochs):
         random.seed(seed+epoch); random.shuffle(items); epoch_loss, nb = 0.0, 0; opt.zero_grad(set_to_none=True)
         sigma = sigma_start+(sigma_end-sigma_start)*(epoch/max(1, epochs-1))
         all_batches = batches(items)
@@ -293,10 +294,10 @@ if __name__ == '__main__':
     p = sub.add_parser('prepare'); p.add_argument('--root', required=True); p.add_argument('--max-len', type=int, default=768); p.add_argument('--head-max-len', type=int, default=256); p.add_argument('--no-choice', action='store_true')
     p = sub.add_parser('train'); p.add_argument('--root', required=True); p.add_argument('--out', required=True); p.add_argument('--epochs', type=int, default=3); p.add_argument('--micro-batch', type=int, default=8); p.add_argument('--grad-accum', type=int, default=4)
     p.add_argument('--lr-encoder', type=float, default=2.5e-5); p.add_argument('--lr-head', type=float, default=1e-4); p.add_argument('--group-size', type=int, default=4); p.add_argument('--device', default='auto'); p.add_argument('--max-steps', type=int, default=0); p.add_argument('--seed', type=int, default=42)
-    p.add_argument('--positive-weight', type=float, default=1.0); p.add_argument('--no-bucket', action='store_true')
+    p.add_argument('--positive-weight', type=float, default=1.0); p.add_argument('--no-bucket', action='store_true'); p.add_argument('--init', help='checkpoint directory to resume weights from'); p.add_argument('--start-epoch', type=int, default=0)
     p = sub.add_parser('evaluate'); p.add_argument('--root', required=True); p.add_argument('--model-path', required=True); p.add_argument('--device', default='auto')
     a = ap.parse_args()
     if a.cmd == 'label': label(a.root, a.model, a.max_cost, a.max_windows, a.cross_negatives, a.workers, a.seed)
     elif a.cmd == 'prepare': prepare(a.root, a.max_len, a.head_max_len, not a.no_choice)
-    elif a.cmd == 'train': train(a.root, a.out, a.epochs, a.micro_batch, a.grad_accum, a.lr_encoder, a.lr_head, a.group_size, a.device, a.max_steps, a.seed, a.positive_weight, not a.no_bucket)
+    elif a.cmd == 'train': train(a.root, a.out, a.epochs, a.micro_batch, a.grad_accum, a.lr_encoder, a.lr_head, a.group_size, a.device, a.max_steps, a.seed, a.positive_weight, not a.no_bucket, a.init, a.start_epoch)
     else: evaluate(a.root, a.model_path, a.device)
