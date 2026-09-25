@@ -251,6 +251,53 @@ Chain: `slides/laya-distill-v3.sh` (log `slides/laya-distill-v3.log`,
 root `slides/laya-distill-jev-v3-20260924`); refuses to start on
 battery and waits for teacher budget.
 
+### v3 result (September 25): hard negatives alone collapse the student
+
+The active stage ran at full speed overnight (the user left the lid open
+and the screen dark): 26,594 candidates scored, 10,000 sent to Jev for
+54 cents, no failures. Only 40 of the 10,000 were teacher positives (5
+of the 2,708 remaining own-market windows, 35 cross-market): the entity
+and quote heuristics that picked v2's windows had already found nearly
+every window where a fact is reported. What the stage did find is 3,400
+hard negatives, windows the student scores at 0.15 or higher where Jev
+sees nothing settled, 188 of them above 0.4.
+
+Training on all 10,000 would have made the set 96% negative, so
+`prepare --active-min-score 0.15` keeps every teacher positive and only
+the hard negatives, and the positive weight went to 10 to hold the
+positive share of the loss at v2's level. Epoch 1 (22,034 sequences, 96
+minutes) was still a regression: held-out soft cross-entropy 0.222
+against 0.193 before training, teacher-positive recall 156 of 298
+(v2 epoch 1: 211), question-A AUC against Jev 0.957 (0.990). On the
+human-label benchmark the side heads went silent: median side
+probability on the 50 held-out fact excerpts 0.17 (v2 epoch 1: 0.50),
+maximum 0.33, so the pre-registered 0.4 threshold picked nothing.
+Epoch 2 was stopped as pointless.
+
+Why: of the 438 usable training positives, 407 are the short synthetic
+control passages (median 260 characters) and only 31 are real
+newsletter windows. The hard negatives are all real newsletter windows,
+so the student learned "real newsletter text means nothing is settled",
+which is the opposite of the job. The benchmark excerpts are real
+newsletter passages.
+
+### v3b (September 25): positives embedded in real newsletter text
+
+`laya_distill.py label-augment`: every short positive is embedded four
+times, whole, at a random position inside filler cut from
+teacher-negative windows of real newsletters (filler subject used); each
+of the 31 real positives is re-cropped four times around its located
+evidence quote plus one contrast window that excludes the quote. Jev
+labelled all 1,783 units for nine cents: 95% of embeddings positive on
+the parent's side (1,540 of 1,628), 80% of crops positive, 0 of 31
+contrast windows positive. Training positives go from 577 to about
+2,200, most now surrounded by newsletter text. The student-proposed
+negatives are dropped (`--active-min-score 1.01`, active positives
+kept), choice sequences stay dropped, two epochs from the v2 epoch-1
+weights at positive weight 2, evaluated per checkpoint with the same
+pre-registered side threshold. Chain `slides/laya-distill-v3b.sh`, root
+`slides/laya-distill-jev-v3b-20260925`.
+
 ### Keeping the GPU available while training (September 24)
 
 `laya_distill.py train --gpu-share S` (also `MOP_GPU_SHARE=S` for the

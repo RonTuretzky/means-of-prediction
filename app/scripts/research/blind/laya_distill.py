@@ -239,8 +239,74 @@ def label_active(root, student, device, min_score, own_min_score, max_new, max_c
     chosen_path.write_text(json.dumps({**audit, 'units': chosen}))  # the selection is fixed once; relaunches finish it
     return label_units(out_path, chosen, public, rules, model, max_cost, workers)
 
+# ---------------------------------------------------------------- label-augment
+def label_augment(root, crops, contrast, embeds, min_len, max_len, model, max_cost, workers, seed, dry_run):
+    """More positive contexts for the same facts. For every teacher-positive training unit (own-market, non-held email text) cut `crops`
+    random windows of min_len..max_len characters that still contain the located evidence quote (or, without a usable quote, the
+    original window's centre), plus `contrast` windows from the same email that exclude the quote. Short positives (the synthetic
+    control passages, median 260 characters, 407 of the 438 usable positives on September 25) cannot be cropped; instead each is
+    embedded `embeds` times inside filler taken from teacher-negative windows of real newsletters, at a random position, so the
+    student sees the same fact surrounded by unrelated newsletter text. The teacher labels every unit, so crops or embeddings
+    that lose the fact become negatives. Content-deduped against everything already labelled."""
+    root = Path(root); os.umask(0o077); root.mkdir(parents=True, exist_ok=True, mode=0o700); rng = random.Random(seed)
+    items = {it['caseId']: it for it in read(ROUND/'development-items-semantic.private.json')}; public = {p['marketId']: p for p in read(ROUND/'public-inputs.json')}
+    rules = {x['marketId']: x['output'] for x in read(ROUND/'methods/baseline/rules.json') if x['status'] == 'completed'}
+    vs = read(ROUND/'validation-split.json'); held_cases = set(vs['validationCaseIds'])
+    held_texts = {sha(it['email'].get('completeSemanticText', '')) for it in items.values() if it['caseId'] in held_cases}
+    located = {x['caseId']: ((x.get('output') or {}).get('evidenceQuote') or '') for x in read(ARM/'judgments.private.json') if x['status'] == 'completed'}
+    out_path = root/'labels.private.jsonl'; chosen_path = root/'augment-chosen.private.json'
+    labelled = [json.loads(l) for l in out_path.read_text().splitlines() if l.strip()] if out_path.exists() else []
+    done = {r['unitId'] for r in labelled if 'pA' in r}; done_content = {(sha(r['state']['body']), r['marketId']) for r in labelled if 'pA' in r}
+    if chosen_path.exists():
+        chosen = [c for c in read(chosen_path)['units'] if c['unitId'] not in done]
+        print(json.dumps({'resumingSelection': str(chosen_path), 'remaining': len(chosen)}), flush=True)
+        if dry_run or not chosen: return
+        return label_units(out_path, chosen, public, rules, model, max_cost, workers)
+    positives = [r for r in labelled if 'pA' in r and r['split'] == 'train' and r['source'] in ('own-market', 'active-own') and max(r['pA'], r['pB']) >= 0.5
+                 and r['caseId'] in items and r['caseId'] not in held_cases and sha(items[r['caseId']]['email'].get('completeSemanticText', '')) not in held_texts and r['marketId'] in rules]
+    units, seen, stats = [], set(), collections.Counter()
+    filler = [r for r in labelled if 'pA' in r and r['split'] == 'train' and r['source'] == 'own-market' and max(r['pA'], r['pB']) < 0.2 and items.get(r['caseId'], {}).get('kind') != 'control'
+              and len(r['state']['body']) >= 600 and sha(items[r['caseId']]['email'].get('completeSemanticText', '')) not in held_texts]
+    def emit(kind, r, body, subject, start, anchored, extra=None):
+        it = items[r['caseId']]; ck = (sha(body), r['marketId'])
+        if len(body) < min_len or ck in done_content or ck in seen: stats['skippedDupOrShort'] += 1; return
+        seen.add(ck); stats[kind] += 1
+        units.append({'unitId': sha('aug:'+kind+':'+r['caseId']+':'+r['marketId']+':'+str(start)+':'+str(len(body))+':'+sha(body)[:8]), 'caseId': r['caseId'], 'marketId': r['marketId'], 'kind': it['kind'], 'expected': it['expected'], 'yesSide': r.get('yesSide'),
+                      'split': 'train', 'offset': start, 'state': {'subject': subject, 'body': body}, 'source': 'augment-'+kind, 'parentUnitId': r['unitId'], 'anchored': anchored, **(extra or {})})
+    def add(kind, r, start, length, anchored):
+        it = items[r['caseId']]; text = it['email'].get('completeSemanticText', ''); emit(kind, r, text[start:start+length], it['email'].get('subject', ''), start, anchored)
+    def embed(r):
+        # the whole short positive text, dropped at a random position inside filler cut from one or two teacher-negative real newsletter windows
+        it = items[r['caseId']]; core = it['email'].get('completeSemanticText', '').strip()
+        if not core or not filler: return
+        L = rng.randint(max(min_len, len(core)+200), max_len); budget = L-len(core)-2; before = rng.randint(0, budget); after = budget-before
+        fa, fb = rng.choice(filler), rng.choice(filler); pre = fa['state']['body'][-before:] if before else ''; post = fb['state']['body'][:after] if after else ''
+        emit('embed', r, (pre+'\n'+core+'\n'+post).strip(), fa['state']['subject'], len(pre)+1, True, {'fillerUnitIds': [fa['unitId'], fb['unitId']], 'coreLength': len(core)})
+    for r in positives:
+        it = items[r['caseId']]; text = it['email'].get('completeSemanticText', ''); n = len(text); off = r['offset']
+        if n < min_len+200:
+            for _ in range(embeds): embed(r)
+            continue
+        quote = located.get(r['caseId'], ''); qs = text.find(quote) if quote and len(quote) >= 20 else -1
+        if qs >= 0 and off <= qs < off+WINDOW: qe = qs+len(quote); anchored = True
+        else: qs = qe = min(n, off+WINDOW//2); anchored = False  # no usable quote inside this window: keep the window's centre
+        for _ in range(crops):
+            L = rng.randint(min_len, max_len); lo = max(0, qe-L); hi = min(qs, max(0, n-L))
+            if hi < lo: continue
+            add('crop', r, rng.randint(lo, hi), L, anchored)
+        for _ in range(contrast):
+            L = rng.randint(min_len, max_len); side = rng.choice(['before', 'after'])
+            start = rng.randint(0, max(0, qs-L)) if side == 'before' and qs-L > 0 else (rng.randint(qe, max(qe, n-L)) if n-L > qe else None)
+            if start is None: continue
+            add('contrast', r, start, L, anchored)
+    audit = {'at': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()), 'positiveParents': len(positives), 'anchoredParents': sum(1 for u in units if u['anchored'])//max(1, crops+contrast), 'units': len(units), 'bySource': dict(collections.Counter(u['source'] for u in units)), 'counts': dict(stats.most_common()), 'fillerWindows': len(filler), 'crops': crops, 'contrast': contrast, 'embeds': embeds, 'lengths': [min_len, max_len]}
+    print(json.dumps(audit), flush=True)
+    if dry_run: (root/'augment-candidates.private.json').write_text(json.dumps({**audit, 'dryRun': True}, indent=1)); return
+    chosen_path.write_text(json.dumps({**audit, 'units': units}))
+    return label_units(out_path, units, public, rules, model, max_cost, workers)
+
 # ---------------------------------------------------------------- prepare
-def prepare(root, max_len, head_max_len, include_choice):
+def prepare(root, max_len, head_max_len, include_choice, active_min_score=0.0):
     import torch
     from huggingface_hub import snapshot_download
     from transformers import AutoTokenizer
@@ -250,6 +316,10 @@ def prepare(root, max_len, head_max_len, include_choice):
     tok = AutoTokenizer.from_pretrained(os.path.join(model_dir, 'tokenizer'))
     public = {p['marketId']: p for p in read(ROUND/'public-inputs.json')}; rules = {x['marketId']: x['output'] for x in read(ROUND/'methods/baseline/rules.json') if x['status'] == 'completed'}
     recs = [json.loads(l) for l in (root/'labels.private.jsonl').read_text().splitlines() if l.strip()]; recs = [r for r in recs if 'pA' in r]
+    # Student-proposed units: keep every teacher positive, but only the hard negatives (student side score at or above active_min_score), so the
+    # class balance is not swamped by thousands of easy negatives (10,000 active units on September 25 held 40 teacher positives).
+    before = len(recs); recs = [r for r in recs if not r.get('source', '').startswith('active-') or max(r['pA'], r['pB']) >= 0.5 or r.get('studentScore', 1.0) >= active_min_score]
+    dropped_easy = before-len(recs)
     items = {'train': [], 'validation': []}; skipped = 0
     for r in recs:
         qs = questions_for(public[r['marketId']], rules[r['marketId']])
@@ -262,6 +332,7 @@ def prepare(root, max_len, head_max_len, include_choice):
             if len(markers) != len(render_options({'t': q['type'], 'crit': q.get('criteria', {})})): skipped += 1; continue
             items[r['split']].append({'ids': seq, 'markers': markers, 'qtype': QTYPES[q['type']], 'target': target, 'label': target.index(max(target)), 'unitId': r['unitId'], 'qid': qid})
     for split, its in items.items(): torch.save(its, root/(split+'_items.pt'))
+    print(json.dumps({'droppedEasyActiveNegatives': dropped_easy, 'activeMinScore': active_min_score}), flush=True)
     meta = {'train': len(items['train']), 'validation': len(items['validation']), 'skipped': skipped, 'maxLen': max_len, 'headMaxLen': head_max_len, 'modelDir': model_dir, 'includeChoice': include_choice}
     (root/'prepare.json').write_text(json.dumps(meta, indent=1)); print(json.dumps(meta), flush=True)
 
@@ -405,7 +476,8 @@ if __name__ == '__main__':
     ap = argparse.ArgumentParser(); sub = ap.add_subparsers(dest='cmd', required=True)
     p = sub.add_parser('label'); p.add_argument('--root', required=True); p.add_argument('--model', default='typesafe/jev-1.13'); p.add_argument('--max-cost', type=float, default=0.6); p.add_argument('--max-windows', type=int, default=12); p.add_argument('--cross-negatives', type=int, default=3); p.add_argument('--workers', type=int, default=8); p.add_argument('--seed', type=int, default=20260922)
     p = sub.add_parser('label-active'); p.add_argument('--root', required=True); p.add_argument('--student', required=True, help='student checkpoint directory that proposes units'); p.add_argument('--device', default='auto'); p.add_argument('--min-score', type=float, default=0.1, help='cross-market candidates need this student side probability'); p.add_argument('--own-min-score', type=float, default=0.05, help='own-market candidates need only this'); p.add_argument('--max-new', type=int, default=6000); p.add_argument('--max-candidates', type=int, default=16000); p.add_argument('--model', default='typesafe/jev-1.13'); p.add_argument('--max-cost', type=float, default=0.6); p.add_argument('--workers', type=int, default=8); p.add_argument('--seed', type=int, default=20260924); p.add_argument('--dry-run', action='store_true', help='score and write the candidate audit, no teacher calls')
-    p = sub.add_parser('prepare'); p.add_argument('--root', required=True); p.add_argument('--max-len', type=int, default=768); p.add_argument('--head-max-len', type=int, default=256); p.add_argument('--no-choice', action='store_true')
+    p = sub.add_parser('label-augment'); p.add_argument('--root', required=True); p.add_argument('--crops', type=int, default=4); p.add_argument('--contrast', type=int, default=1); p.add_argument('--embeds', type=int, default=4, help='embeddings per short positive (synthetic control passages) inside real newsletter filler'); p.add_argument('--min-len', type=int, default=700); p.add_argument('--max-len', type=int, default=1200); p.add_argument('--model', default='typesafe/jev-1.13'); p.add_argument('--max-cost', type=float, default=0.6); p.add_argument('--workers', type=int, default=8); p.add_argument('--seed', type=int, default=20260925); p.add_argument('--dry-run', action='store_true')
+    p = sub.add_parser('prepare'); p.add_argument('--root', required=True); p.add_argument('--max-len', type=int, default=768); p.add_argument('--head-max-len', type=int, default=256); p.add_argument('--no-choice', action='store_true'); p.add_argument('--active-min-score', type=float, default=0.0, help='keep student-proposed negatives only at or above this student side score (teacher positives always kept)')
     p = sub.add_parser('train'); p.add_argument('--root', required=True); p.add_argument('--out', required=True); p.add_argument('--epochs', type=int, default=3); p.add_argument('--micro-batch', type=int, default=8); p.add_argument('--grad-accum', type=int, default=4)
     p.add_argument('--lr-encoder', type=float, default=2.5e-5); p.add_argument('--lr-head', type=float, default=1e-4); p.add_argument('--group-size', type=int, default=4); p.add_argument('--device', default='auto'); p.add_argument('--max-steps', type=int, default=0); p.add_argument('--seed', type=int, default=42)
     p.add_argument('--positive-weight', type=float, default=1.0); p.add_argument('--no-bucket', action='store_true'); p.add_argument('--init', help='checkpoint directory to resume weights from'); p.add_argument('--start-epoch', type=int, default=0)
@@ -414,6 +486,7 @@ if __name__ == '__main__':
     a = ap.parse_args()
     if a.cmd == 'label': label(a.root, a.model, a.max_cost, a.max_windows, a.cross_negatives, a.workers, a.seed)
     elif a.cmd == 'label-active': label_active(a.root, a.student, a.device, a.min_score, a.own_min_score, a.max_new, a.max_candidates, a.model, a.max_cost, a.workers, a.seed, a.dry_run)
-    elif a.cmd == 'prepare': prepare(a.root, a.max_len, a.head_max_len, not a.no_choice)
+    elif a.cmd == 'label-augment': label_augment(a.root, a.crops, a.contrast, a.embeds, a.min_len, a.max_len, a.model, a.max_cost, a.workers, a.seed, a.dry_run)
+    elif a.cmd == 'prepare': prepare(a.root, a.max_len, a.head_max_len, not a.no_choice, a.active_min_score)
     elif a.cmd == 'train': train(a.root, a.out, a.epochs, a.micro_batch, a.grad_accum, a.lr_encoder, a.lr_head, a.group_size, a.device, a.max_steps, a.seed, a.positive_weight, not a.no_bucket, a.init, a.start_epoch, a.gpu_share, not a.no_grad_checkpoint)
     else: evaluate(a.root, a.model_path, a.device)
