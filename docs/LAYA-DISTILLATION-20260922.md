@@ -207,6 +207,50 @@ side heads; raise recall with more teacher-positive units rather than
 more epochs (epoch 2 lowered recall); and pre-register the side
 threshold from the training slice before any forward test.
 
+### Student v3: student-proposed units, no choice head (armed September 24, evening)
+
+Design, following the epoch-1 findings: (1) `laya_distill.py label-active`
+lets the v2 epoch-1 student score every unlabelled own-market window of
+training-split items plus entity-matched cross-market windows (16,000
+candidates, cross ones ranked by entity hits), and sends the suggestive
+ones to Jev (own-market windows at side probability 0.05 or more, first
+claim; cross-market at 0.1; at most 6,000 units, about 30 cents). Every
+email text that carries a validation case is excluded from candidates,
+and the seed labels drop v2's 43 cross-market records drawn from such
+texts; own-market records of twin emails are kept because the round's
+market split admits shared bodies (validation-split.json's stated
+limitation), and v1/v2 trained on them too. (2) `prepare --no-choice`
+drops the choice sequences. (3) Two epochs from the v2 epoch-1 weights,
+positive weight 6, no gradient checkpointing. (4) Each epoch checkpoint
+is evaluated against Jev and against the human labels with
+`laya_bench.py --side-threshold 0.4`, the threshold pre-registered on
+training-market rows of v2 epoch 1.
+
+Two adversarial review passes (three lenses, then a fix-verification
+pass, each finding refuted or confirmed by two independent verifiers)
+found 20 defects in the first drafts, all fixed before launch: chain
+guards that would have accepted teacher error receipts as labels and
+trained "v3" on no new data after a budget-exhausted day; a labelling
+stage that re-scored and re-selected on relaunch; cross-market
+candidates duplicating already-labelled window content; skip markers
+written before their stage finished; the held-text leak above; a halt
+rule that missed HTTP 402; a budget gate that looped forever on an
+unlimited key. The stage now halts on the first non-retried 4xx or ten
+consecutive failures, persists scores (keyed by student) and its
+selection, dedupes by (window text, market), and the chain counts only
+records with both an active source and a teacher answer.
+
+Known limitation of every "held-out" number in this document: 85 of the
+206 held-out rows (50 of 56 facts) share their full email text with a
+training-split item of another market, per the round's split design.
+The numbers are market-held-out, not text-held-out. A text-held-out
+view (the 121 rows whose email text never appears in training) will be
+reported alongside the v3 results.
+
+Chain: `slides/laya-distill-v3.sh` (log `slides/laya-distill-v3.log`,
+root `slides/laya-distill-jev-v3-20260924`); refuses to start on
+battery and waits for teacher budget.
+
 ### Keeping the GPU available while training (September 24)
 
 `laya_distill.py train --gpu-share S` (also `MOP_GPU_SHARE=S` for the

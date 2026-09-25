@@ -138,20 +138,106 @@ def label(root, model, max_cost, max_windows, cross_negatives, workers, seed):
     (root/'plan.json').write_text(json.dumps({'at': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()), 'teacher': model, 'units': len(units), 'alreadyLabelled': len(done), 'maxWindowsPerItem': max_windows, 'crossNegativesPerEmail': cross_negatives,
                                              'bySplit': dict(collections.Counter(u['split'] for u in units)), 'bySource': dict(collections.Counter(u['source'] for u in units)), 'byKind': dict(collections.Counter(u['kind'] for u in units)), 'window': WINDOW, 'stride': STRIDE, 'seed': seed}, indent=1))
     print(json.dumps({'units': len(units), 'todo': len(todo), 'bySplit': dict(collections.Counter(u['split'] for u in units))}), flush=True)
-    jev = Jev(model, max_cost); lock = threading.Lock(); n = [0]
+    label_units(out_path, todo, public, rules, model, max_cost, workers)
+
+def label_units(out_path, todo, public, rules, model, max_cost, workers):
+    """Ask the teacher the typed questions for each unit; append one record per unit (error receipts included, retried on relaunch)."""
+    jev = Jev(model, max_cost); lock = threading.Lock(); n = [0]; ok = [0]; fails = [0]; halt = threading.Event(); why = ['']
     def one(u):
+        if halt.is_set(): return None
         qs = questions_for(public[u['marketId']], rules[u['marketId']])
         try: out = jev.ask(u['state'], qs)
-        except Exception as exc: return {**u, 'error': str(exc)[:200]}
+        except Exception as exc:
+            msg = str(exc)[:200]
+            with lock: fails[0] += 1
+            if 'cost guard' in msg or re.match(r'HTTP 4(0\d|[1-9]\d)', msg) or fails[0] >= 10: halt.set(); why[0] = msg  # budget, credit or key problem (any non-retried 4xx) or a failure streak: stop instead of writing a receipt per unit
+            return {**u, 'error': msg}
+        with lock: fails[0] = 0
         a = out['answers']; rec = {k: v for k, v in u.items()}
         rec.update({'pA': a['A']['noul'], 'pB': a['B']['noul'], 'pQuestion': a['q']['noul'] if 'q' in a else None, 'pick': a['pick']['probabilities'], 'teacherModel': out.get('model'), 'cost': (out.get('usage') or {}).get('cost')})
         return rec
-    with out_path.open('a') as f, concurrent.futures.ThreadPoolExecutor(max_workers=workers) as pool:
+    with Path(out_path).open('a') as f, concurrent.futures.ThreadPoolExecutor(max_workers=workers) as pool:
         for rec in pool.map(one, todo):
+            if rec is None: continue
             with lock:
-                f.write(json.dumps(rec, ensure_ascii=False)+'\n'); f.flush(); n[0] += 1
-                if n[0] % 500 == 0: print(json.dumps({'labelled': n[0], 'of': len(todo), 'costUsd': round(jev.cost, 4)}), flush=True)
-    print(json.dumps({'labelled': n[0], 'costUsd': round(jev.cost, 4), 'calls': jev.calls}), flush=True)
+                f.write(json.dumps(rec, ensure_ascii=False)+'\n'); f.flush(); n[0] += 1; ok[0] += 'pA' in rec
+                if n[0] % 500 == 0: print(json.dumps({'labelled': ok[0], 'attempted': n[0], 'of': len(todo), 'costUsd': round(jev.cost, 4)}), flush=True)
+    print(json.dumps({'labelled': ok[0], 'attempted': n[0], 'of': len(todo), 'costUsd': round(jev.cost, 4), 'calls': jev.calls, 'halted': why[0] or None}), flush=True)
+    return ok[0]
+
+# ---------------------------------------------------------------- label-active
+def label_active(root, student, device, min_score, own_min_score, max_new, max_candidates, model, max_cost, workers, seed, dry_run):
+    """Student-proposed, teacher-labelled units. The current student scores candidate (window, market) units it has not
+    seen labelled; the ones it finds suggestive (max side probability >= min_score) go to Jev. Only training-split markets
+    and non-validation cases, so the held-out benchmark stays clean. Cross-market candidates need an entity of the
+    market's question in the window. Candidates and scores are written for audit before any teacher call."""
+    import torch, laya
+    root = Path(root); os.umask(0o077); root.mkdir(parents=True, exist_ok=True, mode=0o700); rng = random.Random(seed)
+    items = read(ROUND/'development-items-semantic.private.json'); public = {p['marketId']: p for p in read(ROUND/'public-inputs.json')}
+    rules = {x['marketId']: x['output'] for x in read(ROUND/'methods/baseline/rules.json') if x['status'] == 'completed'}
+    vs = read(ROUND/'validation-split.json'); held_markets = set(vs['validationMarketIds']); held_cases = set(vs['validationCaseIds'])
+    out_path = root/'labels.private.jsonl'; scores_path = root/'active-scores.private.jsonl'; chosen_path = root/'active-chosen.private.json'
+    labelled = [json.loads(l) for l in out_path.read_text().splitlines() if l.strip()] if out_path.exists() else []
+    done = {r['unitId'] for r in labelled if 'pA' in r}; done_content = {(sha(r['state']['body']), r['marketId']) for r in labelled if 'pA' in r}  # same window text + market under any unitId counts as labelled
+    if chosen_path.exists():
+        # A previous invocation already picked its units: finish that selection rather than re-scoring and re-selecting.
+        chosen = [c for c in read(chosen_path)['units'] if c['unitId'] not in done]
+        print(json.dumps({'resumingSelection': str(chosen_path), 'remaining': len(chosen)}), flush=True)
+        if dry_run or not chosen: return
+        return label_units(out_path, chosen, public, rules, model, max_cost, workers)
+    train_markets = [m for m in rules if m not in held_markets]; ents = {m: entities(public[m]['question']) for m in train_markets}
+    # Email texts that carry any validation case are excluded outright, so the student cannot select more windows of the exact bodies behind held-out rows.
+    held_texts = {sha(it['email'].get('completeSemanticText', '')) for it in items if it['caseId'] in held_cases}
+    cands, seen_content = [], set()
+    def add(c):
+        ck = (sha(c['state']['body']), c['marketId'])
+        if c['unitId'] in done or ck in done_content or ck in seen_content: return
+        seen_content.add(ck); cands.append(c)
+    usable = [it for it in items if it['marketId'] in rules and it['caseId'] not in held_cases and sha(it['email'].get('completeSemanticText', '')) not in held_texts]
+    markets_of_text = collections.defaultdict(set)
+    for it in usable: markets_of_text[sha(it['email'].get('completeSemanticText', ''))].add(it['marketId'])
+    for it in usable:  # own-market windows first, so a window never gets recorded under another item's cross pairing
+        if it['marketId'] in held_markets: continue
+        text = it['email'].get('completeSemanticText', ''); subject = it['email'].get('subject', '')
+        for off, body in windows(text):
+            add({'unitId': sha(it['caseId']+':'+str(off)), 'caseId': it['caseId'], 'marketId': it['marketId'], 'kind': it['kind'], 'expected': it['expected'], 'yesSide': binary(public[it['marketId']]), 'split': 'train', 'offset': off, 'state': {'subject': subject, 'body': body}, 'source': 'active-own', 'hits': 0})
+    seen_email = set()
+    for it in usable:  # cross-market windows: one pass per distinct real email, never a market that email is itself attached to
+        text = it['email'].get('completeSemanticText', ''); subject = it['email'].get('subject', ''); key = sha(text)
+        if it['kind'] == 'control' or key in seen_email: continue
+        seen_email.add(key); ws = windows(text)
+        for m in train_markets:
+            if m in markets_of_text[key] or not ents[m]: continue
+            for off, body in ws:
+                hits = sum(e in body for e in ents[m])
+                if hits: add({'unitId': sha('x:'+it['caseId']+':'+m+':'+str(off)), 'caseId': it['caseId'], 'marketId': m, 'kind': 'cross', 'expected': None, 'yesSide': binary(public[m]), 'split': 'train', 'offset': off, 'state': {'subject': subject, 'body': body}, 'source': 'active-cross', 'hits': hits})
+    counts = dict(collections.Counter(c['source'] for c in cands))
+    if len(cands) > max_candidates:  # keep every own-market window; cross-market windows by entity hits, ties random
+        own = [c for c in cands if c['source'] == 'active-own']; cross = [c for c in cands if c['source'] == 'active-cross']; rng.shuffle(cross)
+        cands = own+sorted(cross, key=lambda c: -c['hits'])[:max(0, max_candidates-len(own))]
+    prior = {}
+    if scores_path.exists(): prior = {r['unitId']: r for r in (json.loads(l) for l in scores_path.read_text().splitlines() if l.strip()) if r.get('student') == student}  # a different student must re-score
+    dev = device if device != 'auto' else ('mps' if torch.backends.mps.is_available() else 'cpu'); agent = laya.Agent(student, device=dev)
+    print(json.dumps({'candidates': counts, 'scoring': len(cands), 'alreadyScored': sum(c['unitId'] in prior for c in cands), 'alreadyLabelled': len(done), 'student': student}), flush=True); t0 = time.time(); scored = 0
+    with scores_path.open('a') as sf:
+        for c in cands:
+            if c['unitId'] in prior: c.update({k: prior[c['unitId']][k] for k in ('studentA', 'studentB', 'studentQ', 'studentScore')}); continue
+            qs = {k: v for k, v in questions_for(public[c['marketId']], rules[c['marketId']]).items() if k != 'pick'}
+            ts = time.time(); ans = agent.predict(c['state'], qs)['answers']; gpu_pause(ts, dev)
+            c['studentA'], c['studentB'] = ans['A']['noul'], ans['B']['noul']; c['studentQ'] = ans['q']['noul'] if 'q' in ans else None; c['studentScore'] = max(c['studentA'], c['studentB'])
+            sf.write(json.dumps({**c, 'student': student}, ensure_ascii=False)+'\n'); sf.flush(); scored += 1  # scores persist, so a relaunch never repeats a forward pass
+            if scored % 1000 == 0: print(json.dumps({'scored': scored, 'of': len(cands), 'secondsPerUnit': round((time.time()-t0)/scored, 3)}), flush=True)
+    # Own-market windows are where teacher positives live, so they get a lower bar and go first; cross-market windows (mostly hard negatives) fill the rest by score.
+    own = sorted([c for c in cands if c['source'] == 'active-own' and c['studentScore'] >= own_min_score], key=lambda c: -c['studentScore'])
+    cross = sorted([c for c in cands if c['source'] == 'active-cross' and c['studentScore'] >= min_score], key=lambda c: -c['studentScore'])
+    chosen = [{k: v for k, v in c.items() if k != 'hits'} for c in (own+cross)[:max_new]]
+    audit = {'at': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()), 'student': student, 'candidates': counts, 'scored': len(cands), 'minScore': min_score, 'ownMinScore': own_min_score, 'maxNew': max_new, 'chosen': len(chosen),
+             'chosenBySource': dict(collections.Counter(c['source'] for c in chosen)), 'chosenByKind': dict(collections.Counter(c['kind'] for c in chosen)),
+             'scoreQuantiles': {q: round(sorted(c['studentScore'] for c in cands)[int(q*(len(cands)-1))], 3) for q in (0.5, 0.9, 0.99)} if cands else {}}
+    print(json.dumps(audit), flush=True)
+    if dry_run: (root/'active-candidates.private.json').write_text(json.dumps({**audit, 'dryRun': True}, indent=1)); return
+    chosen_path.write_text(json.dumps({**audit, 'units': chosen}))  # the selection is fixed once; relaunches finish it
+    return label_units(out_path, chosen, public, rules, model, max_cost, workers)
 
 # ---------------------------------------------------------------- prepare
 def prepare(root, max_len, head_max_len, include_choice):
@@ -318,6 +404,7 @@ def evaluate(root, model_path, device):
 if __name__ == '__main__':
     ap = argparse.ArgumentParser(); sub = ap.add_subparsers(dest='cmd', required=True)
     p = sub.add_parser('label'); p.add_argument('--root', required=True); p.add_argument('--model', default='typesafe/jev-1.13'); p.add_argument('--max-cost', type=float, default=0.6); p.add_argument('--max-windows', type=int, default=12); p.add_argument('--cross-negatives', type=int, default=3); p.add_argument('--workers', type=int, default=8); p.add_argument('--seed', type=int, default=20260922)
+    p = sub.add_parser('label-active'); p.add_argument('--root', required=True); p.add_argument('--student', required=True, help='student checkpoint directory that proposes units'); p.add_argument('--device', default='auto'); p.add_argument('--min-score', type=float, default=0.1, help='cross-market candidates need this student side probability'); p.add_argument('--own-min-score', type=float, default=0.05, help='own-market candidates need only this'); p.add_argument('--max-new', type=int, default=6000); p.add_argument('--max-candidates', type=int, default=16000); p.add_argument('--model', default='typesafe/jev-1.13'); p.add_argument('--max-cost', type=float, default=0.6); p.add_argument('--workers', type=int, default=8); p.add_argument('--seed', type=int, default=20260924); p.add_argument('--dry-run', action='store_true', help='score and write the candidate audit, no teacher calls')
     p = sub.add_parser('prepare'); p.add_argument('--root', required=True); p.add_argument('--max-len', type=int, default=768); p.add_argument('--head-max-len', type=int, default=256); p.add_argument('--no-choice', action='store_true')
     p = sub.add_parser('train'); p.add_argument('--root', required=True); p.add_argument('--out', required=True); p.add_argument('--epochs', type=int, default=3); p.add_argument('--micro-batch', type=int, default=8); p.add_argument('--grad-accum', type=int, default=4)
     p.add_argument('--lr-encoder', type=float, default=2.5e-5); p.add_argument('--lr-head', type=float, default=1e-4); p.add_argument('--group-size', type=int, default=4); p.add_argument('--device', default='auto'); p.add_argument('--max-steps', type=int, default=0); p.add_argument('--seed', type=int, default=42)
@@ -326,6 +413,7 @@ if __name__ == '__main__':
     p = sub.add_parser('evaluate'); p.add_argument('--root', required=True); p.add_argument('--model-path', required=True); p.add_argument('--device', default='auto')
     a = ap.parse_args()
     if a.cmd == 'label': label(a.root, a.model, a.max_cost, a.max_windows, a.cross_negatives, a.workers, a.seed)
+    elif a.cmd == 'label-active': label_active(a.root, a.student, a.device, a.min_score, a.own_min_score, a.max_new, a.max_candidates, a.model, a.max_cost, a.workers, a.seed, a.dry_run)
     elif a.cmd == 'prepare': prepare(a.root, a.max_len, a.head_max_len, not a.no_choice)
     elif a.cmd == 'train': train(a.root, a.out, a.epochs, a.micro_batch, a.grad_accum, a.lr_encoder, a.lr_head, a.group_size, a.device, a.max_steps, a.seed, a.positive_weight, not a.no_bucket, a.init, a.start_epoch, a.gpu_share, not a.no_grad_checkpoint)
     else: evaluate(a.root, a.model_path, a.device)

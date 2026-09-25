@@ -82,7 +82,7 @@ class Jev:
 def main():
     ap = argparse.ArgumentParser(); ap.add_argument('--root', required=True); ap.add_argument('--backend', default='laya', choices=['laya', 'jev'])
     ap.add_argument('--checkpoint', default='english', choices=['english', 'typed-decisions']); ap.add_argument('--model', default='typesafe/jev-1.13'); ap.add_argument('--max-cost', type=float, default=0.85)
-    ap.add_argument('--device', default='auto'); ap.add_argument('--window', type=int, default=1200); ap.add_argument('--stride', type=int, default=600); ap.add_argument('--model-path', help='local fine-tuned Laya directory'); a = ap.parse_args()
+    ap.add_argument('--device', default='auto'); ap.add_argument('--window', type=int, default=1200); ap.add_argument('--stride', type=int, default=600); ap.add_argument('--model-path', help='local fine-tuned Laya directory'); ap.add_argument('--side-threshold', type=float, default=0.0, help='derive the pick from the per-side probabilities (larger of pA/pB if it clears this threshold, else neither) instead of the choice head; the head pick is kept as pickHead'); a = ap.parse_args()
     backend = Laya(a.checkpoint, a.device, a.model_path) if a.backend == 'laya' else Jev(a.model, a.max_cost)
     root = Path(a.root); os.umask(0o077); root.mkdir(parents=True, exist_ok=True, mode=0o700)
     items = {i['caseId']: i for i in read(ROUND/'development-items-semantic.private.json')}
@@ -125,7 +125,8 @@ def main():
             row = rows[cid]
             if err: failures.append(err); row.setdefault('errors', 0); row['errors'] += 1; continue
             if kind == 'excerpt':
-                pick = ans.get('pick', {}); row.update({'pA': ans['A']['noul'], 'pB': ans['B']['noul'], 'pick': pick.get('choice'), 'pickConfidence': pick.get('confidence'), 'pQuestion': ans['q']['noul'] if 'q' in ans else None})
+                pick = ans.get('pick', {}); pa, pb = ans['A']['noul'], ans['B']['noul']; row.update({'pA': pa, 'pB': pb, 'pickHead': pick.get('choice'), 'pickConfidence': pick.get('confidence'), 'pQuestion': ans['q']['noul'] if 'q' in ans else None})
+                row['pick'] = ((('A' if pa >= pb else 'B') if max(pa, pb) >= a.side_threshold else 'neither') if a.side_threshold else pick.get('choice'))
             else:
                 row['sweepWindows'] = row.get('sweepWindows', 0)+1; row['sweepMaxP'] = max(row.get('sweepMaxP', 0.0), ans['q']['noul'])
     rows = list(rows.values()); (root/'rows.private.json').write_text(json.dumps(rows))
@@ -134,7 +135,7 @@ def main():
     def claims_outcome(r, t):
         a_, b_ = r.get('pA', 0) >= t, r.get('pB', 0) >= t
         return 'CONFLICT' if a_ and b_ else 'A' if a_ else 'B' if b_ else 'NEITHER'
-    out = {'backend': backend.label, 'resolvedModel': getattr(backend, 'resolved', None), 'device': backend.device, 'rows': len(rows), 'rowsWithExcerpt': sum(r['hasExcerpt'] for r in rows), 'calls': len(latencies),
+    out = {'backend': backend.label, 'resolvedModel': getattr(backend, 'resolved', None), 'device': backend.device, 'sideThreshold': a.side_threshold or None, 'rows': len(rows), 'rowsWithExcerpt': sum(r['hasExcerpt'] for r in rows), 'calls': len(latencies),
            'failedCalls': len(failures), 'failureSamples': sorted(set(failures))[:3], 'medianMsPerCall': round(1000*statistics.median(latencies), 1) if latencies else None, 'costUsd': round(backend.cost, 4), 'thresholds': {}}
     fact = [r for r in rows if r['kind'] == 'factual']; ctrl = [r for r in rows if r['kind'] == 'control']; weak = [r for r in rows if r['kind'] in ('weak', 'unlabeled')]
     out['excerptChoice'] = {'factualCorrect': sum(r.get('pick') == side(r) for r in fact), 'factualTotal': len(fact), 'factualWrongSide': sum(r.get('pick') in ('A', 'B') and r.get('pick') != side(r) for r in fact),
