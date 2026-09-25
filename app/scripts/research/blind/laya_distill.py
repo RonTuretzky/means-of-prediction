@@ -281,7 +281,8 @@ def label_augment(root, crops, contrast, embeds, min_len, max_len, model, max_co
         if not core or not filler: return
         L = rng.randint(max(min_len, len(core)+200), max_len); budget = L-len(core)-2; before = rng.randint(0, budget); after = budget-before
         fa, fb = rng.choice(filler), rng.choice(filler); pre = fa['state']['body'][-before:] if before else ''; post = fb['state']['body'][:after] if after else ''
-        emit('embed', r, (pre+'\n'+core+'\n'+post).strip(), fa['state']['subject'], len(pre)+1, True, {'fillerUnitIds': [fa['unitId'], fb['unitId']], 'coreLength': len(core)})
+        body = (pre+'\n'+core+'\n'+post).strip()
+        emit('embed', r, body, fa['state']['subject'], body.find(core), True, {'fillerUnitIds': [fa['unitId'], fb['unitId']], 'coreLength': len(core)})
     for r in positives:
         it = items[r['caseId']]; text = it['email'].get('completeSemanticText', ''); n = len(text); off = r['offset']
         if n < min_len+200:
@@ -299,7 +300,7 @@ def label_augment(root, crops, contrast, embeds, min_len, max_len, model, max_co
             start = rng.randint(0, max(0, qs-L)) if side == 'before' and qs-L > 0 else (rng.randint(qe, max(qe, n-L)) if n-L > qe else None)
             if start is None: continue
             add('contrast', r, start, L, anchored)
-    audit = {'at': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()), 'positiveParents': len(positives), 'anchoredParents': sum(1 for u in units if u['anchored'])//max(1, crops+contrast), 'units': len(units), 'bySource': dict(collections.Counter(u['source'] for u in units)), 'counts': dict(stats.most_common()), 'fillerWindows': len(filler), 'crops': crops, 'contrast': contrast, 'embeds': embeds, 'lengths': [min_len, max_len]}
+    audit = {'at': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()), 'positiveParents': len(positives), 'anchoredParents': len({u['parentUnitId'] for u in units if u['source'] != 'augment-embed' and u['anchored']}), 'embeddedParents': len({u['parentUnitId'] for u in units if u['source'] == 'augment-embed'}), 'units': len(units), 'bySource': dict(collections.Counter(u['source'] for u in units)), 'counts': dict(stats.most_common()), 'fillerWindows': len(filler), 'crops': crops, 'contrast': contrast, 'embeds': embeds, 'lengths': [min_len, max_len]}
     print(json.dumps(audit), flush=True)
     if dry_run: (root/'augment-candidates.private.json').write_text(json.dumps({**audit, 'dryRun': True}, indent=1)); return
     chosen_path.write_text(json.dumps({**audit, 'units': units}))
