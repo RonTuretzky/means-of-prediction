@@ -368,6 +368,45 @@ no longer rises with the A head. Positive controls are slightly lower
 (37 correct, 1 wrong, against 42 and 1). Remaining gap to Jev at 0.4:
 9 facts of recall, none of safety. Epoch 2 is evaluated next.
 
+### v3c epoch 2 (September 27, 06:37): the student to keep
+
+Held-out soft cross-entropy 0.175 (lowest so far), teacher-positive
+recall 211 of 298, question-B Brier 0.021 and AUC 0.972. Human labels,
+side heads (56 held-out facts: correct / wrong / abstain; false picks
+on the 105 unsettled rows; positive controls correct / wrong of 45):
+
+| student | 0.3 | 0.4 (pre-registered) | 0.5 | false picks at 0.4 | positive controls at 0.4 |
+|---|---|---|---|---|---|
+| v2 epoch 1 | 41 / 3 / 12 | 34 / 2 / 20 | 24 / 0 / 32 | 1 | 42 / 1 |
+| v3c epoch 1 | 40 / 1 / 15 | 39 / 1 / 16 | 37 / 1 / 18 | 0 | 37 / 1 |
+| **v3c epoch 2** | 43 / 1 / 12 | **41 / 1 / 14** | 33 / 1 / 22 | **0** | 40 / 0 |
+| Jev | 50 / 0 / 6 | 48 / 0 / 8 | 42 / 0 / 14 | 2 | 44 / 0 |
+
+At the pre-registered threshold, v3c epoch 2 settles 41 of 56 held-out
+facts correctly, is wrong on one, and makes no false pick on the 105
+rows where nothing is settled. Against v2 epoch 1 that is seven more
+facts and one fewer wrong side at the same false-pick level or better.
+The gap to Jev is now seven facts of recall and none of safety. The
+whole-email sweep is unchanged except one more weak-row fire at 0.5
+(3 of 37 against 2 for v2 and Jev). Checkpoint:
+`slides/laya-distill-jev-v3b-20260925/student-v3c/checkpoint_epoch2`;
+the final `student-v3c` directory is the same weights with fitted
+temperatures.
+
+What produced the gain, in order of evidence: the side-contrast
+weighting (v3b to v3c, same data: wrong sides 5 to 1 and false picks 2
+to 0 at epoch 1), then the augmented positives embedded in real
+newsletter text (v3b's teacher fit and the recall that v3c kept). The
+student-proposed hard negatives (v3) hurt on their own and were
+dropped. Total teacher spend for v3, v3b: 63 cents.
+
+Next levers, if the student is to be pushed further: more real
+positives rather than more synthetic embeddings (the 31 real newsletter
+positives are the scarce resource; the round's 161 factual items cap
+them), a forward test on fresh newsletters with the pre-registered
+threshold, and the text-held-out limitation stated above (only 6 of the
+56 facts are text-held-out).
+
 ### Keeping the GPU available while training (September 24)
 
 `laya_distill.py train --gpu-share S` (also `MOP_GPU_SHARE=S` for the
