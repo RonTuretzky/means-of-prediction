@@ -359,7 +359,7 @@ def fit_temp(sel):
 def forward(model, batch, device):
     return model(batch['input_ids'].to(device), batch['attention_mask'].to(device), batch['marker_pos'].to(device), batch['marker_mask'].to(device), batch['qtype'].to(device))
 
-def train(root, out_dir, epochs, micro_batch, grad_accum, lr_encoder, lr_head, group_size, device, max_steps, seed, positive_weight=1.0, bucket=True, init=None, start_epoch=0, gpu_share=1.0, grad_checkpoint=True):
+def train(root, out_dir, epochs, micro_batch, grad_accum, lr_encoder, lr_head, group_size, device, max_steps, seed, positive_weight=1.0, bucket=True, init=None, start_epoch=0, gpu_share=1.0, grad_checkpoint=True, contrast_weight=1.0):
     import torch
     from safetensors.torch import load_file, save_file
     from transformers import AutoTokenizer
@@ -376,7 +376,11 @@ def train(root, out_dir, epochs, micro_batch, grad_accum, lr_encoder, lr_head, g
     # Teacher-positive sequences are rare (about 6%); weight them so the soft targets are not swamped by negatives.
     def is_positive(it): return it['qtype'] == 2 and it['target'][1] >= 0.5 or (it['qtype'] == 0 and it['label'] != len(it['target'])-1)
     for it in items: it['w'] = positive_weight if is_positive(it) else 1.0
-    say_w = {'positives': sum(it['w'] > 1 for it in items), 'of': len(items), 'positiveWeight': positive_weight}
+    # Side contrast: on a unit where one side is a teacher positive, the OTHER side's negative sequence is what teaches A from B; weight it like a positive.
+    positive_units = {it['unitId'] for it in items if it['qtype'] == 2 and it['qid'] in ('A', 'B') and it['target'][1] >= 0.5}
+    contrast = [it for it in items if it['qtype'] == 2 and it['qid'] in ('A', 'B') and it['target'][1] < 0.5 and it['unitId'] in positive_units]
+    for it in contrast: it['w'] = max(it['w'], contrast_weight)
+    say_w = {'positives': sum(is_positive(it) for it in items), 'contrastSequences': len(contrast), 'of': len(items), 'positiveWeight': positive_weight, 'contrastWeight': contrast_weight}
     enc = [p for n, p in model.named_parameters() if 'encoder.' in n]; head = [p for n, p in model.named_parameters() if 'encoder.' not in n]
     opt = torch.optim.AdamW([{'params': enc, 'lr': lr_encoder}, {'params': head, 'lr': lr_head}], weight_decay=0.01)
     total_updates = max(1, (len(items)//(micro_batch*grad_accum))*epochs); sched = torch.optim.lr_scheduler.CosineAnnealingLR(opt, T_max=total_updates, eta_min=1e-6)
@@ -482,12 +486,12 @@ if __name__ == '__main__':
     p = sub.add_parser('train'); p.add_argument('--root', required=True); p.add_argument('--out', required=True); p.add_argument('--epochs', type=int, default=3); p.add_argument('--micro-batch', type=int, default=8); p.add_argument('--grad-accum', type=int, default=4)
     p.add_argument('--lr-encoder', type=float, default=2.5e-5); p.add_argument('--lr-head', type=float, default=1e-4); p.add_argument('--group-size', type=int, default=4); p.add_argument('--device', default='auto'); p.add_argument('--max-steps', type=int, default=0); p.add_argument('--seed', type=int, default=42)
     p.add_argument('--positive-weight', type=float, default=1.0); p.add_argument('--no-bucket', action='store_true'); p.add_argument('--init', help='checkpoint directory to resume weights from'); p.add_argument('--start-epoch', type=int, default=0)
-    p.add_argument('--gpu-share', type=share_arg, default=GPU_SHARE, help="fraction of wall time the trainer may keep the GPU busy (0.5 = sleep as long as each step took); 1 = no pacing; 'auto' = MOP_GPU_ACTIVE_SHARE while the machine is in use, full speed when input is idle or the display is off"); p.add_argument('--no-grad-checkpoint', action='store_true', help='skip gradient checkpointing (faster steps, more memory)')
+    p.add_argument('--contrast-weight', type=float, default=1.0, help='weight for the other side\'s negative sequence on units where one side is a teacher positive (teaches A from B)'); p.add_argument('--gpu-share', type=share_arg, default=GPU_SHARE, help="fraction of wall time the trainer may keep the GPU busy (0.5 = sleep as long as each step took); 1 = no pacing; 'auto' = MOP_GPU_ACTIVE_SHARE while the machine is in use, full speed when input is idle or the display is off"); p.add_argument('--no-grad-checkpoint', action='store_true', help='skip gradient checkpointing (faster steps, more memory)')
     p = sub.add_parser('evaluate'); p.add_argument('--root', required=True); p.add_argument('--model-path', required=True); p.add_argument('--device', default='auto')
     a = ap.parse_args()
     if a.cmd == 'label': label(a.root, a.model, a.max_cost, a.max_windows, a.cross_negatives, a.workers, a.seed)
     elif a.cmd == 'label-active': label_active(a.root, a.student, a.device, a.min_score, a.own_min_score, a.max_new, a.max_candidates, a.model, a.max_cost, a.workers, a.seed, a.dry_run)
     elif a.cmd == 'label-augment': label_augment(a.root, a.crops, a.contrast, a.embeds, a.min_len, a.max_len, a.model, a.max_cost, a.workers, a.seed, a.dry_run)
     elif a.cmd == 'prepare': prepare(a.root, a.max_len, a.head_max_len, not a.no_choice, a.active_min_score)
-    elif a.cmd == 'train': train(a.root, a.out, a.epochs, a.micro_batch, a.grad_accum, a.lr_encoder, a.lr_head, a.group_size, a.device, a.max_steps, a.seed, a.positive_weight, not a.no_bucket, a.init, a.start_epoch, a.gpu_share, not a.no_grad_checkpoint)
+    elif a.cmd == 'train': train(a.root, a.out, a.epochs, a.micro_batch, a.grad_accum, a.lr_encoder, a.lr_head, a.group_size, a.device, a.max_steps, a.seed, a.positive_weight, not a.no_bucket, a.init, a.start_epoch, a.gpu_share, not a.no_grad_checkpoint, a.contrast_weight)
     else: evaluate(a.root, a.model_path, a.device)

@@ -298,6 +298,50 @@ weights at positive weight 2, evaluated per checkpoint with the same
 pre-registered side threshold. Chain `slides/laya-distill-v3b.sh`, root
 `slides/laya-distill-jev-v3b-20260925`.
 
+### v3b results (September 27) and what they say
+
+Teacher yardsticks improved for the first time since v2: epoch 1 held-out
+soft cross-entropy 0.189, epoch 2 0.178 (start 0.193); teacher-positive
+recall 206 then 215 of 298 (v2 epoch 1: 211); question-A agreement 97.7%
+then 97.9%, Brier 0.015 then 0.014, AUC 0.991 then 0.994. The human
+labels did not follow. Side heads at the pre-registered 0.4 on the 56
+held-out facts (correct / wrong side / abstain), false picks on the 60
+negative controls and 45 weak rows:
+
+| student | 0.3 | 0.4 (pre-registered) | 0.5 | false picks at 0.4 |
+|---|---|---|---|---|
+| v2 epoch 1 | 41 / 3 / 12 | 34 / 2 / 20 | 24 / 0 / 32 | 1, 0 |
+| v3b epoch 1 | 35 / 5 / 16 | 34 / 5 / 17 | 28 / 2 / 26 | 1, 1 |
+| v3b epoch 2 | 36 / 11 / 9 | 35 / 11 / 10 | 27 / 10 / 19 | 1, 1 |
+| Jev | 50 / 0 / 6 | 48 / 0 / 8 | 42 / 0 / 14 | 1, 1 |
+
+The v3b epoch-2 wrong sides are a new failure: on 10 of its 11 wrong
+facts the B head rose to match the A head (typically pA 0.54, pB 0.57
+where Jev gives 0.58 and 0.03), so the student now believes both
+statements are reported. v2 epoch 1 was wrong on only one of those rows.
+Four embeddings of each control passage over two epochs taught "a fact
+about this subject is reported" rather than "which statement". A side
+margin as a decision rule does not rescue it: chosen on training-market
+rows the best margin is zero, because the confusion does not appear on
+memorised training rows, so it cannot be pre-registered.
+
+The text-held-out view (rows whose full email text never appears in a
+training record) covers 121 of the 206 rows but only 6 of the 56 facts,
+so it cannot discriminate between students; the 45 positive controls in
+it are all text-held-out and v3b is cleaner there (39 correct, 0 wrong
+at 0.4, against v2 epoch 1's 42 and 1). `compare_students.py` prints
+both views for any rows files.
+
+### v3c (launched September 27, 03:10): side-contrast weighting
+
+Same data as v3b. On every unit where one side is a teacher positive,
+the other side's negative sequence is what teaches A from B; the trainer
+now weights those 2,215 sequences like positives (`--contrast-weight 4`,
+positive weight 2), two epochs from the v2 epoch-1 weights, both
+checkpoints evaluated with the pre-registered threshold. Chain
+`slides/laya-distill-v3c.sh`, checkpoints under the v3b root as
+`student-v3c`.
+
 ### Keeping the GPU available while training (September 24)
 
 `laya_distill.py train --gpu-share S` (also `MOP_GPU_SHARE=S` for the
