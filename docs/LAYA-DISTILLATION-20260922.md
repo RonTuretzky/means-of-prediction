@@ -342,6 +342,32 @@ checkpoints evaluated with the pre-registered threshold. Chain
 `slides/laya-distill-v3c.sh`, checkpoints under the v3b root as
 `student-v3c`.
 
+### v3c epoch 1 (September 27, 05:40): the first student that beats v2
+
+Teacher yardsticks: held-out soft cross-entropy 0.181, teacher-positive
+recall 216 of 298, question-B agreement 97.0% (v3b epoch 1: 95.5%),
+Brier 0.021 (0.029), AUC 0.971 (0.940); question A 98.0% agreement,
+AUC 0.992, 89 of 116 positives fired at 0.5.
+
+Human labels, side heads, 56 held-out facts (correct / wrong / abstain),
+false picks on 60 negative controls and 45 weak rows:
+
+| student | 0.3 | 0.4 (pre-registered) | 0.5 | false at 0.4 |
+|---|---|---|---|---|
+| v2 epoch 1 | 41 / 3 / 12 | 34 / 2 / 20 | 24 / 0 / 32 | 1, 0 |
+| v3b epoch 1 | 35 / 5 / 16 | 34 / 5 / 17 | 28 / 2 / 26 | 1, 1 |
+| v3c epoch 1 | 40 / 1 / 15 | **39 / 1 / 16** | 37 / 1 / 18 | **0, 0** |
+| Jev | 50 / 0 / 6 | 48 / 0 / 8 | 42 / 0 / 14 | 1, 1 |
+
+At the pre-registered threshold v3c epoch 1 settles five more facts
+correctly than v2 epoch 1, is wrong on one instead of two, and makes no
+false pick at all on the 105 rows where nothing is settled. It is also
+stable across thresholds (37 correct even at 0.5, where v2 fell to 24),
+which is what the side-contrast weighting was meant to buy: the B head
+no longer rises with the A head. Positive controls are slightly lower
+(37 correct, 1 wrong, against 42 and 1). Remaining gap to Jev at 0.4:
+9 facts of recall, none of safety. Epoch 2 is evaluated next.
+
 ### Keeping the GPU available while training (September 24)
 
 `laya_distill.py train --gpu-share S` (also `MOP_GPU_SHARE=S` for the
