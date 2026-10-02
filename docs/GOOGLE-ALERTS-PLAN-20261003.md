@@ -98,6 +98,85 @@ else from the page is admissible, so nothing else is used for training.
 - **Checks.** A YES claim on a NO-resolved market is a definite false claim; reported
   per market over its whole window, with K outlets, never per unit.
 
+## Adversarial review of "one alert per newspaper, headline only, K outlets" (October 3)
+
+Proposal from the project owner: an alert stream per newspaper, the judge reads only the
+headline (at most 100 characters), and redundancy across K outlets makes that enough.
+Five independent red-team passes attacked it (attacker economics, semantics, Google as
+single signer, protocol, alternatives); the planned second-reviewer pass could not run
+(account session limit), so the attack list is one-sided. The central claim was checked
+here against our own data instead: Jev read every headline of the 120-market calibration
+probe, headline only, and markets were settled at K distinct outlets.
+
+| setting (Jev, headline only) | K=1 false YES / true YES | K=2 | K=3 |
+|---|---|---|---|
+| all 896 outlets, p ≥ 0.5 | 17/56 · 29/55 | 12/56 · 27/55 | 9/56 · 24/55 |
+| registry outlets, p ≥ 0.5 | 5/56 · 23/55 | 4/56 · 17/55 | 3/56 · 12/55 |
+| registry outlets, p ≥ 0.7 | 1/56 · 12/55 | 1/56 · 9/55 | 1/56 · 6/55 |
+
+(false YES = NO-resolved markets with K outlets' headlines read as YES; true YES =
+YES-resolved markets reaching K; 56 NO and 55 YES judged markets.)
+
+Verdicts that hold on this evidence:
+
+1. **Redundancy does not buy what was claimed.** Raising K removes true settlements
+   about as fast as false ones, because every outlet writes the same headline about the
+   same event and the judge misreads all of them together. At the settings that keep
+   false YES near zero, only one in five true-YES markets settles at all.
+2. **The residual false YES is a true headline about the wrong market**, at zero
+   attacker cost: sibling and date-bucket markets ("SpaceX IPO on June 26" when the IPO
+   was June 11; "The Voice of Hind Rajab wins Best International Feature" against "Oscars:
+   winners list in full"). A 100-character headline has no room for the qualifier, there
+   is no per-result timestamp, and K repeats the same omission. In the probe 6 to 8 of 63
+   NO markets are exactly this shape.
+3. **Recall collapses on headline alone.** For 22 of 57 YES markets no headline on any
+   outlet states the outcome (thresholds, counties, sub-categories, line-ups, "full
+   winners list" headlines without the name). Settlement is YES-or-void, so most
+   true-NO markets and most true-YES markets end in a refund.
+4. **K hosts are not K sources.** Wire copy, one upstream call, and premature calls
+   repeated within minutes; 10 of 68 multi-outlet markets in the probe carry an exact or
+   near-identical headline pair across registry outlets.
+5. **Per-newspaper streams make best-of-N worse.** A site:-only alert is the outlet's
+   whole output; daily and weekly digests show exactly 10 results whatever the window,
+   so most stories are dropped and the submitter's search space is every headline the
+   outlet published. The reported 1,000-alert cap also rules out per-newspaper-per-market
+   alerts.
+6. **The headline is Google's rendering**, not the outlet's: Google rewrites a majority
+   of title tags and has run unlabelled AI-generated headlines in Search since March
+   2026; 19% of real alert headlines in the samples end in an ellipsis.
+7. **Protocol gaps the headline does not touch**: the prover chooses which emails to
+   submit; a challenger cannot obtain a signed alert after the fact unless they
+   subscribed beforehand; void at par pays the losing side for withholding; raw emails
+   carry the collector's address and a per-alert token that lets anyone edit or kill the
+   alert.
+
+What survives, and the design that follows:
+
+- **One topical alert per market, not per newspaper.** Query frozen at market creation
+  and bound to the signed Subject; outlet identity enforced by the contract's host
+  allowlist with path rules; as-it-happens delivery.
+- **The judge reads headline + snippet + the signed send time + the Fable rule**
+  (event instance, sibling list, not-counted phrasing). The snippet is admitted as the
+  weaker field and tested separately for forced false YES.
+- **Market admission rule for this evidence class:** only outcomes a headline can carry
+  (named subject plus a conventional completed-event verb); no "on date X" buckets, no
+  thresholds, ordinals or scope qualifiers; sibling families settle only by exclusivity,
+  and a headline naming a sibling's winner counts as NO evidence. The contract, not the
+  judge, enforces the date window from the rule's event instance.
+- **K over independent originations**: ownership and wire families collapsed, near-
+  identical headlines deduplicated, at least one non-wire original, the K emails spread
+  over hours, a 24-72 hour challenge delay; ellipsis-truncated headlines rejected.
+- **Independent collectors** (two or three) subscribed to every frozen query, logging a
+  hash of each received email on arrival; only logged emails are admissible. This is what
+  makes the challenge delay real.
+- **Google stays one evidence class among two.** Newsletter signers remain for markets
+  that should not rest on a single signer and index; a weekly canary compares alert
+  headlines with the outlets' own feed titles.
+
+Open until measured on real alerts: per-account divergence, as-it-happens email shape,
+delay and hit rate for market outcomes, and how far the GDELT stand-in is from what
+alerts deliver.
+
 ## Forward collection (needs the user)
 
 Alerts cannot be backfilled and have no API. A dedicated Google account, alerts created
