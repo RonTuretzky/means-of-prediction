@@ -146,3 +146,10 @@ with `model_mismatch`. The teacher key lives only in
   Gmail, which the trust rules say should not be the custodian of evidence.
 - A Gmail filter on `from:googlealerts-noreply@google.com` (skip inbox, label) keeps the
   census volume out of the way; not created, since it changes account settings.
+
+## RSS probe feeds (unsigned; poll at feed-reader rates)
+
+```
+"Anthropic IPO":  https://www.google.com/alerts/feeds/01633184561150803184/829494224272271763
+"Nobel Prize":    https://www.google.com/alerts/feeds/01633184561150803184/18115594129994230283
+```
