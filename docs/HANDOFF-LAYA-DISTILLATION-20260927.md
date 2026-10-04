@@ -1,5 +1,7 @@
 # Handoff: Laya settlement-judge student, distilled from Jev (state as of 2026-09-27 07:00 local)
 
+> Start with `docs/HANDOFF-MASTER-20261004.md` for the premise, the history of the whole effort and what came after; this file is the detail for the Laya distillation.
+
 One paragraph: we are training an open 421M typed-decision encoder (Laya) to do what
 the closed hosted model Jev does for prediction-market settlement from newsletter
 text: given a passage and a market's two factual statements, say which statement the

@@ -1,5 +1,7 @@
 # Handoff: Google Alerts evidence track (state as of 2026-10-03, 16:00 JST)
 
+> Start with `docs/HANDOFF-MASTER-20261004.md` for the premise, the history of the whole effort and the newsletter-student results; this file is the detail for the Google Alerts track.
+
 Goal: settle prediction markets from Google Alerts emails (DKIM-signed by google.com)
 read by a small open judge distilled from Jev, with Fable writing each market's factual
 predicates blind to the outcome. This document lists what exists, what is running, where
