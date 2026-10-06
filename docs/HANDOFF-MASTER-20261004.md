@@ -221,7 +221,7 @@ behind them:
 |---|---|---|
 | Jev labels on the alert-shaped corpus | **running** (chain alive, waiting for the key's daily limit). 82,645 of 520,552 pairs, 2,688 markets, $2.01 spent. About 41,000 pairs per dollar, so 437,907 remaining pairs are about 11 more days at $1/day or about $11 in a few hours if the owner raises the limit. Stage log times are UTC. | check `pgrep -fl alerts-label`; only if nothing prints, relaunch with `nohup caffeinate -i -s ~/.local/share/means-of-prediction/slides/alerts-label.sh >> ~/.local/share/means-of-prediction/slides/alerts-label.log 2>&1 &` on AC power. Never start a second copy |
 | Fable rules | finished: 19,453 rules. 330 markets missing: 325 from 13 batches that ended in `error_max_turns`, 5 dropped from completed batches | rerun with a smaller batch: `rules_batch.py --root …/slides/alerts-rules-20261003 --sample …/slides/alerts-rules-20261003/sample.private.json --batch 10`, with `MOP_CLAUDE_CODE_BIN` set to a Claude Code binary of version 2.1.251 or newer (the variable `CLAUDE_CODE_EXECPATH` exists only inside a Claude Code session; a stale `~/.local/bin/claude` 2.1.236 fails every batch with `model_mismatch`). It draws on the owner's Claude session limit. The label chain's next pass picks the new rules up |
-| Google Alerts mail | alerts were created October 3; nothing has been pulled or inspected yet | export raw messages with full headers through the IMAP intake above (sender `googlealerts-noreply@google.com`); never publish a raw message (recipient address and a live per-alert token are in the signed body); record the google.com DKIM TXT record for the selector seen (currently `20251104`) at each pull; parse with `alerts_email.py` |
+| Google Alerts mail | 477 emails (3,226 results) pulled on October 6, all from Gmail's **Spam** folder; raw messages under `~/.local/share/means-of-prediction/alerts-mail-20261006/raw/`, census in `census.json`, GDELT comparison in `fidelity.json` (only 22% of alert results exist in GDELT; no Reuters, AP, NYT, WaPo). Spam is purged after 30 days, so pull again with `alerts_mail.py` at least weekly until a filter exists | export raw messages with full headers through the IMAP intake above (sender `googlealerts-noreply@google.com`); never publish a raw message (recipient address and a live per-alert token are in the signed body); record the google.com DKIM TXT record for the selector seen (currently `20251104`) at each pull; parse with `alerts_email.py` |
 
 No training is running.
 
@@ -247,7 +247,7 @@ No training is running.
    Report for all hosts and registry hosts, per topic, with denominators, and with the
    admission rule applied as a filter (it needs a tagging pass over the market questions:
    date bucket, threshold, ordinal, sibling family; nothing implements it yet).
-4. Alert-shaped student. Needs an adapter (join labels to unit text from the pairs file,
+4. Alert-shaped student. The GDELT corpus is the wrong outlet mix (see the plan's October 6 section); prefer the real alert stream for units, with Jev labels on real results. Needs an adapter (join labels to unit text from the pairs file,
    build Laya sequences) and a split by event group sealed before training, with the
    latest month held out. Carries over from the v3c recipe: no choice sequences, positive
    weight, side-contrast weight; the newsletter augmentation does not apply to

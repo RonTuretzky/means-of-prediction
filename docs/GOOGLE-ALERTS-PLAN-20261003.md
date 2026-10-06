@@ -177,6 +177,44 @@ Open until measured on real alerts: per-account divergence, as-it-happens email 
 delay and hit rate for market outcomes, and how far the GDELT stand-in is from what
 alerts deliver.
 
+## First real alerts (October 6): format census and the GDELT gap
+
+477 alert emails reached the owner's Gmail between October 2 and 6, every one of them
+filed in **Spam** by Gmail (none in the inbox; Spam is purged after 30 days). All 477
+were pulled over IMAP and stored privately (`alerts_mail.py`, root
+`~/.local/share/means-of-prediction/alerts-mail-20261006/`), the google.com key record
+was snapshotted, and a 40-message sample verifies under selector `20251104`.
+
+| measured on 477 emails, 3,226 results | value |
+|---|---|
+| MIME, signer | multipart/alternative; d=google.com, s=20251104, no `l=`, `x=` = t + 7 days |
+| signed headers | content-type, to, from, subject, message-id, list-unsubscribe, list-id, date, mime-version (from, to, cc, subject, date, message-id, reply-to, content-type oversigned): Content-Type **is** signed on current mail, unlike the 2025–May 2026 public samples |
+| raw size | median 30 KB, max 223 KB |
+| results per as-it-happens email | median 4, max 46; 83 emails with one result, 76 with ten or more: no ten-result cap |
+| headline length | median 78, max 110 characters; 113 end with an ellipsis; 1,747 end with " - Publisher" |
+| snippet length | median 147, max 162; 2,190 of 3,226 end with an ellipsis |
+| sections | News only |
+| hosts | 834 distinct; reuters.com 348, bbc.com 241, **youtube.com 212**, apnews.com 196, theguardian.com 166, nytimes.com 147; **polymarket.com 30** (market pages surface as News results for these queries) |
+| volume by alert type | the five `site:` census alerts: 212 emails, 2,400 results; the 18 event-level alerts: 263 emails, about 800 results, most of them from the five broad topics (Anthropic IPO, Fed decision, Israel–Iran, US–Iran, shutdown); the narrow ones fired two to four times in three days |
+
+**The GDELT stand-in misses most of what alerts deliver.** Matching the 3,226 results
+against the GDELT Article List for October 2–5 (`alerts_fidelity.py`): 697 found, 22%
+(23% excluding YouTube). Zero of 348 Reuters, 196 AP, 17 Washington Post, 21 Bloomberg,
+17 CNN results are in GDELT and 4 of 147 NYT; the Guardian (71%), Al Jazeera (71%), CNBC
+(95%), Jerusalem Post (94%) and CBS (88%) are well covered. Where both exist the headline
+is byte-equal after removing the outlet suffix in 444 of 697 cases and a truncation of
+the other in 112; the snippet is not the GDELT description (median token overlap 0.11).
+Alerts arrive a median 10.7 hours after GDELT's first sighting (quartiles 2.7 to 18.2),
+and before it in 78 cases.
+
+Consequences: the Jev-labelled GDELT corpus is trained on a different outlet mix from
+the one alerts deliver and cannot stand in for the wire services or the New York Times;
+the real alert stream, about 1,000 results a day from these 23 alerts, is the right
+training and evaluation source from here on, and the units must be the alert's own
+headline and snippet. YouTube and market pages in the News section make the host
+allowlist non-optional. Gmail's spam filing means collection must not depend on an
+inbox: pull every folder, or set a filter that keeps alert mail out of Spam.
+
 ## Forward collection (needs the user)
 
 Alerts cannot be backfilled and have no API. A dedicated Google account, alerts created
