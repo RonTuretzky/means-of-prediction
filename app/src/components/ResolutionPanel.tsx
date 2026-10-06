@@ -100,7 +100,7 @@ export function ResolutionPanel({ m }: { m: MarketData }) {
   };
 
   return (
-    <div data-testid="resolution-panel">
+    <div data-testid="resolution-panel" data-dkim-keys-ready={keys !== undefined}>
       <p className="mb-3 text-sm text-surface-grey-2">
         Anyone can settle this market by uploading a real DKIM-signed alert email — its RSA signature is verified
         onchain against the newspaper's published key. {m.threshold} of {m.sources.length} sources required for YES.

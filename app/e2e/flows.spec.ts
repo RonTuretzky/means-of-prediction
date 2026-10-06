@@ -26,6 +26,8 @@ async function rpc(method: string, params: unknown[] = []) {
 }
 
 async function readCash(page: Page): Promise<number> {
+  // A newly navigated page renders a placeholder before its balance query resolves.
+  await expect(page.getByTestId("cash-balance")).toContainText(/\d/);
   const text = await page.getByTestId("cash-balance").textContent();
   return parseFloat((text ?? "0").replace(/[$,]/g, ""));
 }
@@ -222,6 +224,9 @@ test("zkEmail settlement: non-matching email is rejected, 2-of-3 alerts resolve 
   await page.goto("/#/market/0");
 
   // negative case first: a real-looking NYT briefing that does NOT match the regex
+  // Wait for registry loading rather than racing it and treating an unknown key
+  // preview as the result of the actual onchain proof validation.
+  await expect(page.getByTestId("resolution-panel")).toHaveAttribute("data-dkim-keys-ready", "true");
   await page.getByTestId("eml-input").setInputFiles(emlPath("nyt-daily-briefing-nonmatching.eml"));
   await expect(page.getByTestId("proof-preview")).toBeVisible();
   await expect(page.getByTestId("proof-check-fail")).toContainText("content regex mismatch");
