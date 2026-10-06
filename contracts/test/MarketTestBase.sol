@@ -36,7 +36,7 @@ contract MarketTestBase is Test {
         usdc = new TestUSDC();
         dkim = new DKIMRegistry();
         verifier = new DKIMVerifier(dkim);
-        factory = new MarketFactory(ct, verifier, address(new HeadlineMarket()), address(new FPMM()));
+        factory = new MarketFactory(ct, verifier, address(new HeadlineMarket()), address(new FPMM()), 0, address(0));
 
         (devModulus, devExponent) = devPubKey();
         devKeyHash = keccak256(devModulus);
@@ -62,9 +62,7 @@ contract MarketTestBase is Test {
         bytes32 nullifier
     ) internal returns (EmailProof memory p) {
         bytes memory header = bytes(
-            string.concat(
-                "from:", from, "\r\nsubject:", subject, "\r\nmessage-id:<", vm.toString(nullifier), ">"
-            )
+            string.concat("from:", from, "\r\nsubject:", subject, "\r\nmessage-id:<", vm.toString(nullifier), ">")
         );
         bytes memory signature = rsaSign(header);
         p.domainName = domain;
@@ -111,10 +109,7 @@ contract MarketTestBase is Test {
             contentRegex: ""
         });
         sources[2] = HeadlineMarket.Source({
-            name: "Reuters",
-            dkimDomain: "email.reuters.com",
-            fromRegex: "@email\\.reuters\\.com$",
-            contentRegex: ""
+            name: "Reuters", dkimDomain: "email.reuters.com", fromRegex: "@email\\.reuters\\.com$", contentRegex: ""
         });
     }
 
@@ -122,7 +117,7 @@ contract MarketTestBase is Test {
         params = MarketFactory.CreateMarketParams({
             question: "Will the Fed cut rates before October 2026?",
             description: "Resolves YES if 2 of 3 sources (NYT, WaPo, Reuters) email a breaking-news"
-                " alert matching the pattern before the deadline.",
+            " alert matching the pattern before the deadline.",
             contentRegex: "(?i)fed (cuts|lowers|slashes) (interest )?rates",
             contentField: HeadlineMarket.ContentField.SubjectOrBody,
             sources: nytSources(),

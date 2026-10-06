@@ -14,7 +14,8 @@
     "dkim:sign-fixtures": "node scripts/sign-fixtures.mjs",
     "dkim:keys": "node scripts/dkim-keys.mjs",
     "sync:gnosis": "DEPLOYMENT=gnosis node scripts/sync-contracts.mjs",
-    "build:gnosis": "DEPLOYMENT=gnosis node scripts/sync-contracts.mjs && tsc -b && vite build"
+    "build:gnosis": "DEPLOYMENT=gnosis node scripts/sync-contracts.mjs && tsc -b && vite build",
+    "test:fees": "node --experimental-strip-types --test tests/fees.test.mjs"
   },
   "dependencies": {
     "@breadcoop/ui": "^2.0.4",

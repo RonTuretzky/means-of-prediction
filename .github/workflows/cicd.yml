@@ -1,15 +1,10 @@
-# Etherform CI/CD (github.com/BreadchainCoop/etherform): build + test on every push/PR,
-# and deploy script/DeployGnosis.s.sol with Blockscout verification when deploy-on-pr
-# is enabled. Requires repo secrets:
-#   PRIVATE_KEY — deployer key (use a dedicated deployer, never a funded personal key)
-#   RPC_URL     — https://ethereum-sepolia-rpc.publicnode.com (PR deploys target Sepolia;
-#                 the Gnosis mainnet deploy is manual — see README)
+# Build and test only. Deployment is deliberately disabled for pushes and PRs.
 name: CI/CD
 on: [push, pull_request]
 
 permissions:
   contents: read
-  pull-requests: write
+  pull-requests: read
 
 concurrency:
   group: cicd-${{ github.ref }}
@@ -17,14 +12,58 @@ concurrency:
 
 jobs:
   cicd:
-    uses: BreadchainCoop/etherform/.github/workflows/_foundry-cicd.yml@main
+    uses: BreadchainCoop/etherform/.github/workflows/_foundry-cicd.yml@f6182e6d5fbc06813a80f40d8432905ece36b40a
     with:
-      package-manager: pnpm
-      deploy-on-pr: true
+      working-directory: contracts
+      foundry-version: v1.5.1
+      package-manager: none
+      # Existing unrelated files are not uniformly formatted; check changed files below.
+      check-formatting: false
+      deploy-on-pr: false
       deploy-script: "script/DeploySepolia.s.sol:DeploySepolia"
-      # forge test in CI: the ffi-based RSA/differential tests need node — provided
-      # by the workflow's node setup (node-version default 22)
-      contract-paths: "contracts/src/** contracts/script/** contracts/test/** contracts/foundry.toml"
-    secrets:
-      RPC_URL: ${{ secrets.RPC_URL }}
-      PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
+      # The RSA/differential tests use only Node built-ins, available on the
+      # Ubuntu runner. No contract-directory Node dependencies are needed.
+      contract-paths: |
+        contracts/src/**
+        contracts/script/**
+        contracts/test/**
+        contracts/foundry.toml
+        .github/workflows/cicd.yml
+
+  frontend:
+    name: Frontend fees and build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: foundry-rs/foundry-toolchain@908c540300062bd5a7e473851cdb4282204cee09 # v1.9.1
+        with:
+          version: v1.5.1
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 8
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: app/pnpm-lock.yaml
+      - name: Build contract ABIs (no broadcast)
+        working-directory: contracts
+        run: forge build
+      - name: Check changed contract formatting
+        working-directory: contracts
+        run: forge fmt --check src/market/FPMM.sol src/market/MarketFactory.sol test/MarketTestBase.sol test/ProtocolFees.t.sol script/Deploy.s.sol script/DeployGnosis.s.sol script/DeploySepolia.s.sol
+      - name: Install frontend dependencies
+        working-directory: app
+        run: pnpm install --frozen-lockfile
+      - name: Test fee parsing and compatibility
+        working-directory: app
+        run: pnpm test:fees
+      - name: Type-check and build frontend
+        working-directory: app
+        run: pnpm build
+      - name: Install Chromium for local-chain browser tests
+        working-directory: app
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Test browser flows on isolated Anvil
+        working-directory: app
+        run: pnpm e2e

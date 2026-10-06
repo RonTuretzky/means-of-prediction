@@ -1,6 +1,8 @@
 import { expect, test, type Page } from "@playwright/test";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { readFileSync } from "node:fs";
+import { createPublicClient, http, parseAbi, type Address } from "viem";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -64,11 +66,15 @@ test("faucet mints cash and the account switcher switches users", async ({ page 
 test("buy YES moves the price and creates a position", async ({ page }) => {
   await page.goto("/#/market/0");
   await expect(page.getByTestId("market-question")).toContainText("Fed rate cut");
+  await expect(page.getByTestId("trade-fees")).toContainText("Liquidity provider fee2%");
+  await expect(page.getByTestId("trade-fees")).toContainText("Platform fee2.2%");
+  await expect(page.getByTestId("trade-fees")).toContainText("Total trading fee (included)4.2%");
+  await expect(page.getByTestId("market-fees")).toContainText("2% LP + 2.2% platform = 4.2% total");
 
   // $2,000 into a $25k pool: enough to visibly move the price off 50¢
   await page.getByTestId("amount-input").fill("2000");
   await expect(page.getByTestId("quote-shares")).not.toHaveText("—");
-  // ~$2,000 at ~50¢ => ~3,778 shares after 2% fee + price impact; "To win" = shares × $1
+  // ~$2,000 at ~50¢ => ~3,696 shares after 4.2% total fees + price impact; "To win" = shares × $1
   await expect
     .poll(async () => parseFloat(((await page.getByTestId("to-win").textContent()) ?? "0").replace(/[$,]/g, "")))
     .toBeGreaterThan(3000);
@@ -119,6 +125,49 @@ test("add liquidity, earn trading fees, claim them", async ({ page }) => {
   await expect.poll(async () => readCash(page)).toBeGreaterThan(cashBefore);
 });
 
+test("platform revenue goes only to the fixed treasury, safely across repeated clicks and withdrawals", async ({ page }) => {
+  const deployment = JSON.parse(readFileSync(join(__dirname, "../../contracts/deployments/local.json"), "utf8"));
+  const client = createPublicClient({ transport: http(RPC) });
+  const abi = parseAbi([
+    "function getAllMarkets() view returns ((address market,address fpmm)[])",
+    "function feeRecipient() view returns (address)",
+    "function protocolFeesAccrued() view returns (uint256)",
+    "function balanceOf(address) view returns (uint256)",
+  ]);
+  const records = await client.readContract({ address: deployment.factory, abi, functionName: "getAllMarkets" });
+  const fpmm = records[0].fpmm;
+  const treasury = await client.readContract({ address: fpmm, abi, functionName: "feeRecipient" });
+  const readAccrued = () => client.readContract({ address: fpmm, abi, functionName: "protocolFeesAccrued" });
+  const readTreasury = () => client.readContract({ address: deployment.usdc, abi, functionName: "balanceOf", args: [treasury] });
+  await page.goto("/#/market/0");
+  await page.getByTestId("account-switcher").selectOption("1"); // Bob, not the treasury
+  await expect(page.getByTestId("protocol-fees-panel")).toContainText(treasury);
+  const treasuryBefore = await readTreasury();
+  const accrued = await readAccrued();
+  expect(accrued).toBeGreaterThan(0n);
+  const bob = "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC" as Address;
+  const nonceBefore = await client.getTransactionCount({ address: bob });
+  await expect(page.getByTestId("collect-protocol-fees")).toBeEnabled();
+  // Same-tick clicks must not enqueue duplicate wallet writes.
+  await page.getByTestId("collect-protocol-fees").evaluate((button: HTMLButtonElement) => { button.click(); button.click(); });
+  await expect.poll(readAccrued).toBe(0n);
+  await expect.poll(readTreasury).toBe(treasuryBefore + accrued);
+  await expect(page.getByTestId("collect-protocol-fees")).toBeDisabled();
+  await expect.poll(() => client.getTransactionCount({ address: bob })).toBe(nonceBefore + 1);
+  await expect(page.getByTestId("protocol-fees-accrued")).toHaveText("0.00");
+
+  // New trading revenue can be collected again without retaining stale busy/success state.
+  await page.getByTestId("amount-input").fill("100");
+  await expect(page.getByTestId("trade-submit")).toBeEnabled();
+  await page.getByTestId("trade-submit").click();
+  await expect.poll(readAccrued).toBe(2_200_000n);
+  await expect(page.getByTestId("collect-protocol-fees")).toBeEnabled();
+  await page.getByTestId("collect-protocol-fees").click();
+  await expect.poll(readAccrued).toBe(0n);
+  await expect.poll(readTreasury).toBe(treasuryBefore + accrued + 2_200_000n);
+  await expect(page.getByTestId("collect-protocol-fees")).toBeDisabled();
+});
+
 test("anyone can create a market permissionlessly", async ({ page }) => {
   await page.goto("/#/create");
 
@@ -144,7 +193,18 @@ test("anyone can create a market permissionlessly", async ({ page }) => {
   await expect(page.getByTestId("regex-feedback")).toContainText("Matches");
   await page.getByTestId("create-next").click();
 
-  // Step 4: market params
+  // Step 4: disclose the immutable platform rate and validate the LP + platform total.
+  await expect(page.getByTestId("create-fees")).toContainText("Platform fee: 2.2%");
+  await expect(page.getByTestId("create-fees")).toContainText("Total trading fee: 4.2%");
+  for (const badFee of ["-1", "NaN", "1e2", "97.8", "100", "0.00000000000000001"]) {
+    await page.getByTestId("create-fee").fill(badFee);
+    await expect(page.getByTestId("create-submit")).toBeDisabled();
+    await expect(page.getByTestId("create-fee-error")).toBeVisible();
+  }
+  await page.getByTestId("create-fee").fill("0");
+  await expect(page.getByTestId("create-fees")).toContainText("Total trading fee: 2.2%");
+  await expect(page.getByTestId("create-submit")).toBeEnabled();
+  await page.getByTestId("create-fee").fill("2");
   await page.getByTestId("create-liquidity").fill("200");
   await page.getByTestId("create-submit").click();
 

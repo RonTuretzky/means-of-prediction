@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button, Chip, Heading1 } from "@breadcoop/ui";
 import { CheckCircle, Plus, Trash, WarningCircle } from "@phosphor-icons/react";
@@ -10,7 +10,8 @@ import { CHAIN_ID } from "../config";
 import { KeywordBuilder, phrasesToRegex, regexToPhrases } from "../components/KeywordBuilder";
 import { AIRegexPanel } from "../components/AIRegexPanel";
 import { CATEGORIES, withCategoryTag, type Category } from "../data/categories";
-import { ContentField, FACTORY, USDC, useCash } from "../hooks/useMarkets";
+import { ContentField, FACTORY, USDC, useCash, useFactoryFees } from "../hooks/useMarkets";
+import { formatFeePercent, parseFeePercent, validateTradingFees } from "../lib/fees";
 import { parseAmount } from "../lib/format";
 import { publicClient, useWallet } from "../lib/wallet";
 import { explain } from "../components/TradeWidget";
@@ -28,6 +29,9 @@ export function CreatePage() {
   const wallet = useWallet();
   const navigate = useNavigate();
   const { data: cash } = useCash(wallet.address);
+  const factoryFees = useFactoryFees();
+  const platformFee = factoryFees.isError ? undefined : factoryFees.data?.protocolFee;
+  const submitting = useRef(false);
 
   const [step, setStep] = useState(0);
   const [question, setQuestion] = useState("");
@@ -52,6 +56,11 @@ export function CreatePage() {
   const [startYes, setStartYes] = useState(50); // starting YES price in cents
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const lpFee = parseFeePercent(feePct);
+  const feeValidation = platformFee === undefined
+    ? "Platform fees could not yet be verified. Wait for the onchain rate or retry."
+    : validateTradingFees(lpFee, platformFee);
 
   const setPhrasesAndRegex = (next: string[]) => {
     setPhrases(next);
@@ -106,6 +115,9 @@ export function CreatePage() {
   ][step];
 
   const create = async () => {
+    if (submitting.current) return;
+    if (feeValidation || lpFee === null) { setError(feeValidation); return; }
+    submitting.current = true;
     setBusy(true);
     setError(null);
     try {
@@ -158,7 +170,7 @@ export function CreatePage() {
         deadline: BigInt(now + days * 86400),
         resolutionBuffer: BigInt(bufferHours * 3600),
         collateralToken: collateral.address,
-        fee: BigInt(Math.round(parseFloat(feePct || "0") * 1e16)),
+        fee: lpFee,
         initialLiquidity: liq,
         distributionHint: hint,
       };
@@ -179,6 +191,7 @@ export function CreatePage() {
     } catch (e) {
       setError(explain(e));
     } finally {
+      submitting.current = false;
       setBusy(false);
     }
   };
@@ -502,15 +515,35 @@ export function CreatePage() {
                 )}
               </div>
               <div>
-                <label className="text-caption font-bold uppercase text-surface-grey-2">Trading fee (%)</label>
+                <label className="text-caption font-bold uppercase text-surface-grey-2">Liquidity provider fee (%)</label>
                 <input
                   data-testid="create-fee"
+                  inputMode="decimal"
+                  aria-invalid={lpFee === null || (platformFee !== undefined && !!feeValidation)}
                   value={feePct}
                   onChange={(e) => setFeePct(e.target.value)}
                   className="w-full border-2 border-surface-ink bg-paper-0 px-3 py-2 outline-none"
                 />
-                <p className="text-caption text-surface-grey-2">Paid to liquidity providers on every trade.</p>
+                <p className="text-caption text-surface-grey-2">Paid to liquidity providers. The fixed platform fee is additional.</p>
               </div>
+            </div>
+
+            <div className="border-2 border-surface-ink bg-paper-1 p-3 text-sm" data-testid="create-fees">
+              {platformFee === undefined ? (
+                <p role="alert" className="text-system-red">{factoryFees.isError ? "Platform fees unavailable. Creation is paused until the rate is verified." : "Loading onchain platform fee…"}
+                  <button className="ml-2 underline" disabled={factoryFees.isFetching} onClick={() => void factoryFees.refetch()}>Retry</button>
+                </p>
+              ) : (
+                <>
+                  <p>Platform fee: <b>{formatFeePercent(platformFee)}%</b> per trade, fixed by this factory.</p>
+                  {lpFee !== null && !feeValidation && <p>Total trading fee: <b>{formatFeePercent(lpFee + platformFee)}%</b> ({formatFeePercent(lpFee)}% LP + {formatFeePercent(platformFee)}% platform).</p>}
+                  {factoryFees.data?.legacy
+                    ? <p>This legacy factory has no platform fee.</p>
+                    : <p className="break-all text-caption text-surface-grey-2">Fixed treasury: {factoryFees.data?.feeRecipient}</p>}
+                  <p className="mt-1 text-caption text-surface-grey-2">Fees apply to gross trade value on buys and sells. Winning-share redemption has no additional platform fee.</p>
+                </>
+              )}
+              {platformFee !== undefined && feeValidation && <p role="alert" data-testid="create-fee-error" className="mt-1 text-system-red">{feeValidation}</p>}
             </div>
 
             <div>
@@ -541,7 +574,7 @@ export function CreatePage() {
                   : contentField === ContentField.Body
                     ? "body"
                     : "subject or body"}{" "}
-                · {days}d deadline · {feePct}% fee · {liquidity} {collateral.symbol} seed
+                · {days}d deadline · {lpFee !== null && platformFee !== undefined && !feeValidation ? `${formatFeePercent(lpFee + platformFee)}% total trading fee` : "fees not verified"} · {liquidity} {collateral.symbol} seed
               </p>
             </div>
 
@@ -568,7 +601,7 @@ export function CreatePage() {
               data-testid="create-submit"
               isLoading={busy}
               showChildrenWhenLoading
-              disabled={busy || !question || !regexState.valid}
+              disabled={busy || !question || !regexState.valid || !!feeValidation}
               onClick={create}
             >
               {busy ? "Creating market" : "Create market"}

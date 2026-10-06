@@ -24,6 +24,11 @@ contract Deploy is Script {
     address constant ANVIL_3 = 0x90F79bf6EB2c4f870365E785982E1f101E93b906;
 
     function run() external {
+        // Public deployments must explicitly name the fixed operator treasury.
+        uint256 protocolFee = vm.envOr("PROTOCOL_FEE", uint256(22e15)); // 2.2%
+        address feeRecipient =
+            block.chainid == 31337 ? vm.envOr("FEE_RECIPIENT", ANVIL_3) : vm.envAddress("FEE_RECIPIENT");
+        require(feeRecipient != address(0), "Deploy: missing fee recipient");
         vm.startBroadcast();
 
         Multicall3 multicall = new Multicall3();
@@ -31,8 +36,9 @@ contract Deploy is Script {
         TestUSDC usdc = new TestUSDC();
         DKIMRegistry dkim = new DKIMRegistry();
         DKIMVerifier verifier = new DKIMVerifier(dkim);
-        MarketFactory factory =
-            new MarketFactory(ct, verifier, address(new HeadlineMarket()), address(new FPMM()));
+        MarketFactory factory = new MarketFactory(
+            ct, verifier, address(new HeadlineMarket()), address(new FPMM()), protocolFee, feeRecipient
+        );
 
         // Register real DKIM public keys. The demo fixtures are signed by a committed
         // dev key (keys/dev-dkim.pub) registered for the newspaper domains; the REAL
@@ -79,16 +85,10 @@ contract Deploy is Script {
         p2.contentField = HeadlineMarket.ContentField.Subject;
         p2.sources = new HeadlineMarket.Source[](2);
         p2.sources[0] = HeadlineMarket.Source({
-            name: "Reuters",
-            dkimDomain: "email.reuters.com",
-            fromRegex: "@email\\.reuters\\.com$",
-            contentRegex: ""
+            name: "Reuters", dkimDomain: "email.reuters.com", fromRegex: "@email\\.reuters\\.com$", contentRegex: ""
         });
         p2.sources[1] = HeadlineMarket.Source({
-            name: "CNN",
-            dkimDomain: "mail.cnn.com",
-            fromRegex: "@mail\\.cnn\\.com$",
-            contentRegex: ""
+            name: "CNN", dkimDomain: "mail.cnn.com", fromRegex: "@mail\\.cnn\\.com$", contentRegex: ""
         });
         p2.threshold = 1;
         p2.windowStart = 0;
@@ -128,6 +128,8 @@ contract Deploy is Script {
 
         // Addresses for the frontend + e2e tests.
         string memory json = "deployment";
+        vm.serializeString(json, "protocolFee", vm.toString(factory.protocolFee()));
+        vm.serializeAddress(json, "feeRecipient", factory.feeRecipient());
         vm.serializeAddress(json, "conditionalTokens", address(ct));
         vm.serializeAddress(json, "usdc", address(usdc));
         vm.serializeAddress(json, "dkimRegistry", address(dkim));
@@ -167,10 +169,7 @@ contract Deploy is Script {
             contentRegex: ""
         });
         sources[2] = HeadlineMarket.Source({
-            name: "Reuters",
-            dkimDomain: "email.reuters.com",
-            fromRegex: "@email\\.reuters\\.com$",
-            contentRegex: ""
+            name: "Reuters", dkimDomain: "email.reuters.com", fromRegex: "@email\\.reuters\\.com$", contentRegex: ""
         });
     }
 }

@@ -60,10 +60,12 @@ Deployed 2026-08-21, **all contracts verified** on [gnosisscan.io](https://gnosi
   pnpm sync && pnpm dev`); connect an injected wallet (MetaMask/Rabby) — the local
   faucet/dev accounts appear only on anvil.
 - CI/CD via [etherform](https://github.com/BreadchainCoop/etherform):
-  `.github/workflows/cicd.yml` runs build/test on every PR and deploys
-  `script/DeployGnosis.s.sol` with Blockscout verification (repo secrets
-  `PRIVATE_KEY` + `RPC_URL`). `contracts/script/verify-blockscout.mjs` re-verifies a
-  manual deploy.
+  `.github/workflows/cicd.yml` runs build/test only, with PR deployments disabled
+  and no deployer secrets passed to CI. `contracts/script/verify-blockscout.mjs`
+  re-verifies an explicitly authorized manual deploy.
+- New deployments add a **2.2% operator fee** to the creator-selected LP fee
+  (default 2%, **4.2% combined**). Existing pools are unchanged; see
+  [fee accounting and treasury configuration](docs/FEES.md).
 
 ### The board: Polymarket's top-50, ported
 
@@ -123,9 +125,9 @@ All contracts verified on [eth-sepolia.blockscout.com](https://eth-sepolia.block
 
 Deploy your own: `node ../app/scripts/dkim-keys.mjs && forge script
 script/DeploySepolia.s.sol:DeploySepolia --rpc-url $RPC --broadcast --private-key $PK`,
-then `node script/verify-blockscout.mjs sepolia`. CI (`cicd.yml`) deploys this script on
-PRs via etherform with the repo's `PRIVATE_KEY`/`RPC_URL` secrets (Sepolia); the Gnosis
-mainnet deploy stays manual.
+then `node script/verify-blockscout.mjs sepolia`. Set `FEE_RECIPIENT` to the reviewed
+treasury address first; `PROTOCOL_FEE` defaults to 22000000000000000 (2.2%).
+Both Sepolia and Gnosis deployment remain manual; PR CI only builds and tests.
 
 ## See it in action
 

@@ -4,6 +4,7 @@ import { parseAbiItem } from "viem";
 import { abis } from "../contracts/gen";
 import { deployment, DEPLOY_BLOCK } from "../config";
 import { publicClient } from "../lib/wallet";
+import { readPoolFeeConfiguration, readProtocolFeeConfiguration } from "../lib/fees";
 
 export const FACTORY = deployment.factory as Address;
 export const CT = deployment.conditionalTokens as Address;
@@ -60,7 +61,12 @@ export interface MarketData {
   yesPositionId: bigint;
   noPositionId: bigint;
   collateral: { address: Address; symbol: string; decimals: number };
-  fee: bigint;
+  fee: bigint; // LP fee, 1e18-scale
+  protocolFee: bigint | null; // null means unverified, never silently fee-free
+  totalFee: bigint | null;
+  feeRecipient: Address | null;
+  feeError: string | null;
+  legacyFees: boolean;
   priceYes: bigint; // 1e18
   priceNo: bigint;
   poolYes: bigint;
@@ -159,6 +165,14 @@ async function fetchMarket(id: number, market: Address, fpmm: Address, chainNow:
     bigint,
   ];
 
+  let feeConfiguration: Awaited<ReturnType<typeof readPoolFeeConfiguration>> | null = null;
+  let feeError: string | null = null;
+  try {
+    feeConfiguration = await readPoolFeeConfiguration(publicClient, fpmm, abis.FPMM, fee);
+  } catch (error) {
+    feeError = error instanceof Error ? error.message.split("\n")[0] : "Platform fees could not be verified.";
+  }
+
   const [symbol, decimals] = (await publicClient.multicall({
     allowFailure: false,
     contracts: [
@@ -209,6 +223,11 @@ async function fetchMarket(id: number, market: Address, fpmm: Address, chainNow:
     noPositionId,
     collateral: { address: collateralAddr, symbol, decimals: Number(decimals) },
     fee,
+    protocolFee: feeConfiguration?.protocolFee ?? null,
+    totalFee: feeConfiguration?.totalFee ?? null,
+    feeRecipient: feeConfiguration?.feeRecipient ?? null,
+    feeError,
+    legacyFees: feeConfiguration?.legacy ?? false,
     priceYes,
     priceNo,
     poolYes: pool[0],
@@ -280,5 +299,14 @@ export function useCash(account: Address) {
         functionName: "balanceOf",
         args: [account],
       }) as Promise<bigint>,
+  });
+}
+
+export function useFactoryFees() {
+  return useQuery({
+    queryKey: ["factory-fees", FACTORY],
+    refetchInterval: 12000,
+    staleTime: 4000,
+    queryFn: () => readProtocolFeeConfiguration(publicClient, FACTORY, abis.MarketFactory, "factory"),
   });
 }
