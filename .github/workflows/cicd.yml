@@ -11,24 +11,17 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  cicd:
-    uses: BreadchainCoop/etherform/.github/workflows/_foundry-cicd.yml@f6182e6d5fbc06813a80f40d8432905ece36b40a
+  contracts:
+    # Build/test-only reusable workflow: no deployment job exists in this graph.
+    uses: BreadchainCoop/etherform/.github/workflows/_ci.yml@f6182e6d5fbc06813a80f40d8432905ece36b40a
     with:
       working-directory: contracts
       foundry-version: v1.5.1
+      etherform-ref: f6182e6d5fbc06813a80f40d8432905ece36b40a
       package-manager: none
       # Existing unrelated files are not uniformly formatted; check changed files below.
       check-formatting: false
-      deploy-on-pr: false
-      deploy-script: "script/DeploySepolia.s.sol:DeploySepolia"
-      # The RSA/differential tests use only Node built-ins, available on the
-      # Ubuntu runner. No contract-directory Node dependencies are needed.
-      contract-paths: |
-        contracts/src/**
-        contracts/script/**
-        contracts/test/**
-        contracts/foundry.toml
-        .github/workflows/cicd.yml
+      # Tests use only Node built-ins available on the Ubuntu runner.
 
   frontend:
     name: Frontend fees and build

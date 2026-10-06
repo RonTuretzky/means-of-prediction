@@ -57,8 +57,8 @@ market has the new default rate.
 
 ## Publication safety
 
-The build/test workflow pins its reviewed Etherform revision, sets
-`deploy-on-pr: false`, and passes no deployer credentials to the reusable workflow.
+The workflow calls only the pinned, reviewed Etherform build/test workflow,
+with no deployment job in its graph and no deployer credentials passed to it.
 Publishing this branch or opening its PR must not send onchain transactions.
 GitHub Pages remains restricted to main-branch pushes or manual dispatch, and
 the existing settlement schedule is unchanged. No workflow is dispatched by
