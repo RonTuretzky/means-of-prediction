@@ -195,7 +195,7 @@ was snapshotted, and a 40-message sample verifies under selector `20251104`.
 | snippet length | median 147, max 162; 2,190 of 3,226 end with an ellipsis |
 | sections | News only |
 | hosts | 834 distinct; reuters.com 348, bbc.com 241, **youtube.com 212**, apnews.com 196, theguardian.com 166, nytimes.com 147; **polymarket.com 30** (market pages surface as News results for these queries) |
-| volume by alert type | the five `site:` census alerts: 212 emails, 2,400 results; the 18 event-level alerts: 263 emails, about 800 results, most of them from the five broad topics (Anthropic IPO, Fed decision, Israel–Iran, US–Iran, shutdown); the narrow ones fired two to four times in three days |
+| volume by alert type | the five `site:` census alerts: 213 emails, 983 results; the 18 event-level alerts: 263 emails, 2,242 results, most of them from the five broad topics (Anthropic IPO, Fed decision, Israel–Iran, US–Iran, shutdown); the narrow ones fired two to four times in three days |
 
 **The GDELT stand-in misses most of what alerts deliver.** Matching the 3,226 results
 against the GDELT Article List for October 2–5 (`alerts_fidelity.py`): 697 found, 22%
