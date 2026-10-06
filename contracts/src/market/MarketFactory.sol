@@ -12,7 +12,8 @@ import {Clones} from "../utils/Clones.sol";
 /// @notice Permissionless factory: anyone can open a headline market. Deploys the
 /// market (which registers itself as oracle of a fresh CTF condition) plus its FPMM
 /// trading pool, and optionally seeds initial liquidity from the creator in the same
-/// transaction. Collateral token and trading fee are configurable per market.
+/// transaction. Collateral token and LP fee are configurable per market. The
+/// independent operator fee and its recipient are fixed at factory deployment.
 contract MarketFactory {
     struct CreateMarketParams {
         // market question
@@ -28,7 +29,7 @@ contract MarketFactory {
         uint64 resolutionBuffer; // grace period after deadline before NO is resolvable
         // market token management
         IERC20 collateralToken;
-        uint256 fee; // FPMM trading fee, 1e18-scale
+        uint256 fee; // LP fee only, 1e18-scale; factory protocolFee is additional
         uint256 initialLiquidity; // pulled from creator if > 0
         uint256[] distributionHint; // optional initial odds, e.g. [3, 1]
     }
@@ -54,24 +55,31 @@ contract MarketFactory {
     address public immutable marketImplementation;
     address public immutable fpmmImplementation;
 
+    /// @notice Operator rate inherited by every new pool (1e18-scale, capped at 5%).
+    uint256 public immutable protocolFee;
+    address public immutable feeRecipient;
+
     MarketRecord[] internal _markets;
 
     constructor(
         ConditionalTokens _conditionalTokens,
         IZKEmailVerifier _verifier,
         address _marketImplementation,
-        address _fpmmImplementation
+        address _fpmmImplementation,
+        uint256 _protocolFee,
+        address _feeRecipient
     ) {
+        require(_protocolFee <= 5e16, "Factory: protocol fee above 5%");
+        require(_protocolFee == 0 || _feeRecipient != address(0), "Factory: missing fee recipient");
         conditionalTokens = _conditionalTokens;
         verifier = _verifier;
         marketImplementation = _marketImplementation;
         fpmmImplementation = _fpmmImplementation;
+        protocolFee = _protocolFee;
+        feeRecipient = _feeRecipient;
     }
 
-    function createMarket(CreateMarketParams calldata params)
-        external
-        returns (HeadlineMarket market, FPMM fpmm)
-    {
+    function createMarket(CreateMarketParams calldata params) external returns (HeadlineMarket market, FPMM fpmm) {
         market = HeadlineMarket(Clones.clone(marketImplementation));
         market.initialize(
             conditionalTokens,
@@ -91,7 +99,9 @@ contract MarketFactory {
             })
         );
         fpmm = FPMM(Clones.clone(fpmmImplementation));
-        fpmm.initialize(conditionalTokens, params.collateralToken, market.conditionId(), params.fee);
+        fpmm.initialize(
+            conditionalTokens, params.collateralToken, market.conditionId(), params.fee, protocolFee, feeRecipient
+        );
 
         if (params.initialLiquidity > 0) {
             require(

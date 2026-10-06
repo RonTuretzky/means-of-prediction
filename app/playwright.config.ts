@@ -15,6 +15,10 @@ export default defineConfig({
   use: {
     baseURL: "http://localhost:5198",
     trace: "retain-on-failure",
+    // Allow an already-installed Chromium in restricted/offline test environments.
+    launchOptions: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE
+      ? { executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE }
+      : undefined,
   },
   webServer: {
     // sync-contracts runs AFTER global-setup's fresh deploy wrote deployments/local.json

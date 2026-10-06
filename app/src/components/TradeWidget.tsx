@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@breadcoop/ui";
 import { formatUnits, maxUint256 } from "viem";
 import { abis } from "../contracts/gen";
@@ -6,6 +6,7 @@ import { CT, Resolution, useBalances, type MarketData } from "../hooks/useMarket
 import { fmtAmount, fmtCents, parseAmount } from "../lib/format";
 import { publicClient, useWallet } from "../lib/wallet";
 import { useToast } from "./Toast";
+import { FeeBreakdown } from "./FeeBreakdown";
 
 const SLIPPAGE_BPS = 100n; // 1% tolerance vs quoted amount
 
@@ -22,6 +23,9 @@ export function TradeWidget({ m }: { m: MarketData }) {
   const [quote, setQuote] = useState<bigint | null>(null); // buy: shares; sell: dollars received
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const submitting = useRef(false);
+  const feesVerified = m.protocolFee !== null && m.totalFee !== null && !m.feeError;
 
   const dec = m.collateral.decimals;
   const units = parseAmount(amount, dec);
@@ -80,7 +84,8 @@ export function TradeWidget({ m }: { m: MarketData }) {
       : bal !== undefined && units !== null && units > (side === 0 ? bal.yes : bal.no);
 
   const submit = async () => {
-    if (!units || !quote) return;
+    if (!units || !quote || !feesVerified || submitting.current) return;
+    submitting.current = true;
     setBusy("submitting");
     setError(null);
     try {
@@ -146,6 +151,7 @@ export function TradeWidget({ m }: { m: MarketData }) {
     } catch (e) {
       setError(explain(e));
     } finally {
+      submitting.current = false;
       setBusy(null);
     }
   };
@@ -285,9 +291,13 @@ export function TradeWidget({ m }: { m: MarketData }) {
             <span data-testid="youll-receive">{quote !== null ? fmtAmount(quote, dec) : "$0.00"}</span>
           </div>
         )}
-        <div className="flex justify-between text-caption text-surface-grey-2">
-          <span>Fee ({Number(m.fee) / 1e16}%) included · max slippage 1%</span>
-        </div>
+        {feesVerified ? (
+          <FeeBreakdown lpFee={m.fee} protocolFee={m.protocolFee!} totalFee={m.totalFee!} legacy={m.legacyFees} />
+        ) : (
+          <p role="alert" data-testid="trade-fees-unavailable" className="text-caption text-system-red">
+            Trading fees are unavailable. Trading is paused until the onchain rates can be verified. Please retry shortly.
+          </p>
+        )}
       </div>
 
       {error && (
@@ -303,7 +313,7 @@ export function TradeWidget({ m }: { m: MarketData }) {
         data-testid="trade-submit"
         className="w-full"
         variant={side === 0 ? "positive" : "destructive"}
-        disabled={!units || !quote || !!busy || notEnough}
+        disabled={!units || !quote || !!busy || notEnough || !feesVerified}
         isLoading={!!busy}
         showChildrenWhenLoading
         onClick={submit}
@@ -315,7 +325,7 @@ export function TradeWidget({ m }: { m: MarketData }) {
             : `${tab === "buy" ? "Buy" : "Sell"} ${side === 0 ? "Yes" : "No"}`}
       </Button>
       <p className="mt-2 text-center text-caption text-surface-grey-2">
-        By trading, you agree this is a local demo settled by real DKIM signatures verified onchain.
+        Winning shares redeem without an additional platform fee. Settlement uses public DKIM signatures verified onchain.
       </p>
     </div>
   );

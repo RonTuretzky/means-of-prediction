@@ -5,6 +5,7 @@ import { ArrowLeft, CaretDown, CaretUp } from "@phosphor-icons/react";
 import { statusBadge } from "../components/MarketCard";
 import { ActivityFeed } from "../components/ActivityFeed";
 import { LiquidityPanel } from "../components/LiquidityPanel";
+import { ProtocolFeesPanel } from "../components/ProtocolFeesPanel";
 import { PositionsPanel } from "../components/PositionsPanel";
 import { PriceChart } from "../components/PriceChart";
 import { ResolutionPanel } from "../components/ResolutionPanel";
@@ -14,6 +15,7 @@ import { MarketPageSkeleton } from "../components/Skeleton";
 import { TradeWidget } from "../components/TradeWidget";
 import { Resolution, useMarket } from "../hooks/useMarkets";
 import { usePriceHistory } from "../hooks/usePriceHistory";
+import { formatFeePercent } from "../lib/fees";
 import { fmtCents, fmtChance, fmtDate, fmtVol } from "../lib/format";
 
 type Tab = "resolution" | "activity" | "rules";
@@ -68,6 +70,9 @@ export function MarketPage() {
             <span>{fmtVol(m.volume, m.collateral.decimals)}</span>
             <span>Ends {fmtDate(m.deadline)}</span>
             <span>Collateral: {m.collateral.symbol}</span>
+            <span data-testid="market-fees">{m.protocolFee === null || m.totalFee === null
+              ? "Trading fees unavailable"
+              : `Fees: ${formatFeePercent(m.fee)}% LP + ${formatFeePercent(m.protocolFee)}% platform = ${formatFeePercent(m.totalFee)}% total`}</span>
           </div>
         </div>
         <div className="text-right">
@@ -126,6 +131,7 @@ export function MarketPage() {
         <div className="space-y-6">
           <TradeWidget m={m} />
           <PositionsPanel m={m} />
+          <ProtocolFeesPanel key={m.fpmm} m={m} />
         </div>
       </div>
     </div>

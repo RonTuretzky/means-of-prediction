@@ -22,19 +22,26 @@ import {FPMM} from "../src/market/FPMM.sol";
 ///     --rpc-url https://rpc.gnosischain.com --broadcast --private-key $PRIVATE_KEY
 contract DeployGnosis is Script {
     function run() external {
+        // Public deployments must explicitly name the fixed operator treasury.
+        uint256 protocolFee = vm.envOr("PROTOCOL_FEE", uint256(22e15)); // 2.2%
+        address feeRecipient = vm.envAddress("FEE_RECIPIENT");
+        require(feeRecipient != address(0), "Deploy: missing fee recipient");
         vm.startBroadcast();
 
         ConditionalTokens ct = new ConditionalTokens();
         DKIMRegistry dkim = new DKIMRegistry();
         DKIMVerifier verifier = new DKIMVerifier(dkim);
-        MarketFactory factory =
-            new MarketFactory(ct, verifier, address(new HeadlineMarket()), address(new FPMM()));
+        MarketFactory factory = new MarketFactory(
+            ct, verifier, address(new HeadlineMarket()), address(new FPMM()), protocolFee, feeRecipient
+        );
 
         registerKeysFromFile(dkim);
 
         vm.stopBroadcast();
 
         string memory json = "deployment";
+        vm.serializeString(json, "protocolFee", vm.toString(factory.protocolFee()));
+        vm.serializeAddress(json, "feeRecipient", factory.feeRecipient());
         vm.serializeAddress(json, "conditionalTokens", address(ct));
         vm.serializeAddress(json, "dkimRegistry", address(dkim));
         vm.serializeAddress(json, "verifier", address(verifier));
