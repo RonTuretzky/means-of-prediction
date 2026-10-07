@@ -146,6 +146,41 @@ questions, so report per topic; units are entity-matched records from ten days b
 market closed to two days after, capped at 60 per market (the 40 best-matching are
 labelled), which is not what an alert query would have returned.
 
+**First K-outlet table (preliminary, October 7, 14:00 JST, `alerts_tables.py`).** Jev labels
+on the GDELT stand-in corpus, 345,358 labels over 11,367 markets of the 17,465 with
+units (the chain was still running), units dated on or before the market's close date,
+payouts as a consistency check only. A market reaches K when K distinct hosts carry a
+result with pA at or above the threshold.
+
+| Jev threshold | hosts | K | YES-payout markets reaching K (coverage) | NO-payout markets reaching K (false YES) |
+|---|---|---|---|---|
+| 0.5 | all | 1 | 993 of 4,261 (23.3%) | 60 of 6,911 (0.87%) |
+| 0.7 | all | 1 | 544 of 4,261 (12.8%) | 11 of 6,911 (0.16%) |
+| 0.7 | all | 2 | 316 of 4,261 (7.4%) | 5 of 6,911 (0.07%) |
+| 0.7 | registry | 1 | 80 of 4,261 (1.9%) | 5 of 6,911 (0.07%) |
+| 0.7 | registry | 2 | 19 of 4,261 (0.4%) | 0 of 6,911 |
+
+Per topic at 0.7, any host, K = 1: geopolitics is the only topic with a false-YES rate
+above 0.2% (7 of 554; sports, elections and entertainment 0 of 2,716, 434 and 195).
+Registry coverage is tiny because GDELT carries few registry outlets (section above);
+coverage on real alerts is a different number and is not measured yet.
+
+The ten NO-payout markets that reached K = 1 at 0.7 were read one by one against the
+Polymarket rules and creation dates (`prices` lookups on October 7): seven are
+"strike on X by <date>" buckets where the strike happened before the market was created
+(US on Nigeria, created the day after the Christmas strike; US on Somalia; Hezbollah on
+Cyprus; Pakistan on Afghanistan; Russia on Kyiv; Russia on Poland, a September incident
+in a June op-ed; India on Pakistan, a 2022 incident) and the results report a true event
+outside the market's window; two are borderline reads at 0.70 and 0.71 (an analysis
+piece on Israel and Iran; a Doechii-praises-Gaga headline read as Gaga attending the
+Met Gala); one is a threshold market ("Sinners" wins 3 or fewer Oscars), which the
+admission rule excludes. So the reader's own error rate at 0.7 is about 2 of 6,911, and
+the dominant failure is the event window: the blind rules name the deadline but not the
+window start, because the rule writer is not given the market creation date. Give it
+that date (the event instance must say "on or after <creation>") and make the judge
+check it; the contract's send-time check cannot catch a report, dated inside the
+window, of an event that happened before it.
+
 **Forward-test dry run (October 7).** Not the pre-registered test (step 1 below is still
 owed) but a rehearsal of the whole pipeline on the first five days of real alert mail,
 October 2 to 6, so that the pre-registration freezes a procedure that has already run end
@@ -265,7 +300,8 @@ Code, all in `app/scripts/research/blind/`:
 | `alerts_label.py` | Jev labels on (alert unit, market) pairs with the Fable rule |
 | `alerts_mail.py`, `alerts_fidelity.py` | pull alert mail read-only over IMAP (every folder, Spam included), snapshot the google.com DKIM record, verify a sample, census; compare alert results with GDELT (URL and host+title overlap, headline and snippet agreement, delay) |
 | `alerts_forward.py` | forward test on real alerts: `pairs`, `judge --backend laya|jev|fable` (resumes from the judged file; a market under two families is judged once; Fable receipts keyed family-market-offset), `settle --backend X --threshold t` (claims, distinct hosts, registry hosts per side, a market's entries merged across families with units deduplicated; writes `settle-X-t.json`, or `settle-fable.json`) |
-| `alerts_probe.py` | 120-market calibration probe on Google News headlines (not for bulk use); its `summary()` is the template for the K-outlet tables |
+| `alerts_probe.py` | 120-market calibration probe on Google News headlines (not for bulk use) |
+| `alerts_tables.py` | K-outlet tables on the retrospective corpus from the Jev labels: coverage of YES-payout markets and false YES on NO-payout markets per threshold, host scope and K, per topic; writes `tables-<stamp>.json` beside the labels |
 
 Mail intake: `app/automation/imap.mjs`, `app/automation/collector.mjs`,
 `app/scripts/mailbox.mjs` (reads `mailbox.json`).
@@ -343,10 +379,14 @@ No training is running.
    beside it as a known-unsafe baseline. Say in the file that no market settles NO by
    evidence, so B claims are reported and never settle.
    Start hash-logging alert emails on arrival.
-2. Finish the Jev labels (hours away on the direct API, see section 5). A preliminary
-   version of step 3 can be computed today on the markets labelled so far.
-3. K-outlet tables, the first large-scale false-settlement number. No script exists yet;
-   `alerts_probe.py summary()` is the template. Definitions: a unit claims YES when
+2. Finish the Jev labels (hours away on the direct API, see section 5), then rerun
+   `alerts_tables.py`. Before the next rules batch, add the market creation date to the
+   rule writer's input so the event instance carries the window start (section 3, the
+   ten-market audit).
+3. K-outlet tables, the first large-scale false-settlement number. `alerts_tables.py`
+   computes them (first, preliminary run in section 3). Still missing: the window start
+   (market creation date; the sample does not carry it) and the admission-rule tagging.
+   Definitions: a unit claims YES when
    pA ≥ t (report t = 0.5 and 0.7; A is Yes for these markets) and its `seenAt` is inside
    the market window; a market settles when K distinct hosts claim; false YES = markets
    whose payout is No that reach K; coverage = markets whose payout is Yes that reach K.
