@@ -2,13 +2,15 @@
 
   pairs    (alert result, open market) pairs: every result of an alert family against every market of that family.
   judge    --backend laya   the distilled student (local, free; known unsafe on alert text, reported as a baseline)
-           --backend jev    the teacher (OpenRouter; the key's daily limit applies)
-           --backend fable  Claude Fable through the headless transport, one call per market with all its results numbered,
+           --backend jev    the teacher (direct TypeSafe API, model jev-latest, when ~/.config/means-of-prediction/jev.json exists;
+                            otherwise typesafe/jev-1.13 through OpenRouter, where the key's daily limit applies)
+           --backend fable  Claude Fable through the headless transport, per market with its results numbered in calls of at most 120
+                            (receipts under fable/<family>-<market>-<offset>),
                             returning the indices that report A or B as a completed fact with an exact quote (blind: the model
                             is given the market terms and the alert results only; its knowledge ends before these events)
   settle   per market: YES-claiming results (p >= threshold, or Fable A/B), distinct hosts, registry hosts, K = 1, 2, 3.
 Private outputs under --root. Payouts are unknown here: these markets are open; the human reads the listed headlines."""
-import argparse, collections, hashlib, json, os, sys, time, urllib.parse
+import argparse, collections, hashlib, json, os, re, sys, time, urllib.parse
 from pathlib import Path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from laya_distill import RULE, Jev, gpu_pause
@@ -49,15 +51,18 @@ def judge(root, backend, rules_path, model_path, device, max_cost, workers):
         for m in markets:
             rule = rules.get(m['marketId']); units = [u for u in m['units'] if (m['marketId'], u['unitId']) not in done]
             if not units: continue
+            slug = re.sub(r'[^A-Za-z0-9]+', '-', m['family']).strip('-')[:40]
             for c0 in range(0, len(units), 120):
                 chunk = units[c0:c0+120]
                 packet = {'market': {'question': m['question'], 'closes': m['endDate'], 'factualA': rule['factualA'] if rule else 'The answer to the question is Yes, as a completed fact.', 'factualB': rule['factualB'] if rule else 'The answer to the question is No, as a completed fact (the deadline passed or the opposite outcome occurred).', 'eventInstance': rule.get('eventInstance') if rule else None, 'notCounted': rule.get('notCounted') if rule else None},
                           'results': [{'index': i, 'headline': u['headline'], 'publisher': u.get('publisher'), 'snippet': u.get('snippet'), 'host': u['host'], 'sent': u['sent']} for i, u in enumerate(chunk)]}
-                res = ft.run({'instructions': PROMPT, 'input': packet, 'effort': 'medium', 'schema': SCHEMA, 'maxBudgetUsd': 3.0}, root/'fable'/f"{m['marketId']}-{c0}")
-                output, usage, status = ft.output_from(res, root/'fable'/f"{m['marketId']}-{c0}"); claims = {c['index']: c for c in (output or {}).get('claims', [])} if status == 'completed' else {}
+                rdir = root/'fable'/f"{slug}-{m['marketId']}-{c0}"
+                res = ft.run({'instructions': PROMPT, 'input': packet, 'effort': 'medium', 'schema': SCHEMA, 'maxBudgetUsd': 3.0}, rdir)
+                output, usage, status = ft.output_from(res, rdir); claims = {c['index']: c for c in (output or {}).get('claims', [])} if status == 'completed' else {}
                 with out_path.open('a') as f:
                     for i, u in enumerate(chunk):
                         c = claims.get(i); f.write(json.dumps({'marketId': m['marketId'], 'unitId': u['unitId'], 'host': u['host'], 'sent': u['sent'], 'status': status, 'outcome': c['outcome'] if c else None, 'quote': c['quote'] if c else None, 'confidence': c['confidence'] if c else None})+'\n'); n += 1
+                done.update((m['marketId'], u['unitId']) for u in chunk)  # a market under two families is judged once
                 print(json.dumps({'market': m['marketId'], 'units': len(chunk), 'status': status, 'claims': len(claims), 'family': m['family'][:40]}), flush=True)
         print(json.dumps({'judged': n})); return
     tasks = []
@@ -68,7 +73,7 @@ def judge(root, backend, rules_path, model_path, device, max_cost, workers):
             qs = {'q': {'type': 'noul', 'instructions': 'Does the text state, as something that has already happened, that the answer to this question is yes: '+m['question']+RULE}}
             if rule:
                 qs['A'] = {'type': 'noul', 'instructions': 'Does the text state, as something that has already happened: '+rule['factualA'][:600]+RULE}; qs['B'] = {'type': 'noul', 'instructions': 'Does the text state, as something that has already happened: '+rule['factualB'][:600]+RULE}
-            tasks.append((m['marketId'], u, qs))
+            tasks.append((m['marketId'], u, qs)); done.add((m['marketId'], u['unitId']))
     print(json.dumps({'backend': backend, 'tasks': len(tasks), 'rules': len(rules)}), flush=True)
     if backend == 'laya':
         import torch, laya
@@ -92,11 +97,19 @@ def judge(root, backend, rules_path, model_path, device, max_cost, workers):
                 continue
             f.write(json.dumps(rec)+'\n'); n += 1
     print(json.dumps({'judged': n, 'failures': fails}))
+    if backend == 'jev': print(json.dumps({'teacher': jev.label, 'model': jev.model, 'resolved': jev.resolved, 'calls': jev.calls, 'costUsd': round(jev.cost, 4)}))
 
 def settle(root, backend, threshold, rules_path):
-    markets = {m['marketId']: m for m in json.loads((root/'pairs.private.json').read_text())}; allow = alerts_probe.allowlist(); recs = collections.defaultdict(list)
+    markets = {}  # a market under two alert families: merge its entries, units deduplicated
+    for m in json.loads((root/'pairs.private.json').read_text()):
+        mm = markets.setdefault(m['marketId'], dict(m, units=[])); have = {u['unitId'] for u in mm['units']}
+        mm['units'].extend(u for u in m['units'] if u['unitId'] not in have)
+    allow = alerts_probe.allowlist(); recs = collections.defaultdict(list)
+    seen = set()
     for l in open(root/f'judged-{backend}.private.jsonl'):
-        r = json.loads(l); recs[r['marketId']].append(r)
+        r = json.loads(l); k = (r['marketId'], r['unitId'])
+        if k in seen: continue  # the first run judged markets under two families twice
+        seen.add(k); recs[r['marketId']].append(r)
     units = {(m['marketId'], u['unitId']): u for m in markets.values() for u in m['units']}
     table = []
     for mid, m in markets.items():
@@ -112,9 +125,9 @@ def settle(root, backend, threshold, rules_path):
         for side in ('A', 'B'):
             hosts = {r['host'] for r in claims[side]}; row[side] = {'claims': len(claims[side]), 'hosts': len(hosts), 'registryHosts': len(hosts & allow), 'examples': [(units[(mid, r['unitId'])]['headline'][:110], r['host'], (r.get('quote') or '')[:80]) for r in claims[side][:4]]}
         table.append(row)
-    (root/f'settle-{backend}.json').write_text(json.dumps(table, indent=1, ensure_ascii=False))
+    (root/(f'settle-{backend}.json' if backend == 'fable' else f'settle-{backend}-{threshold}.json')).write_text(json.dumps(table, indent=1, ensure_ascii=False))
     k2 = [t for t in table if t['A']['registryHosts'] >= 2 or t['B']['registryHosts'] >= 2]
-    print(json.dumps({'backend': backend, 'markets': len(table), 'anyClaimA': sum(t['A']['claims'] > 0 for t in table), 'anyClaimB': sum(t['B']['claims'] > 0 for t in table), 'K2registryA': sum(t['A']['registryHosts'] >= 2 for t in table), 'K2registryB': sum(t['B']['registryHosts'] >= 2 for t in table)}))
+    print(json.dumps({'backend': backend, 'threshold': None if backend == 'fable' else threshold, 'markets': len(table), 'anyClaimA': sum(t['A']['claims'] > 0 for t in table), 'anyClaimB': sum(t['B']['claims'] > 0 for t in table), 'K2registryA': sum(t['A']['registryHosts'] >= 2 for t in table), 'K2registryB': sum(t['B']['registryHosts'] >= 2 for t in table)}))
     for t in sorted(table, key=lambda t: -(t['A']['registryHosts']+t['B']['registryHosts'])):
         if t['A']['claims'] or t['B']['claims']:
             print(f"\n{t['question'][:95]}  (closes {t['closes']}, {t['units']} results)\n  A: {t['A']['claims']} claims, {t['A']['hosts']} hosts, {t['A']['registryHosts']} registry | B: {t['B']['claims']} claims, {t['B']['hosts']} hosts, {t['B']['registryHosts']} registry")

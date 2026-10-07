@@ -1,4 +1,4 @@
-# Means of Prediction: master handoff (October 4, 2026, 18:00 JST)
+# Means of Prediction: master handoff (October 4, 2026, 18:00 JST; revised October 7, 13:30 JST)
 
 Read this first. It states the premise, gives a brief history of the whole research
 effort, says what is best today and where it lives, what is running, and what to do next.
@@ -31,10 +31,13 @@ move money? Two constraints shape everything:
 when at least K admissible sources each report the dated event as a completed fact inside
 the evidence window, and the YES becomes final after a challenge delay. A model is never
 asked to prove a negative: NO is reached only by exclusivity (a sibling market in the same
-event group settles YES) or the market voids at par at the deadline. Terms: *siblings* are
+event group settles YES) or the market voids at par when no YES is final by the deadline
+plus a grace period (7 days in the research plan v2 template). Terms: *siblings* are
 markets on mutually exclusive outcomes of one event (each candidate for one office);
-a *date bucket* is a market that differs from a sibling only by a date ("IPO on June 26",
-"by October 31"); *independent originations* means K separate reports, not K hosts carrying
+a *date bucket* is a market that differs from a sibling only by a date ("IPO on June 26"
+beside "IPO on June 27", "through October 31" beside "through November 30"); a standalone
+"will X happen by T" market is not a bucket and voids at par when no YES is final by T
+plus the grace period (a YES becomes final only after the challenge delay); *independent originations* means K separate reports, not K hosts carrying
 one wire story.
 
 **Roles the research converged on.**
@@ -42,7 +45,7 @@ one wire story.
 | role | who | why |
 |---|---|---|
 | rule writer | Claude Fable 5.1, blind to outcomes, through headless Claude Code under the owner's sign-in | turns public market terms into factual predicates for each side (A = first outcome label, B = second) |
-| teacher reader | Jev (TypeSafe closed decision model, `typesafe/jev-1.13` via OpenRouter, about $0.00002 to $0.00005 per call) | reads well and is safe, but closed |
+| teacher reader | Jev (TypeSafe closed decision model; `jev-latest` on the direct TypeSafe API, which the API reported as jev-1.13.0 on October 7 (logged in the forward run's `.judge-jev.log` for its second pass; the judge has printed the resolved id only since that day), $0.042 per million input tokens, output free, no daily cap; `typesafe/jev-1.13` through OpenRouter is used only when no TypeSafe key file exists, about $0.00002 to $0.00005 per call with a $1/day key limit) | reads well and is safe, but closed |
 | deployable reader | Laya (421M ModernBERT typed-decision encoder, Apache-2.0, about 20 ms per call on a laptop GPU), distilled from Jev | open weights; see the caveat on verifiable execution above |
 | yardstick | reviewed labels on a sealed validation split; real market payouts only as a consistency check | the labels come from the round's retrospective review of each (market, email) pair, not from an independent human gold set (the Laya documents call them "human labels"; read that as these reviewed labels). Payouts are never proof that a document settles a market |
 
@@ -56,6 +59,7 @@ one wire story.
 | Sept 21 | Benchmarked typed-decision models on the located passages. | Jev: 137 of 161 correct side, 0 wrong. Base Laya: 56 right, 87 wrong side. Jev is the teacher; Laya needs training. `docs/LAYA-BENCHMARK-20260921.md` |
 | Sept 22–27 | Distilled Laya from Jev on 1,200-character windows of the newsletter emails. v1 under-fired; v2 re-weighted positives and exposed the broken choice head; v3 (student-proposed hard negatives) collapsed; v3b (positives embedded in real newsletter text) fit the teacher but confused sides; v3c added side-contrast weighting. | **v3c epoch 2: 41 of 56 held-out facts correct, 1 wrong side, 0 false picks on 105 unsettled rows; Jev 48 correct, 0 wrong, 2 false picks.** `docs/LAYA-DISTILLATION-20260922.md`, `docs/HANDOFF-LAYA-DISTILLATION-20260927.md` |
 | Oct 2–4 | Pivot of the evidence source: Google Alerts emails instead of newspaper newsletters (one google.com signer covers every outlet; one result is about 250 characters). Verified the email anatomy on real messages, red-teamed "one alert per newspaper, headline only", built an alert-shaped corpus for 19,783 resolved markets, started Jev labels, created live alerts on the owner's Gmail. | Headline-only with K outlets fails (sibling and date-bucket false YES, recall collapse); revised design adopted. Corpus built, labels in progress. `docs/GOOGLE-ALERTS-PLAN-20261003.md`, `docs/HANDOFF-GOOGLE-ALERTS-20261003.md` |
+| Oct 6–7 | First real alert mail: 477 emails (3,226 results) pulled from the owner's Gmail, every one filed in Spam; format census and comparison with GDELT. Jev moved to the direct TypeSafe API. Dry run of the forward test: every result of the 15 alert families that have open markets, read against those markets by Jev, Fable and the newsletter student. | GDELT holds only 22% of what alerts deliver (no Reuters, AP or WaPo; 4 of 147 NYT). **At Jev's threshold no reader claimed YES on any of the 60 open markets** over 7,635 distinct result-market pairs; the newsletter student at its own 0.4 threshold claimed YES on 8 markets, every one false. Fable found the Kanye West Russia concert cancellation in 54 results on 41 hosts (25 in the headline, mostly wire copy; 29 only in the snippet, almost all sidebar or bulletin text), evidence against that market but not a settlement under the rule. Section 3, "Forward-test dry run". |
 
 **Status of research plan v2.** In force: the threat model, the settlement rule above,
 the stop/keep list. Not run: the Track 0 censuses, the Subject-first slice on Sepolia,
@@ -142,6 +146,86 @@ questions, so report per topic; units are entity-matched records from ten days b
 market closed to two days after, capped at 60 per market (the 40 best-matching are
 labelled), which is not what an alert query would have returned.
 
+**Forward-test dry run (October 7).** Not the pre-registered test (step 1 below is still
+owed) but a rehearsal of the whole pipeline on the first five days of real alert mail,
+October 2 to 6, so that the pre-registration freezes a procedure that has already run end
+to end. `alerts_forward.py` pairs every result of an alert family with every open market
+behind that family: 15 families, 60 open markets, 7,635 distinct result-market pairs
+(7,835 judgements per reader, because the five balance-of-power markets sit under both
+midterm families and their 40 shared results were read once per family; the script now
+judges such pairs once), 694 distinct hosts. Fable wrote the 60 blind rules (3 batches,
+no failures); three readers judged each pair. Jev and the student see the headline, the
+publisher label and the snippet and answer the market question and the two predicates
+as separate yes/no questions. Fable sees a market's results numbered in calls of at most
+120 (29 markets took one call, 25 two and 6 three, the six being Anthropic IPO and the
+five balance-of-power markets, which were called under each midterm family; 97 calls in
+all, so it never saw a large market's full list together), with host and send time, plus the
+rule's event instance and not-counted list, and must quote the words that state A or B
+as a completed fact.
+
+| reader | threshold | markets with a YES (A) claim | markets with a NO (B) claim | notes |
+|---|---|---|---|---|
+| Jev, direct API | p ≥ 0.7 | 0 of 60 | 1 | B: "Israel x Iran ceasefire continues through October 31?", one result from abc11.com (not a registry host) about US soldiers killed in Iranian attacks, a different instance |
+| Jev | p ≥ 0.5 (near misses) | 2 | 3 | A: "Ukraine warns of rising risk of war" and a German aid package read as a Russia-Ukraine ceasefire agreement; a "gigs are canceled" headline read as Kanye performing. B: Iran-war items read as the Israel-Iran or US-Iran ceasefire ending; on "Israel x Iran ceasefire continues through October 31?" the B side reaches 6 hosts, 3 of them registry hosts, the one place where Jev's near misses pass K = 2 over registry hosts |
+| Fable 5.1 | high or medium confidence | 0 of 60 | 1 | B: "Kanye West performs in Russia by October 31?", 54 results on 41 distinct hosts, 6 of them registry hosts. Only 25 of the 54 (24 hosts; among registry hosts only theguardian.com and news24.com) carry the cancellation in the headline, and most of those are Reuters or Guardian/PA copy; the other 29, including every bbc.com, reuters.com, newsweek.com and euronews.com hit, carry it only in the snippet, almost all as sidebar or bulletin text on unrelated articles (one, intellinews.com on the organiser's frozen accounts, is a related article that states the cancellation in its own lede). A handful of originations, not 41 |
+| newsletter student v3c, side heads | p ≥ 0.7 (Jev's threshold) | 0 of 60 | 0 | |
+| newsletter student v3c, side heads | p ≥ 0.4 (its own threshold, fixed in advance) | **8 of 60**: 13 results, 1 registry host (cnbc.com, "Trump reiterates pledge to send $5,000 checks as elections loom" read as Republicans holding both chambers) | 11 | every A claim is a false YES; none survives K = 2 over registry hosts; the B side reaches two registry hosts on three markets (Kanye and both Israel-Iran "continues through" markets) |
+
+How to read it. None of the 60 markets has closed and none of their events has happened
+(prices checked on October 7 and kept in `prices-20261007.json`: the only markets above
+0.5 are midterm forecasts for November 4, that is ten safe House seats, Democratic House
+control at 0.925, Democratic Senate control and the D Senate, D House balance at 0.645;
+the Serbia favourite at 0.68; and the three "ceasefire continues" markets, which pay YES
+when nothing happens), so any YES claim would have been false. At Jev's threshold there
+were none: zero false YES at K = 1 over 7,635 pairs for Jev, for Fable and for the
+student. That is the number with information in it; a true settlement could not have
+appeared yet. The student at its own 0.4 threshold fails in the same direction as the
+120-market probe, at a lower rate: false YES on 8 of the 60 markets at K = 1 over all
+hosts (3 of them at K = 2), on 1 at K = 1 over registry hosts and on none at K = 2 over
+registry hosts, against the probe's 14 of 56 at K = 1 and 8 at K = 2 over registry
+outlets; it stays a known-unsafe baseline on alert text. Jev's near misses at p ≥ 0.5 show what
+the 0.7 threshold is for.
+
+Fable's Kanye finding is evidence against YES, and the market prices YES at 1.3%, but
+under the settlement rule it is not a settlement: NO is never reached by evidence, only by
+a sibling's final YES or by void when no YES is final by the deadline plus the grace
+period, and this market has no sibling in the snapshot. The market itself is admissible (a headline can carry "Kanye West performs in
+St Petersburg"); the defect is in the B predicate Fable had written for it, which reads
+"October 31, 2026 passed without Kanye West giving a qualifying live in-person
+performance in Russia; established by cancellation/postponement past the deadline or the
+window closing". The rule itself names a cancellation as a way B is established, and
+Fable as judge took the cancellation reports as stating B although the deadline had not
+passed and the judge prompt asks for a completed fact. Jev was given the same B text and
+did not take it (pB at most 0.26 over the 88 Kanye results). The B side of a standalone
+"by T" market is a predicate a rule writer and a reader will both over-read, so B claims
+are reported but never settle, and the rule-writing prompt should forbid "established by
+cancellation" wording. What the admission rule has to keep out are the three "continues
+through" markets, whose YES is the absence of an event that no headline can carry, and
+the governorship count market ("exactly 28 or 29", a threshold).
+
+K was counted over distinct hosts, which is a proxy for the rule: section 1 counts
+independent originations, and `settle()` does no ownership or wire-family collapsing, no
+near-identical-headline deduplication and no non-wire-original check. The Kanye B side
+reached 6 registry hosts that way, four of them snippet-only sidebar mentions.
+
+Private outputs: `~/.local/share/means-of-prediction/alerts-forward-run-20261007/`
+(`pairs.private.json`, `judged-{jev,fable,laya}.private.jsonl`, `settle-fable.json`,
+`settle-{jev,laya}-<threshold>.json`, `prices-20261007.json`,
+`typesafe-models-20261007.json`, and Fable's per-chunk receipts under `fable/`: 92
+directories for 97 calls, because the first run keyed receipts by market and offset only
+and the Senate-family call overwrote the House-family first chunk of the five doubled
+markets; all five lost calls completed with no claim and the judged file is complete).
+The one-line settlement tables sit beside that directory:
+`alerts-forward-run-20261007.settle-jev.txt` (0.7), `.settle-jev-0.5.txt`,
+`.settle-fable.txt`, `.settle-laya.txt` (0.7), `.settle-laya-0.4.txt`. The Jev pass ran
+outside the chain (`.judge-jev.log`; five pairs that failed in the first pass were judged
+in a second, since the judge resumes from its output, and that second pass logged the
+resolved model id jev-1.13.0; the first pass started after `jev.json` existed, so it was
+direct too, but its log has no model line); the chain `alerts-forward-run-20261007.chain.sh` ran the
+rules wait, the Fable judge and settle, and the student judge and settle at 0.7; the 0.5
+and 0.4 tables were run by hand afterwards. The 60 open-market rules are
+`slides/alerts-forward-20261003/rules/rules.jsonl`.
+
 ## 4. Where everything is
 
 Repository worktree: `/Users/wk/conductor/workspaces/means-of-prediction/newport-beach`,
@@ -149,7 +233,11 @@ branch `RonTuretzky/replace-astra-with-fable-research`, remote `origin`
 (github.com/RonTuretzky/means-of-prediction; `origin` is correct in this worktree). Commit
 as the configured user, no assistant co-author trailer. Private data:
 `~/.local/share/means-of-prediction/` (never commit `*.private.*`, raw mail or keys).
-Secrets: `~/.config/means-of-prediction/openrouter.json` (teacher key),
+Secrets: `~/.config/means-of-prediction/jev.json` (direct TypeSafe key; when this file
+exists every Jev call goes to the direct API and OpenRouter is not touched; there is no
+automatic failover, a direct-API failure is retried on the same endpoint and then raised),
+`~/.config/means-of-prediction/openrouter.json` (OpenRouter key, used only when
+`jev.json` is absent),
 `~/.config/means-of-prediction/mailbox.json` (IMAP; it is the same Gmail account that
 receives the alerts). Python:
 `~/.local/share/means-of-prediction/venv-laya-py312/bin/python` for everything in the Laya
@@ -175,6 +263,8 @@ Code, all in `app/scripts/research/blind/`:
 | `rules_batch.py` | batched blind Fable rules per market |
 | `gal_download.py`, `gal_index.py` | GDELT Article List download; SQLite FTS5 index and per-market pairing in alert shape |
 | `alerts_label.py` | Jev labels on (alert unit, market) pairs with the Fable rule |
+| `alerts_mail.py`, `alerts_fidelity.py` | pull alert mail read-only over IMAP (every folder, Spam included), snapshot the google.com DKIM record, verify a sample, census; compare alert results with GDELT (URL and host+title overlap, headline and snippet agreement, delay) |
+| `alerts_forward.py` | forward test on real alerts: `pairs`, `judge --backend laya|jev|fable` (resumes from the judged file; a market under two families is judged once; Fable receipts keyed family-market-offset), `settle --backend X --threshold t` (claims, distinct hosts, registry hosts per side, a market's entries merged across families with units deduplicated; writes `settle-X-t.json`, or `settle-fable.json`) |
 | `alerts_probe.py` | 120-market calibration probe on Google News headlines (not for bulk use); its `summary()` is the template for the K-outlet tables |
 
 Mail intake: `app/automation/imap.mjs`, `app/automation/collector.mjs`,
@@ -194,10 +284,15 @@ Private artifacts under `~/.local/share/means-of-prediction/`:
 | `slides/alerts-corpus-20261003/` | `sample.private.json` (19,783 markets: every event group that has a binary Yes/No market, 10,390 of the pool's 10,450, up to 3 each; payout per market in `payout`), `pairs.private.jsonl` (17,465 markets with units, 714,789 units), `labels-alerts.private.jsonl` (Jev labels, growing; records carry ids and probabilities, the text is in the pairs file) |
 | `slides/alerts-rules-20261003/rules.jsonl` | Fable rules for 19,453 of the 19,783 markets |
 | `slides/alerts-probe-20261002/` | calibration probe: headlines, Jev and student judgements, summary |
-| `slides/alerts-forward-20261003/` | `alert-market-map.json` (each alert query, its open markets with ids and close dates), `open-markets-20261003.json` (the snapshot) |
+| `slides/alerts-forward-20261003/` | `alert-market-map.json` (each alert query, its open markets with ids and close dates), `open-markets-20261003.json` (the snapshot), `open-sample.json` (the 60 open markets in `rules_batch.py --sample` form, the input the open-market rules batch ran from; log `slides/alerts-forward-20261003.rules.log`), `rules/rules.jsonl` (Fable's 60 open-market rules) |
+| `alerts-mail-20261006/` | the 477 raw alert emails (`raw/*.eml`, mode 0600, never publish), `dkim-dns.json` (selector 20251104 record at pull time), `census.json`, `results.private.jsonl` (parsed results), `fidelity.json` (alerts versus GDELT) |
+| `alerts-forward-run-20261007/` | forward-test dry run: pairs, the three readers' judgements, settlement tables at each threshold, prices, the TypeSafe model list (section 3) |
 
 Chain scripts and their one-line-per-stage logs sit in `slides/` (`alerts-label.sh`,
-`laya-distill-v3c.sh` and the older ones).
+`laya-distill-v3c.sh` and the older ones), except the forward-test chain, which sits at
+the data root beside its run directory: `alerts-forward-run-20261007.chain.sh`, stage log
+`alerts-forward-run-20261007.chain.log`, and the per-stage `.judge-*.log` and
+`.settle-*.txt` files next to it.
 
 Live alerts on the owner's Gmail, created October 3 by hand through the Alerts page:
 18 event-level alerts, 5 outlet census alerts (whole-outlet streams, to measure volume,
@@ -219,26 +314,37 @@ behind them:
 
 | job | state | how to check or relaunch |
 |---|---|---|
-| Jev labels on the alert-shaped corpus | **running** (chain alive, waiting for the key's daily limit). 82,645 of 520,552 pairs, 2,688 markets, $2.01 spent. About 41,000 pairs per dollar, so 437,907 remaining pairs are about 11 more days at $1/day or about $11 in a few hours if the owner raises the limit. Stage log times are UTC. | check `pgrep -fl alerts-label`; only if nothing prints, relaunch with `nohup caffeinate -i -s ~/.local/share/means-of-prediction/slides/alerts-label.sh >> ~/.local/share/means-of-prediction/slides/alerts-label.log 2>&1 &` on AC power. Never start a second copy |
-| Fable rules | finished: 19,453 rules. 330 markets missing: 325 from 13 batches that ended in `error_max_turns`, 5 dropped from completed batches | rerun with a smaller batch: `rules_batch.py --root …/slides/alerts-rules-20261003 --sample …/slides/alerts-rules-20261003/sample.private.json --batch 10`, with `MOP_CLAUDE_CODE_BIN` set to a Claude Code binary of version 2.1.251 or newer (the variable `CLAUDE_CODE_EXECPATH` exists only inside a Claude Code session; a stale `~/.local/bin/claude` 2.1.236 fails every batch with `model_mismatch`). It draws on the owner's Claude session limit. The label chain's next pass picks the new rules up |
-| Google Alerts mail | 477 emails (3,226 results) pulled on October 6, all from Gmail's **Spam** folder; raw messages under `~/.local/share/means-of-prediction/alerts-mail-20261006/raw/`, census in `census.json`, GDELT comparison in `fidelity.json` (only 22% of alert results exist in GDELT; no Reuters, AP, NYT, WaPo). Spam is purged after 30 days, so pull again with `alerts_mail.py` at least weekly until a filter exists | export raw messages with full headers through the IMAP intake above (sender `googlealerts-noreply@google.com`); never publish a raw message (recipient address and a live per-alert token are in the signed body); record the google.com DKIM TXT record for the selector seen (currently `20251104`) at each pull; parse with `alerts_email.py` |
+| Jev labels on the alert-shaped corpus | **running on the direct TypeSafe API** since 12:10 JST October 7, no daily cap. 229,453 of 520,552 pairs at 12:40 JST, about 48,000 pairs per hour at $0.024 per 1,000 pairs, so the remaining 291,000 pairs are about 6 hours and $7. Chain `slides/alerts-label.sh` (sleeps 30 minutes whenever a pass exits 3 on a teacher halt, then resumes where it stopped), stage log `slides/alerts-label.log`, pass log `slides/alerts-corpus-20261003.label.log`; stage log times are UTC. | check `pgrep -fl alerts-label`; only if nothing prints, relaunch with `nohup caffeinate -i -s ~/.local/share/means-of-prediction/slides/alerts-label.sh >> ~/.local/share/means-of-prediction/slides/alerts-label.log 2>&1 &` on AC power. Never start a second copy |
+| Fable rules | finished: 19,453 rules for the resolved corpus, plus the 60 open-market rules for the forward test (3 batches, no failures). 330 resolved markets missing: 325 from 13 batches that ended in `error_max_turns`, 5 dropped from completed batches | rerun with a smaller batch: `rules_batch.py --root …/slides/alerts-rules-20261003 --sample …/slides/alerts-rules-20261003/sample.private.json --batch 10`, with `MOP_CLAUDE_CODE_BIN` set to a Claude Code binary of version 2.1.251 or newer (the variable `CLAUDE_CODE_EXECPATH` exists only inside a Claude Code session; a stale `~/.local/bin/claude` 2.1.236 fails every batch with `model_mismatch`). It draws on the owner's Claude session limit. The label chain's next pass picks the new rules up |
+| forward-test dry run | **complete** (section 3). The Jev pass ran outside the chain (`.judge-jev.log`, done marker `.jev.done`, table `.settle-jev.txt`); the chain `alerts-forward-run-20261007.chain.sh` ran the Fable judge and settle and the student judge and settle at p ≥ 0.7 (`.chain.log`, times UTC); the 0.5 and 0.4 tables were run by hand | nothing to relaunch. After each new mail pull: `alerts_forward.py pairs`, then the three judges (they resume from the judged files; Fable needs `MOP_CLAUDE_CODE_BIN` as for the rules), then `settle` per backend and threshold |
+| Google Alerts mail | 477 emails (3,226 results) pulled on October 6, all from Gmail's **Spam** folder; raw messages under `~/.local/share/means-of-prediction/alerts-mail-20261006/raw/`, census in `census.json`, GDELT comparison in `fidelity.json` (only 22% of alert results exist in GDELT; no Reuters, AP or WaPo at all, 4 of 147 NYT). Spam is purged after 30 days, so pull again at least weekly until a filter exists | `~/.local/share/means-of-prediction/venv-laya-py312/bin/python app/scripts/research/blind/alerts_mail.py` (defaults `--root ~/.local/share/means-of-prediction/alerts-mail-20261006`, `--since 03-Oct-2026`, `--verify-sample 40`): logs in with `mailbox.json`, reads every IMAP folder read-only (Spam included) for sender `googlealerts-noreply@google.com`, stores only messages not already under `raw/` (re-running is safe), re-parses `raw/` with `alerts_email.py` into `census.json` and `results.private.jsonl`, verifies a DKIM sample and appends the google.com TXT record for each selector seen (currently `20251104`) to `dkim-dns.json`. Not the Node intake (`imap.mjs` feeds the automation store, not `raw/`). Never publish a raw message (recipient address and a live per-alert token are in the signed body) |
 
 No training is running.
 
 ## 6. Next steps, in order
 
 1. **Pre-register the forward test now; the first deadline is October 25** (Serbia), then
-   October 28 (Israel) and October 31. A pre-registration written after outcomes are
+   October 28 (Israel) and October 31. The October 7 dry run (section 3) is the procedure
+   to freeze: `alerts_forward.py` with Jev at p ≥ 0.7 as the frozen reader, registry
+   hosts, K = 2 over distinct registry hosts stated in the file as a proxy that
+   over-counts originations (or first add the plan's origination-collapsing step to
+   `settle()` and freeze that), with Fable's quote-backed claims and the newsletter student
+   at 0.4 reported beside it as diagnostics, not as settling readers. Apply the admission
+   rule as the plan states it: the three "continues through" markets and the governorship
+   count market are out; the seven standalone "by October 31" markets stay in on their
+   YES side and void at par when no YES is final by T plus 7 days (research plan v2
+   template), their B claims reported only; the Israel
+   sibling family settles only by exclusivity. That leaves 56 of the 60 markets. A pre-registration written after outcomes are
    public is worthless. Freeze and hash: the markets and their siblings
    (`alert-market-map.json`), the alert queries, the reader and threshold, K, the outlet
-   allowlist and the admission rule. The alert-shaped student will not exist before the
+   allowlist, the admission rule and the void grace period. The alert-shaped student will not exist before the
    first events, so the reader that can be frozen today is Jev as an off-chain reference
    (headline + snippet, p ≥ 0.7, registry outlets) with the newsletter student reported
-   beside it as a known-unsafe baseline. Most of the "by October 31" markets are date
-   buckets, which the admission rule excludes from evidence-based NO; say so in the file.
+   beside it as a known-unsafe baseline. Say in the file that no market settles NO by
+   evidence, so B claims are reported and never settle.
    Start hash-logging alert emails on arrival.
-2. Finish the Jev labels (see the row above). A preliminary version of step 3 can be
-   computed today on the 2,688 labelled markets.
+2. Finish the Jev labels (hours away on the direct API, see section 5). A preliminary
+   version of step 3 can be computed today on the markets labelled so far.
 3. K-outlet tables, the first large-scale false-settlement number. No script exists yet;
    `alerts_probe.py summary()` is the template. Definitions: a unit claims YES when
    pA ≥ t (report t = 0.5 and 0.7; A is Yes for these markets) and its `seenAt` is inside
@@ -255,21 +361,24 @@ No training is running.
    Yardstick: agreement with Jev on held-out groups plus the step-3 tables; compare
    headline only against headline + snippet. Resolve the two open decisions in section 3
    first.
-5. First real alert emails: pull, parse, and measure how far the GDELT stand-in is from
-   what alerts deliver (URL and host overlap, headline rewriting, snippet versus
-   description, delay), then fix the truncation transform. Two weeks of mail is enough for
-   a first estimate; this is also the format census that gates step 7 (as-it-happens
-   email size and result count, digest shape, the alert-count limit).
+5. First real alert emails: done on October 6 for five days of mail (the plan's "First
+   real alerts" section: 22% of alert results exist in GDELT, alerts arrive a median
+   10.7 hours after GDELT's record, no result cap at ten, Content-Type now signed). Still
+   to do: the truncation transform for the GDELT units, and a second pull after two weeks
+   for the digest shape and the alert-count limit.
 6. Run the forward test as pre-registered and report it.
-7. Contract work for an alerts market type, after the census: signer pin on
+7. Contract work for an alerts market type, after the second pull in step 5 (digest shape
+   and the alert-count limit): signer pin on
    `googlealerts-noreply@google.com` and the key hash, outlet host allowlist from the
    result's URL, a body profile for the quoted-printable HTML part. Separately, someone
    must own verifiable execution of the student.
 
 ## 7. Open items for the owner
 
-- Raise the OpenRouter key's limit by about $11 (or remove the $1/day cap), then rotate
-  the key; it was pasted in chat once.
+- Rotate both teacher keys, the OpenRouter key and the TypeSafe key in `jev.json`; each
+  was pasted in chat once. The OpenRouter daily limit no longer matters.
+- Add a Gmail filter so mail from `googlealerts-noreply@google.com` is never sent to Spam
+  (Spam is purged after 30 days); this is an account setting, so the owner does it.
 - Decide on a dedicated Google account for evidence collection; the alerts currently sit
   on a personal Gmail, which the trust rules say should not be the custodian.
 - Approve the forward-test pre-registration before October 25.

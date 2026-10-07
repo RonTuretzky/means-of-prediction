@@ -90,7 +90,7 @@ yardstick for that stand-in:
 | Fable rules per market (factualA, factualB, eventInstance, notCounted), 25 markets per call, blind | `rules_batch.py` | `slides/alerts-rules-20261003/rules.jsonl` (13,640 of 19,783 at hand-off; job running, resumable) |
 | GDELT Article List, English, 2025-05-20 to 2026-09-16 | `gal_download.py` | `gdelt-gal/en/YYYY-MM-DD.jsonl.gz` (485 days, 10 GB) |
 | full-text index and per-market pairing (rarity-ranked entities, 10 days before close to 2 after, cap 60) | `gal_index.py build` / `pair` | `gdelt-gal/gal.sqlite3` (55.9M rows); `slides/alerts-corpus-20261003/pairs.private.jsonl` (17,465 of 19,783 markets with units, 714,789 units) |
-| Jev labels on (unit, market) pairs with the Fable rule: pA, pB, pQuestion | `alerts_label.py`, chain `slides/alerts-label.sh` | `slides/alerts-corpus-20261003/labels-alerts.private.jsonl` (running; ~380,000 pairs for markets with rules; the OpenRouter key's $1/day limit is the only cap, the chain waits and resumes) |
+| Jev labels on (unit, market) pairs with the Fable rule: pA, pB, pQuestion | `alerts_label.py`, chain `slides/alerts-label.sh` | `slides/alerts-corpus-20261003/labels-alerts.private.jsonl` (running; ~380,000 pairs for markets with rules; since October 7 on the direct TypeSafe API with no daily cap, about 48,000 pairs per hour; before that the OpenRouter key's $1/day limit halted each pass and the chain waited 30 minutes and resumed) |
 | calibration probe (Google News RSS, 120 markets, headline only; not licence-clean for bulk) | `alerts_probe.py` | `slides/alerts-probe-20261002/` (`judged-jev`, `judged-laya`, `summary.json`) |
 | real alert email parser | `alerts_email.py` | (real samples from public repositories are in `/tmp/galerts_research/*.eml`, temporary, other people's mail; keep out of the repo) |
 
@@ -109,8 +109,11 @@ nohup ~/.local/share/means-of-prediction/slides/alerts-label.sh > ~/.local/share
 ```
 `MOP_CLAUDE_CODE_BIN` must point at a Claude Code binary that supports Fable (2.1.251 or
 newer); when it fell back to the stale `~/.local/bin/claude` (2.1.236) every batch failed
-with `model_mismatch`. The teacher key lives only in
-`~/.config/means-of-prediction/openrouter.json`.
+with `model_mismatch`. The Jev client reads
+`~/.config/means-of-prediction/jev.json` (direct TypeSafe key) when that file exists and
+uses the direct API with no failover; only when it is absent does it read
+`~/.config/means-of-prediction/openrouter.json` and use OpenRouter. Since October 7
+`jev.json` is present.
 
 ## Results so far
 
@@ -125,8 +128,9 @@ with `model_mismatch`. The teacher key lives only in
 
 ## Next steps, in order
 
-1. Let the rules and labels finish (about a day at the key's limit; raise the limit on
-   OpenRouter to finish in hours).
+1. Let the rules and labels finish. Since October 7 the labels run on the direct TypeSafe
+   API (key in `~/.config/means-of-prediction/jev.json`, no daily cap, about 48,000 pairs
+   per hour); current state in `docs/HANDOFF-MASTER-20261004.md`, section 5.
 2. Payout-consistency and coverage tables per market at K = 1, 2, 3 with the Fable rules,
    on registry hosts and on all hosts; the admission rule from the review (no date
    buckets, thresholds or ordinals; siblings by exclusivity) applied as a filter.
@@ -142,8 +146,9 @@ with `model_mismatch`. The teacher key lives only in
 
 ## Open items for the owner
 
-- Raise or remove the $1/day limit on the OpenRouter key; rotate it afterwards (it was
-  pasted in chat once).
+- Rotate both teacher keys, OpenRouter and the TypeSafe key in `jev.json`; each was
+  pasted in chat once. The OpenRouter daily limit no longer binds (direct API since
+  October 7).
 - Decide on a dedicated collection account: the alerts now sit on the owner's personal
   Gmail, which the trust rules say should not be the custodian of evidence.
 - A Gmail filter on `from:googlealerts-noreply@google.com` (skip inbox, label) keeps the
