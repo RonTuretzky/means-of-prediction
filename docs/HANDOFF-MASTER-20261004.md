@@ -301,6 +301,7 @@ Code, all in `app/scripts/research/blind/`:
 | `alerts_mail.py`, `alerts_fidelity.py` | pull alert mail read-only over IMAP (every folder, Spam included), snapshot the google.com DKIM record, verify a sample, census; compare alert results with GDELT (URL and host+title overlap, headline and snippet agreement, delay) |
 | `alerts_forward.py` | forward test on real alerts: `pairs`, `judge --backend laya|jev|fable` (resumes from the judged file; a market under two families is judged once; Fable receipts keyed family-market-offset), `settle --backend X --threshold t` (claims, distinct hosts, registry hosts per side, a market's entries merged across families with units deduplicated; writes `settle-X-t.json`, or `settle-fable.json`) |
 | `alerts_probe.py` | 120-market calibration probe on Google News headlines (not for bulk use) |
+| `alerts_student.py` | alert-shaped student: `split` (sealed by event group, time and probe groups, input hashes), `relabel-cut` (Jev again on units cut to Google's shape), `prepare` (A/B sequences; shared-text, time-cutoff and calibration exclusions; per-market contrast key), `train` (through `laya_distill.train`), `evaluate` (calibration-chosen threshold, clean held-out metrics by split, the forward run's real alerts) |
 | `alerts_tables.py` | K-outlet tables on the retrospective corpus from the Jev labels: coverage of YES-payout markets and false YES on NO-payout markets per threshold, host scope and K, per topic; writes `tables-<stamp>.json` beside the labels |
 
 Mail intake: `app/automation/imap.mjs`, `app/automation/collector.mjs`,
@@ -322,6 +323,7 @@ Private artifacts under `~/.local/share/means-of-prediction/`:
 | `slides/alerts-probe-20261002/` | calibration probe: headlines, Jev and student judgements, summary |
 | `slides/alerts-forward-20261003/` | `alert-market-map.json` (each alert query, its open markets with ids and close dates), `open-markets-20261003.json` (the snapshot), `open-sample.json` (the 60 open markets in `rules_batch.py --sample` form, the input the open-market rules batch ran from; log `slides/alerts-forward-20261003.rules.log`), `rules/rules.jsonl` (Fable's 60 open-market rules) |
 | `alerts-mail-20261006/` | the 477 raw alert emails (`raw/*.eml`, mode 0600, never publish), `dkim-dns.json` (selector 20251104 record at pull time), `census.json`, `results.private.jsonl` (parsed results), `fidelity.json` (alerts versus GDELT) |
+| `slides/alerts-student-20261007/` | alert-shaped student v1: `split.json`, `labels.private.jsonl` (snapshot), `labels-cut.private.jsonl`, `prepare.json`, `*_items.pt`, `calibration.private.json`, `val-units.private.json`, `train-text.private.json`, `student-v1/` and `student-base/` checkpoints, `eval-*.json`, `student-labels-*.private.jsonl` |
 | `alerts-forward-run-20261007/` | forward-test dry run: pairs, the three readers' judgements, settlement tables at each threshold, prices, the TypeSafe model list (section 3) |
 
 Chain scripts and their one-line-per-stage logs sit in `slides/` (`alerts-label.sh`,
@@ -355,7 +357,9 @@ behind them:
 | forward-test dry run | **complete** (section 3). The Jev pass ran outside the chain (`.judge-jev.log`, done marker `.jev.done`, table `.settle-jev.txt`); the chain `alerts-forward-run-20261007.chain.sh` ran the Fable judge and settle and the student judge and settle at p ≥ 0.7 (`.chain.log`, times UTC); the 0.5 and 0.4 tables were run by hand | nothing to relaunch. After each new mail pull: `alerts_forward.py pairs`, then the three judges (they resume from the judged files; Fable needs `MOP_CLAUDE_CODE_BIN` as for the rules), then `settle` per backend and threshold |
 | Google Alerts mail | 675 emails (5,752 results, October 2 to 6, 21:41 PT) after the second pull on October 7 at 14:00 JST (198 new; the first pull on October 6 had 477), all from Gmail's **Spam** folder; DKIM sample 40 of 40 verified; registry outlets are well represented in real alerts (reuters.com 474 results, bbc.com 342, apnews.com 279, nytimes.com 232), unlike GDELT. The per-query census also lists about 80 further alert queries with one or two emails each (sports, Nobel prizes, central-bank rates, OpenAI releases, New York rents) that this track did not create; raw messages under `~/.local/share/means-of-prediction/alerts-mail-20261006/raw/`, census in `census.json`, GDELT comparison in `fidelity.json` (only 22% of alert results exist in GDELT; no Reuters, AP or WaPo at all, 4 of 147 NYT). Spam is purged after 30 days, so pull again at least weekly until a filter exists | `~/.local/share/means-of-prediction/venv-laya-py312/bin/python app/scripts/research/blind/alerts_mail.py` (defaults `--root ~/.local/share/means-of-prediction/alerts-mail-20261006`, `--since 03-Oct-2026`, `--verify-sample 40`): logs in with `mailbox.json`, reads every IMAP folder read-only (Spam included) for sender `googlealerts-noreply@google.com`, stores only messages not already under `raw/` (re-running is safe), re-parses `raw/` with `alerts_email.py` into `census.json` and `results.private.jsonl`, verifies a DKIM sample and appends the google.com TXT record for each selector seen (currently `20251104`) to `dkim-dns.json`. Not the Node intake (`imap.mjs` feeds the automation store, not `raw/`). Never publish a raw message (recipient address and a live per-alert token are in the signed body) |
 
-No training is running.
+| alert-shaped student v1 | **running** since 14:35 JST October 7: chain `slides/alerts-student-20261007.chain.sh` (split sealed, Jev relabels of the 28,388 cut positive and near-miss units, prepare, two epochs from the v3c epoch-2 weights, evaluate each epoch, then one epoch from the base Laya weights and evaluate). Micro-batch 32, positive weight 2, contrast weight 4, A/B sequences only, GPU auto-paced. Root `slides/alerts-student-20261007/`, stage log `slides/alerts-student-20261007.chain.log`, per-stage `.relabel.log`, `.prepare.log`, `.train-*.log`, `.eval-*.log` beside it (stage times UTC). The first attempt (`alerts-student-20261007-attempt1/`) was stopped after review: probe siblings in train, shared text across splits, cross-market contrast weights | check `pgrep -fl 'alerts-student-20261007.chai[n]'`; relaunch the chain on AC power (split and prepare are write-once, relabel resumes, training resumes from the last checkpoint) |
+
+No other training is running.
 
 ## 6. Next steps, in order
 
@@ -393,14 +397,17 @@ No training is running.
    Report for all hosts and registry hosts, per topic, with denominators, and with the
    admission rule applied as a filter (it needs a tagging pass over the market questions:
    date bucket, threshold, ordinal, sibling family; nothing implements it yet).
-4. Alert-shaped student. The GDELT corpus is the wrong outlet mix (see the plan's October 6 section); prefer the real alert stream for units, with Jev labels on real results. Needs an adapter (join labels to unit text from the pairs file,
-   build Laya sequences) and a split by event group sealed before training, with the
-   latest month held out. Carries over from the v3c recipe: no choice sequences, positive
-   weight, side-contrast weight; the newsletter augmentation does not apply to
-   250-character units. Start from the base Laya weights and from v3c epoch 2 and compare.
-   Yardstick: agreement with Jev on held-out groups plus the step-3 tables; compare
-   headline only against headline + snippet. Resolve the two open decisions in section 3
-   first.
+4. Alert-shaped student: **started October 7** (section 5; `alerts_student.py`). Decisions
+   taken: the GDELT units are cut to Google's shape and the cut positives and near misses
+   relabelled by Jev on the cut text (decision 1); the event instance stays out of the
+   judge's input, as for the teacher (decision 2); A/B predicate sequences only; split by
+   event group with the probe groups and the last month (markets closed from August 17)
+   held out, shared text and post-cutoff units kept out of training, a 4,000-unit
+   calibration slice never trained on for the threshold. Runs from v3c epoch 2 and from
+   base Laya. Yardsticks: agreement with Jev on clean held-out units by split, the
+   step-3 tables on the student's held-out labels, and the forward run's real alerts
+   (every A claim there is a false YES). Still to do: headline-only comparison, and
+   retraining on real alert results once Jev has labelled them.
 5. First real alert emails: done on October 6 for five days of mail (the plan's "First
    real alerts" section: 22% of alert results exist in GDELT, alerts arrive a median
    10.7 hours after GDELT's record, no result cap at ten, Content-Type now signed). Still
