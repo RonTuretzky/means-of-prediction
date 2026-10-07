@@ -73,14 +73,23 @@ def questions_for(p, rule):
 
 # ---------------------------------------------------------------- label
 class Jev:
-    def __init__(self, model, max_cost):
-        self.key = read(KEYFILE)['apiKey']; self.model = model; self.max_cost = max_cost; self.cost = 0.0; self.lock = threading.Lock(); self.calls = 0
+    """Jev (TypeSafe) typed-decision client. Direct TypeSafe API when ~/.config/means-of-prediction/jev.json exists (model
+    jev-latest, which resolves to the jev-1.13 line; $0.042 per million input tokens, output free), otherwise OpenRouter's
+    decisions endpoint with the OpenRouter key. Same request shape either way: state (subject, body) and typed questions."""
+    DIRECT_KEYFILE = Path.home()/'.config/means-of-prediction/jev.json'; DIRECT_URL = 'https://api.typesafe.ai/v1/systemone'; DIRECT_USD_PER_TOKEN = 0.042/1e6
+    workers = 8
+    def __init__(self, model='typesafe/jev-1.13', max_cost=1000.0):
+        self.direct = self.DIRECT_KEYFILE.exists()
+        self.key = json.loads(self.DIRECT_KEYFILE.read_text())['apiKey'] if self.direct else json.loads(KEYFILE.read_text())['apiKey']
+        self.model = 'jev-latest' if self.direct else model; self.label = 'jev:'+('typesafe-direct' if self.direct else 'openrouter'); self.device = None; self.resolved = None
+        self.max_cost = max_cost; self.cost = 0.0; self.lock = threading.Lock(); self.calls = 0
     def ask(self, state, questions):
         with self.lock:
             if self.cost >= self.max_cost: raise RuntimeError('cost guard')
         body = json.dumps({'model': self.model, 'state': state, 'questions': questions}).encode()
+        url = self.DIRECT_URL if self.direct else 'https://openrouter.ai/api/alpha/decisions'
         for attempt in range(6):
-            req = urllib.request.Request('https://openrouter.ai/api/alpha/decisions', data=body, headers={'Authorization': 'Bearer '+self.key, 'Content-Type': 'application/json'})
+            req = urllib.request.Request(url, data=body, headers={'Authorization': 'Bearer '+self.key, 'Content-Type': 'application/json'})
             try:
                 with urllib.request.urlopen(req, timeout=90) as resp: out = json.loads(resp.read())
             except urllib.error.HTTPError as exc:
@@ -89,7 +98,9 @@ class Jev:
             except (urllib.error.URLError, TimeoutError):
                 if attempt < 5: time.sleep(2**attempt); continue
                 raise
-            with self.lock: self.cost += float((out.get('usage') or {}).get('cost') or 0); self.calls += 1
+            usage = out.get('usage') or {}; cost = float(usage.get('cost') or 0) if not self.direct else float(usage.get('input_tokens') or 0)*self.DIRECT_USD_PER_TOKEN
+            if 'usage' in out and self.direct: out['usage']['cost'] = cost
+            with self.lock: self.cost += cost; self.calls += 1; self.resolved = out.get('model')
             return out
         raise RuntimeError('retries exhausted')
 
