@@ -14,7 +14,7 @@ Stages (each write-once under --root, private):
 
 Teacher probabilities are targets, not truth: the human-labelled rows remain the yardstick.
 """
-import argparse, collections, concurrent.futures, hashlib, json, math, os, random, re, statistics, threading, time, urllib.error, urllib.request
+import argparse, collections, concurrent.futures, hashlib, json, math, os, random, re, shutil, statistics, threading, time, urllib.error, urllib.request
 from pathlib import Path
 
 ROUND = Path.home()/'.local/share/means-of-prediction/slides/fable-qwen-nyt-round1-20260915'
@@ -370,7 +370,7 @@ def fit_temp(sel):
 def forward(model, batch, device):
     return model(batch['input_ids'].to(device), batch['attention_mask'].to(device), batch['marker_pos'].to(device), batch['marker_mask'].to(device), batch['qtype'].to(device))
 
-def train(root, out_dir, epochs, micro_batch, grad_accum, lr_encoder, lr_head, group_size, device, max_steps, seed, positive_weight=1.0, bucket=True, init=None, start_epoch=0, gpu_share=1.0, grad_checkpoint=True, contrast_weight=1.0):
+def train(root, out_dir, epochs, micro_batch, grad_accum, lr_encoder, lr_head, group_size, device, max_steps, seed, positive_weight=1.0, bucket=True, init=None, start_epoch=0, gpu_share=1.0, grad_checkpoint=True, contrast_weight=1.0, resume_every=250):
     import torch
     from safetensors.torch import load_file, save_file
     from transformers import AutoTokenizer
@@ -421,13 +421,33 @@ def train(root, out_dir, epochs, micro_batch, grad_accum, lr_encoder, lr_head, g
                 ts = time.time(); b = collate(val[i:i+16], tok.pad_token_id); logits, _ = forward(model, b, device); logits = logits.float().cpu(); mask = b['marker_mask']
                 tot += float(-(b['target']*torch.log_softmax(logits.masked_fill(~mask, -1e4), -1)).sum(-1).sum()); n += len(b['target']); pace(ts)
         model.train(); return tot/max(1, n)
-    say(valSoftCE=round(val_loss(), 4), stage='before')
-    t0, step, accum = time.time(), 0, 0; sigma_start, sigma_end = 0.4, 0.1
+    # Mid-epoch resume: every resume_every updates, weights + optimizer + schedule + position go to out_dir/resume (written aside, then renamed),
+    # so a shutdown or sleep-death costs at most resume_every updates instead of the epoch. Removed once the epoch checkpoint is written.
+    rdir = out_dir/'resume'; run_key = {'trainItems': len(items), 'microBatch': micro_batch, 'gradAccum': grad_accum, 'epochs': epochs, 'seed': seed, 'totalUpdates': total_updates}
+    resume = None
+    if resume_every and (rdir/'state.pt').exists():
+        resume = torch.load(rdir/'state.pt', map_location='cpu', weights_only=False)
+        if resume['runKey'] != run_key: raise SystemExit(f'{rdir} was written by a different run ({resume["runKey"]} vs {run_key}); move it aside to start over')
+        if resume['epoch'] < start_epoch: resume = None  # an epoch checkpoint already covers it
+    if resume:
+        model.load_state_dict(load_file(rdir/'model.safetensors'), strict=True); opt.load_state_dict(resume['opt']); sched.load_state_dict(resume['sched'])
+        start_epoch = resume['epoch']; say(resumed=str(rdir), epoch=start_epoch+1, batch=resume['batch'], update=resume['step'])
+    else: say(valSoftCE=round(val_loss(), 4), stage='before')
+    def save_resume(epoch, b_idx, step, epoch_loss, nb):
+        tmp = out_dir/'resume.tmp'; shutil.rmtree(tmp, ignore_errors=True); tmp.mkdir()
+        save_file({k: v.detach().contiguous().cpu() for k, v in model.state_dict().items()}, tmp/'model.safetensors')
+        torch.save({'runKey': run_key, 'epoch': epoch, 'batch': b_idx+1, 'step': step, 'epochLoss': epoch_loss, 'nb': nb, 'opt': opt.state_dict(), 'sched': sched.state_dict()}, tmp/'state.pt')
+        shutil.rmtree(rdir, ignore_errors=True); tmp.rename(rdir)
+    t0, step, accum = time.time(), (resume or {}).get('step', 0), 0; step0 = step; sigma_start, sigma_end = 0.4, 0.1
+    for e in range(start_epoch):
+        random.seed(seed+e); random.shuffle(items)  # replay earlier epochs' shuffles so a resumed epoch sees the same order as an uninterrupted run
     for epoch in range(start_epoch, epochs):
         random.seed(seed+epoch); random.shuffle(items); epoch_loss, nb = 0.0, 0; opt.zero_grad(set_to_none=True)
         sigma = sigma_start+(sigma_end-sigma_start)*(epoch/max(1, epochs-1))
-        all_batches = batches(items)
+        all_batches = batches(items); skip = 0
+        if resume and resume['epoch'] == epoch: skip, epoch_loss, nb = resume['batch'], resume['epochLoss'], resume['nb']
         for b_idx, chunk in enumerate(all_batches):
+            if b_idx < skip: continue
             ts = time.time(); b = collate(chunk, tok.pad_token_id); w = torch.tensor([it['w'] for it in chunk], device=device)
             logits, act = forward(model, b, device); logits = logits.float(); mask = b['marker_mask'].to(device); k = mask.sum(-1, keepdim=True).float(); target = b['target'].to(device)
             eps = torch.randn((group_size,)+logits.shape, device=device)*sigma*mask; eps = (eps-eps.sum(-1, keepdim=True)/k)*mask
@@ -440,13 +460,16 @@ def train(root, out_dir, epochs, micro_batch, grad_accum, lr_encoder, lr_head, g
             if device == 'mps' and b_idx % 200 == 0: torch.mps.empty_cache()
             if accum % grad_accum == 0 or b_idx+1 >= len(all_batches):
                 torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0); opt.step(); sched.step(); opt.zero_grad(set_to_none=True); step += 1
-                if step % 25 == 0: say(epoch=epoch+1, update=step, of=total_updates, loss=round(float(loss)*grad_accum, 4), ce=round(float(loss_ce), 4), reward=round(float(r.mean()), 3), lr=sched.get_last_lr()[0], secondsPerUpdate=round((time.time()-t0)/step, 2))
-                if max_steps and step >= max_steps: say(stoppedEarly=True, updates=step, secondsPerUpdate=round((time.time()-t0)/step, 2)); return
-            epoch_loss += float(loss)*grad_accum; nb += 1; pace(ts)
+                if step % 25 == 0: say(epoch=epoch+1, update=step, of=total_updates, loss=round(float(loss)*grad_accum, 4), ce=round(float(loss_ce), 4), reward=round(float(r.mean()), 3), lr=sched.get_last_lr()[0], secondsPerUpdate=round((time.time()-t0)/max(1, step-step0), 2))
+            epoch_loss += float(loss)*grad_accum; nb += 1
+            if accum % grad_accum == 0 and resume_every and step % resume_every == 0 and b_idx+1 < len(all_batches): save_resume(epoch, b_idx, step, epoch_loss, nb); say(resumePoint=step)
+            if max_steps and step >= max_steps and accum % grad_accum == 0: say(stoppedEarly=True, updates=step, secondsPerUpdate=round((time.time()-t0)/max(1, step-step0), 2)); return
+            pace(ts)
         vl = val_loss(); hit, tot = val_positive_recall(); say(epochDone=epoch+1, avgLoss=round(epoch_loss/max(1, nb), 4), valSoftCE=round(vl, 4), valTeacherPositiveRecall=f'{hit}/{tot}', elapsedMin=round((time.time()-t0)/60, 1))
         ck = out_dir/('checkpoint_epoch'+str(epoch+1)); ck.mkdir(exist_ok=True); save_file({k: v.detach().contiguous().cpu() for k, v in model.state_dict().items()}, ck/'model.safetensors')
         model.encoder.config.save_pretrained(ck/'encoder'); tok.save_pretrained(ck/'tokenizer'); (ck/'checkpoint_meta.json').write_text(json.dumps({'epoch': epoch+1, 'valSoftCE': vl, 'valTeacherPositiveRecall': [hit, tot]}))
         json.dump({**cfg, 'fine_tuned': True, 'model_name': 'laya-settlement-judge-jev-distilled', 'temperature': [1.0, 1.2, 1.0]}, (ck/'rl_agent_config.json').open('w'), indent=2)
+        shutil.rmtree(rdir, ignore_errors=True)
     # temperatures on a train slice (never on validation), then final save loadable by laya.Agent(out_dir)
     model.eval(); preds = []
     with torch.no_grad():
@@ -497,12 +520,12 @@ if __name__ == '__main__':
     p = sub.add_parser('train'); p.add_argument('--root', required=True); p.add_argument('--out', required=True); p.add_argument('--epochs', type=int, default=3); p.add_argument('--micro-batch', type=int, default=8); p.add_argument('--grad-accum', type=int, default=4)
     p.add_argument('--lr-encoder', type=float, default=2.5e-5); p.add_argument('--lr-head', type=float, default=1e-4); p.add_argument('--group-size', type=int, default=4); p.add_argument('--device', default='auto'); p.add_argument('--max-steps', type=int, default=0); p.add_argument('--seed', type=int, default=42)
     p.add_argument('--positive-weight', type=float, default=1.0); p.add_argument('--no-bucket', action='store_true'); p.add_argument('--init', help='checkpoint directory to resume weights from'); p.add_argument('--start-epoch', type=int, default=0)
-    p.add_argument('--contrast-weight', type=float, default=1.0, help='weight for the other side\'s negative sequence on units where one side is a teacher positive (teaches A from B)'); p.add_argument('--gpu-share', type=share_arg, default=GPU_SHARE, help="fraction of wall time the trainer may keep the GPU busy (0.5 = sleep as long as each step took); 1 = no pacing; 'auto' = MOP_GPU_ACTIVE_SHARE while the machine is in use, full speed when input is idle or the display is off"); p.add_argument('--no-grad-checkpoint', action='store_true', help='skip gradient checkpointing (faster steps, more memory)')
+    p.add_argument('--contrast-weight', type=float, default=1.0, help='weight for the other side\'s negative sequence on units where one side is a teacher positive (teaches A from B)'); p.add_argument('--gpu-share', type=share_arg, default=GPU_SHARE, help="fraction of wall time the trainer may keep the GPU busy (0.5 = sleep as long as each step took); 1 = no pacing; 'auto' = MOP_GPU_ACTIVE_SHARE while the machine is in use, full speed when input is idle or the display is off"); p.add_argument('--no-grad-checkpoint', action='store_true', help='skip gradient checkpointing (faster steps, more memory)'); p.add_argument('--resume-every', type=int, default=250, help='write a mid-epoch resume point (weights, optimizer, schedule, position) every N updates to <out>/resume; 0 = off')
     p = sub.add_parser('evaluate'); p.add_argument('--root', required=True); p.add_argument('--model-path', required=True); p.add_argument('--device', default='auto')
     a = ap.parse_args()
     if a.cmd == 'label': label(a.root, a.model, a.max_cost, a.max_windows, a.cross_negatives, a.workers, a.seed)
     elif a.cmd == 'label-active': label_active(a.root, a.student, a.device, a.min_score, a.own_min_score, a.max_new, a.max_candidates, a.model, a.max_cost, a.workers, a.seed, a.dry_run)
     elif a.cmd == 'label-augment': label_augment(a.root, a.crops, a.contrast, a.embeds, a.min_len, a.max_len, a.model, a.max_cost, a.workers, a.seed, a.dry_run)
     elif a.cmd == 'prepare': prepare(a.root, a.max_len, a.head_max_len, not a.no_choice, a.active_min_score)
-    elif a.cmd == 'train': train(a.root, a.out, a.epochs, a.micro_batch, a.grad_accum, a.lr_encoder, a.lr_head, a.group_size, a.device, a.max_steps, a.seed, a.positive_weight, not a.no_bucket, a.init, a.start_epoch, a.gpu_share, not a.no_grad_checkpoint, a.contrast_weight)
+    elif a.cmd == 'train': train(a.root, a.out, a.epochs, a.micro_batch, a.grad_accum, a.lr_encoder, a.lr_head, a.group_size, a.device, a.max_steps, a.seed, a.positive_weight, not a.no_bucket, a.init, a.start_epoch, a.gpu_share, not a.no_grad_checkpoint, a.contrast_weight, a.resume_every)
     else: evaluate(a.root, a.model_path, a.device)
