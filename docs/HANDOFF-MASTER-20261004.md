@@ -397,7 +397,7 @@ No other training is running.
    Report for all hosts and registry hosts, per topic, with denominators, and with the
    admission rule applied as a filter (it needs a tagging pass over the market questions:
    date bucket, threshold, ordinal, sibling family; nothing implements it yet).
-4. Alert-shaped student: **started October 7** (section 5; `alerts_student.py`). Decisions
+4. Alert-shaped student: **done October 20**; results and absolute paths in `docs/HANDOFF-ALERT-STUDENT-20261021.md` (section 5; `alerts_student.py`). Decisions
    taken: the GDELT units are cut to Google's shape and the cut positives and near misses
    relabelled by Jev on the cut text (decision 1); the event instance stays out of the
    judge's input, as for the teacher (decision 2); A/B predicate sequences only; split by
