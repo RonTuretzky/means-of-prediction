@@ -406,8 +406,35 @@ No other training is running.
    calibration slice never trained on for the threshold. Runs from v3c epoch 2 and from
    base Laya. Yardsticks: agreement with Jev on clean held-out units by split, the
    step-3 tables on the student's held-out labels, and the forward run's real alerts
-   (every A claim there is a false YES). Still to do: headline-only comparison, and
-   retraining on real alert results once Jev has labelled them.
+   (every A claim there is a false YES).
+
+   **Result, student v1 (from v3c, two epochs, finished October 19 after 91.6 hours of
+   wall time with sleeps and battery pauses):** on 103,272 clean held-out units it agrees
+   with Jev on 99.0% of A reads at 0.5 (AUC 0.991; B 99.2%, AUC 0.984). Its probabilities
+   are compressed (no unit above 0.81; teacher positives have a median of 0.52), so its
+   threshold is not Jev's: the calibration slice picks **0.55** (false fire 0.1% on 3,820
+   calibration negatives). Per market, on the held-out markets (`alerts_tables.py` on
+   the same units, units dated on or before close; tables in
+   `slides/alerts-student-20261007/tables-v1e2/`):
+
+   | reader | t | hosts | K | YES markets reaching K | NO markets reaching K (false YES) |
+   |---|---|---|---|---|---|
+   | Jev | 0.7 | all | 1 | 90 / 1,381 (6.5%) | 3 / 2,263 (0.13%) |
+   | student v1 e2 | 0.55 | all | 1 | 94 / 1,381 (6.8%) | 8 / 2,263 (0.35%) |
+   | Jev | 0.7 | all | 2 | 55 / 1,381 (4.0%) | 2 / 2,263 (0.09%) |
+   | student v1 e2 | 0.55 | all | 2 | 58 / 1,381 (4.2%) | 2 / 2,263 (0.09%) |
+   | Jev | 0.7 | all | 3 | 39 / 1,381 (2.8%) | 2 / 2,263 (0.09%) |
+   | student v1 e2 | 0.55 | all | 3 | 38 / 1,381 (2.8%) | 0 / 2,263 |
+
+   So at K = 2 or more the student matches the teacher market for market in coverage and
+   false YES; at K = 1 it makes about 2.7 times the teacher's false YES. Epoch 2 is better
+   than epoch 1 (A recall at 0.5 of 0.67 against 0.61, same false rate) and is the one
+   to use. On the forward run's 7,635 real alert pairs (60 open markets, none had
+   happened) it claims YES on no market at any threshold and B on 2 markets at 0.55, 0
+   at 0.7. The coverage is the GDELT outlet mix, as for Jev. The base-Laya comparison
+   (one epoch) was started on October 20. Still to do: the false-YES audit of the
+   student's 8 K = 1 markets, headline-only comparison, and retraining on real alert
+   results once Jev has labelled them.
 5. First real alert emails: done on October 6 for five days of mail (the plan's "First
    real alerts" section: 22% of alert results exist in GDELT, alerts arrive a median
    10.7 hours after GDELT's record, no result cap at ten, Content-Type now signed). Still
