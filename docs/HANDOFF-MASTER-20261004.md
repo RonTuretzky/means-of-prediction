@@ -432,8 +432,13 @@ No other training is running.
    to use. On the forward run's 7,635 real alert pairs (60 open markets, none had
    happened) it claims YES on no market at any threshold and B on 2 markets at 0.55, 0
    at 0.7. The coverage is the GDELT outlet mix, as for Jev. The base-Laya comparison
-   (one epoch) was started on October 20. Still to do: the false-YES audit of the
-   student's 8 K = 1 markets, headline-only comparison, and retraining on real alert
+   (one epoch) was started on October 20. Audit of the student's 8 K = 1 false YES:
+   3 are shared with Jev (Jev read the same unit at 0.65 to 0.83: Love Island, the US
+   strike on Nigeria, the Russian strike on Poland, the last two "strike by date" markets
+   of the window-start kind); 5 are the student's own, all sibling or bucket confusions
+   that Jev scored at 0.02 to 0.40 (Osun governorship, CXMT IPO date, Paraguay's
+   elimination round, the Mavericks' lottery pick, a Grammy category), each from a single
+   host, which K = 2 removes. Still to do: headline-only comparison, and retraining on real alert
    results once Jev has labelled them.
 5. First real alert emails: done on October 6 for five days of mail (the plan's "First
    real alerts" section: 22% of alert results exist in GDELT, alerts arrive a median
