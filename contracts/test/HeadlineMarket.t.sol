@@ -20,7 +20,11 @@ contract HeadlineMarketTest is MarketTestBase {
 
     function nytProof(bytes32 nullifier) internal returns (EmailProof memory) {
         return makeProof(
-            "nytimes.com", block.timestamp + 1 days, "nytdirect@nytimes.com", FED_SUBJECT, "The Federal Reserve...",
+            "nytimes.com",
+            block.timestamp + 1 days,
+            "nytdirect@nytimes.com",
+            FED_SUBJECT,
+            "The Federal Reserve...",
             nullifier
         );
     }
@@ -134,9 +138,8 @@ contract HeadlineMarketTest is MarketTestBase {
     }
 
     function test_RejectsWrongFromAddress() public {
-        EmailProof memory p = makeProof(
-            "nytimes.com", block.timestamp + 1 days, "phisher@nytimes.com", FED_SUBJECT, "", "n1"
-        );
+        EmailProof memory p =
+            makeProof("nytimes.com", block.timestamp + 1 days, "phisher@nytimes.com", FED_SUBJECT, "", "n1");
         vm.expectRevert(bytes("Market: from address mismatch"));
         market.submitProof(0, p);
     }
@@ -162,23 +165,20 @@ contract HeadlineMarketTest is MarketTestBase {
     }
 
     function test_RejectsUnregisteredDomain() public {
-        EmailProof memory p = makeProof(
-            "fakenews.example", block.timestamp + 1 days, "nytdirect@nytimes.com", FED_SUBJECT, "", "n1"
-        );
+        EmailProof memory p =
+            makeProof("fakenews.example", block.timestamp + 1 days, "nytdirect@nytimes.com", FED_SUBJECT, "", "n1");
         vm.expectRevert(bytes("Market: invalid DKIM proof"));
         market.submitProof(0, p);
     }
 
     function test_RejectsEmailOutsideWindow() public {
-        EmailProof memory early = makeProof(
-            "nytimes.com", market.windowStart() - 1, "nytdirect@nytimes.com", FED_SUBJECT, "", "n1"
-        );
+        EmailProof memory early =
+            makeProof("nytimes.com", market.windowStart() - 1, "nytdirect@nytimes.com", FED_SUBJECT, "", "n1");
         vm.expectRevert(bytes("Market: email before window"));
         market.submitProof(0, early);
 
-        EmailProof memory late = makeProof(
-            "nytimes.com", uint256(market.deadline()) + 1, "nytdirect@nytimes.com", FED_SUBJECT, "", "n2"
-        );
+        EmailProof memory late =
+            makeProof("nytimes.com", uint256(market.deadline()) + 1, "nytdirect@nytimes.com", FED_SUBJECT, "", "n2");
         vm.expectRevert(bytes("Market: email after deadline"));
         market.submitProof(0, late);
     }
@@ -214,9 +214,8 @@ contract HeadlineMarketTest is MarketTestBase {
         p.threshold = 1;
         (HeadlineMarket m2,) = factory.createMarket(p);
 
-        EmailProof memory bad = makeProof(
-            "nytimes.com", block.timestamp + 1 days, "nytdirect@nytimes.com", FED_SUBJECT, "", "o1"
-        );
+        EmailProof memory bad =
+            makeProof("nytimes.com", block.timestamp + 1 days, "nytdirect@nytimes.com", FED_SUBJECT, "", "o1");
         vm.expectRevert(bytes("Market: content regex mismatch"));
         m2.submitProof(0, bad);
 
@@ -270,9 +269,8 @@ contract HeadlineMarketTest is MarketTestBase {
     function test_LateProofStillSettlesYesDuringBuffer() public {
         vm.warp(uint256(market.deadline()) + 1 hours); // past deadline, inside buffer
         // emails dated within the window still count
-        EmailProof memory p1 = makeProof(
-            "nytimes.com", market.deadline() - 1, "nytdirect@nytimes.com", FED_SUBJECT, "", "n1"
-        );
+        EmailProof memory p1 =
+            makeProof("nytimes.com", market.deadline() - 1, "nytdirect@nytimes.com", FED_SUBJECT, "", "n1");
         EmailProof memory p2 = makeProof(
             "email.washingtonpost.com",
             market.deadline() - 1,

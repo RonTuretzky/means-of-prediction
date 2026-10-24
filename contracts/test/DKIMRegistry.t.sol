@@ -8,6 +8,7 @@ contract DKIMRegistryTest is MarketTestBase {
         vm.expectRevert("DKIM: not registrar");
         dkim.registerKey("nytimes.com", "attacker", devExponent, devModulus);
     }
+
     function test_OnlyRegistrarCanRevoke() public {
         vm.prank(bob);
         vm.expectRevert("DKIM: not registrar");
@@ -15,6 +16,7 @@ contract DKIMRegistryTest is MarketTestBase {
         dkim.revokeKey("nytimes.com", devKeyHash);
         assertFalse(dkim.isDKIMPublicKeyHashValid("nytimes.com", devKeyHash));
     }
+
     function test_RevokedModulusCannotBeReauthorized() public {
         dkim.revokeKey("nytimes.com", devKeyHash);
         vm.expectRevert("DKIM: key already registered");

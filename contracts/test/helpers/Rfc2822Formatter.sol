@@ -54,7 +54,9 @@ contract Rfc2822Formatter {
     function uintToString(uint256 v) private pure returns (string memory) {
         if (v == 0) return "0";
         uint256 len;
-        for (uint256 t = v; t != 0; t /= 10) len++;
+        for (uint256 t = v; t != 0; t /= 10) {
+            len++;
+        }
         bytes memory buf = new bytes(len);
         while (v != 0) {
             buf[--len] = bytes1(uint8(48 + (v % 10)));

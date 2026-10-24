@@ -60,10 +60,14 @@ contract FPMM is ERC20, IERC1155Receiver {
         initialized = true;
     }
 
-    function initialize(ConditionalTokens _conditionalTokens, IERC20 _collateralToken, bytes32 _conditionId, uint256 _fee,
-        uint256 _protocolFee, address _feeRecipient)
-        external
-    {
+    function initialize(
+        ConditionalTokens _conditionalTokens,
+        IERC20 _collateralToken,
+        bytes32 _conditionId,
+        uint256 _fee,
+        uint256 _protocolFee,
+        address _feeRecipient
+    ) external {
         require(!initialized, "FPMM: already initialized");
         initialized = true;
         require(_fee < ONE && _protocolFee < ONE - _fee, "FPMM: fee must be < 100%");
@@ -109,8 +113,7 @@ contract FPMM is ERC20, IERC1155Receiver {
             mintAmount = addedFunds;
             if (distributionHint.length > 0) {
                 require(distributionHint.length == 2, "FPMM: hint must have 2 entries");
-                uint256 maxHint =
-                    distributionHint[0] > distributionHint[1] ? distributionHint[0] : distributionHint[1];
+                uint256 maxHint = distributionHint[0] > distributionHint[1] ? distributionHint[0] : distributionHint[1];
                 require(maxHint > 0, "FPMM: bad hint");
                 sendBack[0] = addedFunds - (addedFunds * distributionHint[0]) / maxHint;
                 sendBack[1] = addedFunds - (addedFunds * distributionHint[1]) / maxHint;
@@ -302,6 +305,7 @@ contract FPMM is ERC20, IERC1155Receiver {
     function ceilDiv(uint256 a, uint256 b) private pure returns (uint256) {
         return a == 0 ? 0 : (a - 1) / b + 1;
     }
+
     function totalFee() public view returns (uint256) {
         return fee + protocolFee;
     }

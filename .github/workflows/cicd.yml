@@ -1,30 +1,25 @@
-# Etherform CI/CD (github.com/BreadchainCoop/etherform): build + test on every push/PR,
-# and deploy script/DeployGnosis.s.sol with Blockscout verification when deploy-on-pr
-# is enabled. Requires repo secrets:
-#   PRIVATE_KEY — deployer key (use a dedicated deployer, never a funded personal key)
-#   RPC_URL     — https://ethereum-sepolia-rpc.publicnode.com (PR deploys target Sepolia;
-#                 the Gnosis mainnet deploy is manual — see README)
+# Research-branch-only candidate based on bfe4c7c; not a replacement for main.
+# Any later merge must preserve main's frontend, fee, build, and browser gates.
+# Build and test only. No deployment workflow or repository secret is passed.
+# Contract FFI helpers use Node/Python standard libraries, not app/node_modules.
 name: CI/CD
 on: [push, pull_request]
 
 permissions:
   contents: read
-  pull-requests: write
+  pull-requests: read
 
 concurrency:
   group: cicd-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  cicd:
-    uses: BreadchainCoop/etherform/.github/workflows/_foundry-cicd.yml@main
+  contracts:
+    uses: BreadchainCoop/etherform/.github/workflows/_ci.yml@f6182e6d5fbc06813a80f40d8432905ece36b40a
     with:
-      package-manager: pnpm
-      deploy-on-pr: true
-      deploy-script: "script/DeploySepolia.s.sol:DeploySepolia"
-      # forge test in CI: the ffi-based RSA/differential tests need node — provided
-      # by the workflow's node setup (node-version default 22)
-      contract-paths: "contracts/src/** contracts/script/** contracts/test/** contracts/foundry.toml"
-    secrets:
-      RPC_URL: ${{ secrets.RPC_URL }}
-      PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
+      working-directory: contracts
+      foundry-version: v1.8.6
+      etherform-ref: f6182e6d5fbc06813a80f40d8432905ece36b40a
+      package-manager: none
+      check-formatting: true
+      test-verbosity: vvv

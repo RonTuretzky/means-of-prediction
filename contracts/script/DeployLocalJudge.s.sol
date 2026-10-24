@@ -62,8 +62,15 @@ contract DeployLocalJudge is Script {
 
         MockBLSSignatureChecker checker = new MockBLSSignatureChecker();
         LLMJudge judge = new LLMJudge(msg.sender, address(0xA5), address(checker), modelConfig());
-        MarketFactory factory =
-            new MarketFactory(ct, verifier, address(new HeadlineMarket()), address(new FPMM()), judge, vm.envOr("PROTOCOL_FEE", uint256(1e16)), vm.envOr("FEE_RECIPIENT", msg.sender));
+        MarketFactory factory = new MarketFactory(
+            ct,
+            verifier,
+            address(new HeadlineMarket()),
+            address(new FPMM()),
+            judge,
+            vm.envOr("PROTOCOL_FEE", uint256(1e16)),
+            vm.envOr("FEE_RECIPIENT", msg.sender)
+        );
 
         usdc.mint(msg.sender, 1_000_000e6);
         usdc.mint(ANVIL_1, 100_000e6);
@@ -101,7 +108,9 @@ contract DeployLocalJudge is Script {
         // <|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n\n
         uint32[9] memory suf = [uint32(248_046), 198, 248_045, 74_455, 198, 248_068, 271, 248_069, 271];
         m.suffixIds = new uint32[](9);
-        for (uint256 i = 0; i < 9; ++i) m.suffixIds[i] = suf[i];
+        for (uint256 i = 0; i < 9; ++i) {
+            m.suffixIds[i] = suf[i];
+        }
         uint32[6] memory y = [uint32(13_602), 9175, 9405, 13_677, 7179, 9542]; // YES Yes yes ' YES' ' Yes' ' yes'
         uint32[6] memory n = [uint32(8725), 2665, 2083, 5486, 2233, 874]; // NO No no ' NO' ' No' ' no'
         m.yesIds = new uint32[](6);

@@ -9,13 +9,19 @@ import {LayaRequest} from "../src/judge/LayaRequest.sol";
 import {ChemistryAlertEvidenceGate} from "../src/judge/ChemistryAlertEvidenceGate.sol";
 import {ChemistryLayaConsumer} from "../src/judge/ChemistryLayaConsumer.sol";
 import {ChemistryLayaResultInbox, ChemistryNonemptyQuorumChecker} from "../src/judge/ChemistryLayaResultInbox.sol";
-import {IBLSSignatureChecker, IBLSSignatureCheckerTypes} from "@eigenlayer-middleware/interfaces/IBLSSignatureChecker.sol";
+import {
+    IBLSSignatureChecker,
+    IBLSSignatureCheckerTypes
+} from "@eigenlayer-middleware/interfaces/IBLSSignatureChecker.sol";
 
 /// @dev Only represents the ABSENCE of the required real operator certificate.
 /// It rejects every call. No positive authentication or settlement test uses a mock.
 contract MissingOperatorCertificate {
     error NoOperatorExecutionCertificate();
-    fallback() external { revert NoOperatorExecutionCertificate(); }
+
+    fallback() external {
+        revert NoOperatorExecutionCertificate();
+    }
 }
 
 /// @notice Genuine-email consumer rejection tests. These intentionally do NOT
@@ -43,16 +49,27 @@ contract ChemistryLayaConsumerTest is Test {
         string memory fixture = string(raw);
         bytes memory exponent;
         bytes memory modulus;
-        (proofs, exponent, modulus, inputs, ids, requests) = abi.decode(vm.parseJsonBytes(fixture, ".abiHex"),
-            (EmailProof[], bytes, bytes, bytes[], uint32[][], LayaRequest.Request[]));
+        (proofs, exponent, modulus, inputs, ids, requests) = abi.decode(
+            vm.parseJsonBytes(fixture, ".abiHex"),
+            (EmailProof[], bytes, bytes, bytes[], uint32[][], LayaRequest.Request[])
+        );
         vm.chainId(requests[0].chainId);
         vm.warp(vm.parseJsonUint(fixture, ".validationTimeUnix"));
         DKIMRegistry registry = new DKIMRegistry();
         registry.registerKey("google.com", "20251104", exponent, modulus);
         DKIMVerifier verifier = new DKIMVerifier(registry);
-        consumer = new ChemistryLayaConsumer(verifier, proofs[0].publicKeyHash, address(0xA55),
-            IBLSSignatureChecker(address(new MissingOperatorCertificate())), hex"00", requests, false);
-        for (uint256 i; i < requests.length; ++i) requests[i].market = address(consumer);
+        consumer = new ChemistryLayaConsumer(
+            verifier,
+            proofs[0].publicKeyHash,
+            address(0xA55),
+            IBLSSignatureChecker(address(new MissingOperatorCertificate())),
+            hex"00",
+            requests,
+            false
+        );
+        for (uint256 i; i < requests.length; ++i) {
+            requests[i].market = address(consumer);
+        }
     }
 
     function test_GenuineEvidenceCanBeReviewedWithoutAResultOrSettlement() public {
@@ -75,7 +92,8 @@ contract ChemistryLayaConsumerTest is Test {
     function test_DirectResultInjectionRejected() public {
         ChemistryLayaResultInbox inbox = consumer.resultInbox();
         bytes32 domain = inbox.resultDomain();
-        LayaRequest.Result memory result = LayaRequest.Result(1, LayaRequest.key(requests[0]), bytes32(uint256(1)), 0, 1000000);
+        LayaRequest.Result memory result =
+            LayaRequest.Result(1, LayaRequest.key(requests[0]), bytes32(uint256(1)), 0, 1000000);
         vm.expectRevert(ChemistryLayaResultInbox.NotCertifiedTransition.selector);
         inbox.acceptCertifiedResult(domain, requests[0], result);
         assertUnresolved();
@@ -84,7 +102,8 @@ contract ChemistryLayaConsumerTest is Test {
     function test_SelfAddressWithoutCertifiedTransitionRejected() public {
         ChemistryLayaResultInbox inbox = consumer.resultInbox();
         bytes32 domain = inbox.resultDomain();
-        LayaRequest.Result memory result = LayaRequest.Result(1, LayaRequest.key(requests[0]), bytes32(uint256(1)), 0, 1000000);
+        LayaRequest.Result memory result =
+            LayaRequest.Result(1, LayaRequest.key(requests[0]), bytes32(uint256(1)), 0, 1000000);
         vm.prank(address(inbox));
         vm.expectRevert(ChemistryLayaResultInbox.NotCertifiedTransition.selector);
         inbox.acceptCertifiedResult(domain, requests[0], result);

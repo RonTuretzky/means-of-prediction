@@ -52,8 +52,14 @@ contract DeploySepolia is Script {
         DKIMVerifier verifier = new DKIMVerifier(dkim);
         EmailBodyStore bodyStore = new EmailBodyStore();
         MarketFactory factory = new MarketFactory(
-            ct, verifier, address(new HeadlineMarket()), address(new FPMM()), ILLMJudge(address(judge))
-        , vm.envOr("PROTOCOL_FEE", uint256(1e16)), vm.envOr("FEE_RECIPIENT", msg.sender));
+            ct,
+            verifier,
+            address(new HeadlineMarket()),
+            address(new FPMM()),
+            ILLMJudge(address(judge)),
+            vm.envOr("PROTOCOL_FEE", uint256(1e16)),
+            vm.envOr("FEE_RECIPIENT", msg.sender)
+        );
 
         registerKeysFromFile(dkim);
 

@@ -58,9 +58,7 @@ contract HeadlineMarket {
         string subject;
     }
 
-    event ProofAccepted(
-        uint256 indexed sourceIndex, address indexed submitter, string subject, uint256 emailTimestamp
-    );
+    event ProofAccepted(uint256 indexed sourceIndex, address indexed submitter, string subject, uint256 emailTimestamp);
     event MarketResolved(Resolution resolution, address indexed resolver);
 
     // --- static configuration ---
@@ -172,8 +170,9 @@ contract HeadlineMarket {
 
         if (cfg.contentField == ContentField.Body) {
             require(BodyParser.substringPattern(cfg.contentRegex), "Market: body anchors unsupported");
-            for (uint256 i; i < cfg.sources.length; ++i)
+            for (uint256 i; i < cfg.sources.length; ++i) {
                 require(BodyParser.substringPattern(cfg.sources[i].contentRegex), "Market: body anchors unsupported");
+            }
         }
 
         question = cfg.question;
@@ -215,9 +214,7 @@ contract HeadlineMarket {
         require(verifier.verify(proof), "Market: invalid DKIM proof");
 
         Source storage src = _sources[sourceIndex];
-        require(
-            keccak256(bytes(proof.domainName)) == keccak256(bytes(src.dkimDomain)), "Market: wrong DKIM domain"
-        );
+        require(keccak256(bytes(proof.domainName)) == keccak256(bytes(src.dkimDomain)), "Market: wrong DKIM domain");
         require(proof.timestamp >= windowStart, "Market: email before window");
         require(proof.timestamp <= deadline, "Market: email after deadline");
         if (bytes(src.fromRegex).length > 0) {
@@ -323,7 +320,8 @@ contract HeadlineMarket {
     }
 
     function bodyMatches(string memory pattern, EmailProof calldata proof) internal pure returns (bool) {
-        return proof.canonicalBody.length > 0 && BodyParser.substringPattern(pattern) && pattern.matches(proof.bodyExcerpt);
+        return
+            proof.canonicalBody.length > 0 && BodyParser.substringPattern(pattern) && pattern.matches(proof.bodyExcerpt);
     }
 
     /// @notice The judge's verdict for this email under this market's rules — computed from the
@@ -336,7 +334,11 @@ contract HeadlineMarket {
     }
 
     /// @notice Prompt key the judge must answer for this email (for bots/UI to request a verdict).
-    function promptKeyFor(EmailProof calldata proof) external view returns (bytes32 key, bytes memory subject, bool ok) {
+    function promptKeyFor(EmailProof calldata proof)
+        external
+        view
+        returns (bytes32 key, bytes memory subject, bool ok)
+    {
         (subject, ok) = JudgePrompt.subjectFromHeader(proof.header);
         if (!ok || !JudgePrompt.isSafeSubject(subject)) return (bytes32(0), subject, false);
         return (JudgePrompt.promptKey(question, criteria, subject), subject, true);

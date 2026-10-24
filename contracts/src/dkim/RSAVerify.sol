@@ -65,20 +65,10 @@ library RSAVerify {
         uint256 bl = base.length;
         uint256 el = exp.length;
         uint256 ml = mod.length;
-        bytes memory input = abi.encodePacked(
-            uint256(bl), uint256(el), uint256(ml), base, exp, mod
-        );
+        bytes memory input = abi.encodePacked(uint256(bl), uint256(el), uint256(ml), base, exp, mod);
         result = new bytes(ml);
         assembly {
-            ok :=
-                staticcall(
-                    gas(),
-                    0x05,
-                    add(input, 0x20),
-                    mload(input),
-                    add(result, 0x20),
-                    ml
-                )
+            ok := staticcall(gas(), 0x05, add(input, 0x20), mload(input), add(result, 0x20), ml)
         }
     }
 }

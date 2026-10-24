@@ -27,14 +27,18 @@ library BodyParser {
             while (keyEnd > a && (value[keyEnd - 1] == " " || value[keyEnd - 1] == "\t")) --keyEnd;
             if (eq < b && keyEnd - a == name.length) {
                 bool equal = true;
-                for (uint256 j; j < name.length; ++j) if (value[a + j] != name[j]) equal = false;
+                for (uint256 j; j < name.length; ++j) {
+                    if (value[a + j] != name[j]) equal = false;
+                }
                 if (equal) {
                     if (found) return ("", false);
                     found = true;
                     a = eq + 1;
                     while (a < b && (value[a] == " " || value[a] == "\t")) ++a;
                     result = new bytes(b - a);
-                    for (uint256 j; j < result.length; ++j) result[j] = value[a + j];
+                    for (uint256 j; j < result.length; ++j) {
+                        result[j] = value[a + j];
+                    }
                 }
             }
             start = end + 1;
@@ -68,7 +72,9 @@ library BodyParser {
             if (i == 42) {
                 if (v & 3 != 0) return (0, false);
                 acc = (acc << 4) | (v >> 2);
-            } else acc = (acc << 6) | v;
+            } else {
+                acc = (acc << 6) | v;
+            }
         }
         return (bytes32(acc), true);
     }
@@ -77,43 +83,59 @@ library BodyParser {
         (bytes memory ct, bool present) = HeaderParser.fieldUnique(header, "content-type");
         if (!present) return (0, false);
         // Case-insensitive media type; only utf-8/us-ascii charset is supported.
-        for (uint256 i; i < ct.length; ++i) if (ct[i] >= "A" && ct[i] <= "Z") ct[i] = bytes1(uint8(ct[i]) + 32);
+        for (uint256 i; i < ct.length; ++i) {
+            if (ct[i] >= "A" && ct[i] <= "Z") ct[i] = bytes1(uint8(ct[i]) + 32);
+        }
         uint256 end;
         while (end < ct.length && ct[end] != ";" && ct[end] != " ") ++end;
         bytes memory media = new bytes(end);
-        for (uint256 i; i < end; ++i) media[i] = ct[i];
+        for (uint256 i; i < end; ++i) {
+            media[i] = ct[i];
+        }
         if (!same(media, "text/plain") && !same(media, "text/html")) return (0, false);
         (bytes memory charset, bool hasCharset) = tag(ct, "charset");
         if (!hasCharset && hasTagKey(ct, "charset")) return (0, false);
-        if (hasCharset && !same(charset, "utf-8") && !same(charset, "\"utf-8\"")
-            && !same(charset, "us-ascii") && !same(charset, "\"us-ascii\"")) return (0, false);
+        if (
+            hasCharset && !same(charset, "utf-8") && !same(charset, "\"utf-8\"") && !same(charset, "us-ascii")
+                && !same(charset, "\"us-ascii\"")
+        ) return (0, false);
         (bytes memory cte, bool signedEncoding) = HeaderParser.fieldUnique(header, "content-transfer-encoding");
         if (!signedEncoding) {
             // Distinguish an absent field from ambiguous duplicate signed fields.
             (, bool exists) = HeaderParser.field(header, "content-transfer-encoding");
             return (1, !exists);
         }
-        for (uint256 i; i < cte.length; ++i) if (cte[i] >= "A" && cte[i] <= "Z") cte[i] = bytes1(uint8(cte[i]) + 32);
+        for (uint256 i; i < cte.length; ++i) {
+            if (cte[i] >= "A" && cte[i] <= "Z") cte[i] = bytes1(uint8(cte[i]) + 32);
+        }
         if (same(cte, "quoted-printable")) return (1, true);
         if (same(cte, "7bit") || same(cte, "8bit")) return (0, true);
         return (0, false);
     }
 
     function decode(bytes calldata body, uint256 start, uint256 length, uint256 encoding)
-        internal pure returns (bytes memory out, bool ok)
+        internal
+        pure
+        returns (bytes memory out, bool ok)
     {
-        if (length == 0 || length > MAX_WINDOW || start > body.length || length > body.length - start) return ("", false);
+        if (length == 0 || length > MAX_WINDOW || start > body.length || length > body.length - start) {
+            return ("", false);
+        }
         uint256 end = start + length;
         // Never start in a quoted-printable escape or a soft line break.
-        if (encoding == 1 && ((start > 0 && body[start - 1] == "=")
-            || (start > 1 && body[start - 2] == "="))) return ("", false);
+        if (encoding == 1 && ((start > 0 && body[start - 1] == "=") || (start > 1 && body[start - 2] == "="))) {
+            return ("", false);
+        }
         out = new bytes(length);
         uint256 n;
         for (uint256 i = start; i < end; ++i) {
             bytes1 c = body[i];
             if (encoding == 1 && c == "=") {
                 if (i + 2 >= end) return ("", false);
-                if (body[i + 1] == "\r" && body[i + 2] == "\n") { i += 2; continue; }
+                if (body[i + 1] == "\r" && body[i + 2] == "\n") {
+                    i += 2;
+                    continue;
+                }
                 (uint8 high, bool a) = hexNibble(body[i + 1]);
                 (uint8 low, bool b) = hexNibble(body[i + 2]);
                 if (!a || !b) return ("", false);
@@ -134,7 +156,9 @@ library BodyParser {
     }
 
     function verify(bytes memory header, bytes calldata body, uint256 start, uint256 length, string calldata excerpt)
-        internal pure returns (bool)
+        internal
+        pure
+        returns (bool)
     {
         if (body.length == 0 || body.length > MAX_BODY) return false;
         (bytes memory sig, bool hasSig) = HeaderParser.fieldUnique(header, "dkim-signature");
@@ -168,8 +192,14 @@ library BodyParser {
         bool escaped;
         bool inClass;
         for (uint256 i; i < p.length; ++i) {
-            if (escaped) { escaped = false; continue; }
-            if (p[i] == "\\") { escaped = true; continue; }
+            if (escaped) {
+                escaped = false;
+                continue;
+            }
+            if (p[i] == "\\") {
+                escaped = true;
+                continue;
+            }
             if (p[i] == "[") inClass = true;
             else if (p[i] == "]") inClass = false;
             else if (!inClass && (p[i] == "^" || p[i] == "$")) return false;

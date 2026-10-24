@@ -18,7 +18,14 @@ import {ChemistrySchnorrConsumer} from "../src/judge/ChemistrySchnorrConsumer.so
 /// positive authentication. Original expired mail passes only in LOCAL HISTORICAL
 /// REPLAY. No network, production operator registration, deployment or settlement.
 contract ChemistrySchnorrConsumerTest is Test {
-    struct OperatorPoP { uint256 x; uint256 y; uint256 weight; uint256 popS; address popR; }
+    struct OperatorPoP {
+        uint256 x;
+        uint256 y;
+        uint256 weight;
+        uint256 popS;
+        address popR;
+    }
+
     struct Certificate {
         bytes32 digest;
         uint32 refBlock;
@@ -32,8 +39,7 @@ contract ChemistrySchnorrConsumerTest is Test {
 
     // Filled only with the actual independently executed actor artifact, never a
     // generated mock certificate or a caller-selected probability fixture.
-    bytes32 constant ACTOR_FIXTURE_SHA256 =
-        0xbc47726e94ee47e5e1aa021c382dcf58e340124c068743e453b359b7645a3cc5;
+    bytes32 constant ACTOR_FIXTURE_SHA256 = 0xbc47726e94ee47e5e1aa021c382dcf58e340124c068743e453b359b7645a3cc5;
     address constant TEST_DEPLOYER = address(0xC0FFEE);
     address constant EXPECTED_CONSUMER = 0x705d7dB00e7E0294f090F38DC2775F46Ec861B6e;
     SchnorrStakeRegistry registry;
@@ -68,12 +74,16 @@ contract ChemistrySchnorrConsumerTest is Test {
         string memory gateFixture = string(gateRaw);
         bytes memory exponent;
         bytes memory modulus;
-        (proofs, exponent, modulus, inputs, ids, requests) = abi.decode(vm.parseJsonBytes(gateFixture, ".abiHex"),
-            (EmailProof[], bytes, bytes, bytes[], uint32[][], LayaRequest.Request[]));
+        (proofs, exponent, modulus, inputs, ids, requests) = abi.decode(
+            vm.parseJsonBytes(gateFixture, ".abiHex"),
+            (EmailProof[], bytes, bytes, bytes[], uint32[][], LayaRequest.Request[])
+        );
         bytes memory actorRaw = fileBytes(actorPath);
         assertEq(sha256(actorRaw), ACTOR_FIXTURE_SHA256, "Actual actor artifact must be immutably pinned");
-        (operators, receipts, certificates) = abi.decode(vm.parseJsonBytes(string(actorRaw), ".abiHex"),
-            (OperatorPoP[], ChemistrySchnorrConsumer.Receipt[], Certificate[]));
+        (operators, receipts, certificates) = abi.decode(
+            vm.parseJsonBytes(string(actorRaw), ".abiHex"),
+            (OperatorPoP[], ChemistrySchnorrConsumer.Receipt[], Certificate[])
+        );
         assertEq(operators.length, 3);
         assertEq(receipts.length, 3);
         assertEq(certificates.length, 3);
@@ -95,8 +105,8 @@ contract ChemistrySchnorrConsumerTest is Test {
         DKIMVerifier verifier = new DKIMVerifier(keys);
         vm.setNonce(TEST_DEPLOYER, 1);
         vm.prank(TEST_DEPLOYER);
-        consumer = new ChemistrySchnorrConsumer(verifier, proofs[0].publicKeyHash, registry,
-            address(0xA55), requests, false);
+        consumer =
+            new ChemistrySchnorrConsumer(verifier, proofs[0].publicKeyHash, registry, address(0xA55), requests, false);
         assertEq(address(consumer), EXPECTED_CONSUMER);
         for (uint256 i; i < 3; ++i) {
             requests[i].market = address(consumer);
@@ -119,8 +129,9 @@ contract ChemistrySchnorrConsumerTest is Test {
     function transport(uint256 i) private {
         Certificate memory c = certificates[i];
         assertTrue(registry.isValidSignature(c.digest, c.s, c.Raddr, c.nonSigners, c.refBlock));
-        consumer.verifyAndUpdate(c.digest, c.refBlock, c.payload, c.transitionIndex, c.targetFunction,
-            c.s, c.Raddr, c.nonSigners);
+        consumer.verifyAndUpdate(
+            c.digest, c.refBlock, c.payload, c.transitionIndex, c.targetFunction, c.s, c.Raddr, c.nonSigners
+        );
     }
 
     function signature(uint256 i) private view returns (QuorumSignature memory) {
@@ -146,8 +157,9 @@ contract ChemistrySchnorrConsumerTest is Test {
             Certificate memory c = certificates[i];
             assertTrue(registry.isValidSignature(c.digest, c.s, c.Raddr, c.nonSigners, c.refBlock));
             uint256 gasBefore = gasleft();
-            consumer.verifyAndUpdate(c.digest, c.refBlock, c.payload, c.transitionIndex, c.targetFunction,
-                c.s, c.Raddr, c.nonSigners);
+            consumer.verifyAndUpdate(
+                c.digest, c.refBlock, c.payload, c.transitionIndex, c.targetFunction, c.s, c.Raddr, c.nonSigners
+            );
             console2.log("actual SDK certificate transport caller gas delta", i, gasBefore - gasleft());
             gasBefore = gasleft();
             recordObservation(i);
@@ -187,8 +199,9 @@ contract ChemistrySchnorrConsumerTest is Test {
     function test_RealSignatureTamperRejectedWithoutTransition() public {
         Certificate memory c = certificates[0];
         vm.expectRevert(GasKillerSDK.InvalidQuorumSignature.selector);
-        consumer.verifyAndUpdate(c.digest, c.refBlock, c.payload, c.transitionIndex, c.targetFunction,
-            c.s ^ 1, c.Raddr, c.nonSigners);
+        consumer.verifyAndUpdate(
+            c.digest, c.refBlock, c.payload, c.transitionIndex, c.targetFunction, c.s ^ 1, c.Raddr, c.nonSigners
+        );
         assertEq(consumer.stateTransitionCount(), 0);
         assertNoConsumption();
     }
@@ -200,8 +213,9 @@ contract ChemistrySchnorrConsumerTest is Test {
         bytes memory payload = consumer.receiptPayload(changed);
         bytes32 digest = consumer.receiptDigest(0, changed);
         vm.expectRevert(GasKillerSDK.InvalidQuorumSignature.selector);
-        consumer.verifyAndUpdate(digest, c.refBlock, payload, c.transitionIndex, c.targetFunction,
-            c.s, c.Raddr, c.nonSigners);
+        consumer.verifyAndUpdate(
+            digest, c.refBlock, payload, c.transitionIndex, c.targetFunction, c.s, c.Raddr, c.nonSigners
+        );
         assertEq(consumer.stateTransitionCount(), 0);
         assertNoConsumption();
     }
@@ -211,8 +225,9 @@ contract ChemistrySchnorrConsumerTest is Test {
         bytes memory payload = consumer.receiptPayload(changed);
         bytes32 digest = consumer.receiptDigest(0, changed);
         vm.expectRevert(GasKillerSDK.InvalidQuorumSignature.selector);
-        consumer.verifyAndUpdate(digest, c.refBlock, payload, c.transitionIndex, c.targetFunction,
-            c.s, c.Raddr, c.nonSigners);
+        consumer.verifyAndUpdate(
+            digest, c.refBlock, payload, c.transitionIndex, c.targetFunction, c.s, c.Raddr, c.nonSigners
+        );
         assertEq(consumer.stateTransitionCount(), 0);
         assertEq(consumer.observationCount(), 0);
         assertNoConsumption();
@@ -277,8 +292,9 @@ contract ChemistrySchnorrConsumerTest is Test {
         recordObservation(0);
         Certificate memory c = certificates[0];
         vm.expectRevert(GasKillerSDK.InvalidTransitionIndex.selector);
-        consumer.verifyAndUpdate(c.digest, c.refBlock, c.payload, c.transitionIndex, c.targetFunction,
-            c.s, c.Raddr, c.nonSigners);
+        consumer.verifyAndUpdate(
+            c.digest, c.refBlock, c.payload, c.transitionIndex, c.targetFunction, c.s, c.Raddr, c.nonSigners
+        );
         vm.expectRevert(ChemistrySchnorrConsumer.AlreadyRecorded.selector);
         recordObservation(0);
         assertEq(consumer.observationCount(), 1);
@@ -292,8 +308,7 @@ contract ChemistrySchnorrConsumerTest is Test {
         address b = registry.pointAddress(operators[2].x, operators[2].y);
         (ns[0], ns[1]) = a < b ? (a, b) : (b, a);
         vm.expectRevert(GasKillerSDK.InvalidQuorumSignature.selector);
-        consumer.verifyAndUpdate(c.digest, c.refBlock, c.payload, c.transitionIndex, c.targetFunction,
-            c.s, c.Raddr, ns);
+        consumer.verifyAndUpdate(c.digest, c.refBlock, c.payload, c.transitionIndex, c.targetFunction, c.s, c.Raddr, ns);
         assertEq(consumer.stateTransitionCount(), 0);
         assertNoConsumption();
     }
@@ -302,8 +317,9 @@ contract ChemistrySchnorrConsumerTest is Test {
         vm.roll(410); // ref109 + staleMeasure300 < current410
         Certificate memory c = certificates[0];
         vm.expectRevert(GasKillerSDK.StaleBlockNumber.selector);
-        consumer.verifyAndUpdate(c.digest, c.refBlock, c.payload, c.transitionIndex, c.targetFunction,
-            c.s, c.Raddr, c.nonSigners);
+        consumer.verifyAndUpdate(
+            c.digest, c.refBlock, c.payload, c.transitionIndex, c.targetFunction, c.s, c.Raddr, c.nonSigners
+        );
         assertEq(consumer.stateTransitionCount(), 0);
         assertEq(consumer.observationCount(), 0);
         assertNoConsumption();
@@ -313,12 +329,14 @@ contract ChemistrySchnorrConsumerTest is Test {
         Certificate memory c = certificates[0];
         vm.roll(109); // equal reference block
         vm.expectRevert(GasKillerSDK.FutureBlockNumber.selector);
-        consumer.verifyAndUpdate(c.digest, c.refBlock, c.payload, c.transitionIndex, c.targetFunction,
-            c.s, c.Raddr, c.nonSigners);
+        consumer.verifyAndUpdate(
+            c.digest, c.refBlock, c.payload, c.transitionIndex, c.targetFunction, c.s, c.Raddr, c.nonSigners
+        );
         vm.roll(108); // future reference block
         vm.expectRevert(GasKillerSDK.FutureBlockNumber.selector);
-        consumer.verifyAndUpdate(c.digest, c.refBlock, c.payload, c.transitionIndex, c.targetFunction,
-            c.s, c.Raddr, c.nonSigners);
+        consumer.verifyAndUpdate(
+            c.digest, c.refBlock, c.payload, c.transitionIndex, c.targetFunction, c.s, c.Raddr, c.nonSigners
+        );
         assertEq(consumer.stateTransitionCount(), 0);
         assertEq(consumer.observationCount(), 0);
         assertNoConsumption();
@@ -345,14 +363,18 @@ contract ChemistrySchnorrConsumerTest is Test {
     function test_CrossChainReceiptRejectedByTypedCallback() public {
         vm.chainId(31338);
         Certificate memory c = certificates[0];
-        vm.expectRevert(abi.encodeWithSelector(
-            StateChangeHandlerLib.RevertingContext.selector,
-            uint256(0), address(consumer),
-            abi.encodeWithSelector(ChemistrySchnorrConsumer.BadReceiptContext.selector),
-            abi.encodeCall(consumer.acceptCertifiedReceipt, (receipts[0]))
-        ));
-        consumer.verifyAndUpdate(c.digest, c.refBlock, c.payload, c.transitionIndex, c.targetFunction,
-            c.s, c.Raddr, c.nonSigners);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                StateChangeHandlerLib.RevertingContext.selector,
+                uint256(0),
+                address(consumer),
+                abi.encodeWithSelector(ChemistrySchnorrConsumer.BadReceiptContext.selector),
+                abi.encodeCall(consumer.acceptCertifiedReceipt, (receipts[0]))
+            )
+        );
+        consumer.verifyAndUpdate(
+            c.digest, c.refBlock, c.payload, c.transitionIndex, c.targetFunction, c.s, c.Raddr, c.nonSigners
+        );
         assertEq(consumer.stateTransitionCount(), 0);
         assertNoConsumption();
     }

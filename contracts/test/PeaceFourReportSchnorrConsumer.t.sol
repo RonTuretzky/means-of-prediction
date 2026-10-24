@@ -20,7 +20,15 @@ import {PeaceFourReportSchnorrConsumer} from "../src/judge/PeaceFourReportSchnor
 /// the frozen current-time snapshot and consumed atomically. Local Yes is not live settlement.
 contract PeaceFourReportSchnorrConsumerTest is Test {
     using stdStorage for StdStorage;
-    struct OperatorPoP { uint256 x; uint256 y; uint256 weight; uint256 popS; address popR; }
+
+    struct OperatorPoP {
+        uint256 x;
+        uint256 y;
+        uint256 weight;
+        uint256 popS;
+        address popR;
+    }
+
     struct Certificate {
         bytes32 digest;
         uint32 refBlock;
@@ -34,8 +42,7 @@ contract PeaceFourReportSchnorrConsumerTest is Test {
 
     // Filled only with the actual independently executed actor artifact, never a
     // generated mock certificate or a caller-selected probability fixture.
-    bytes32 constant ACTOR_FIXTURE_SHA256 =
-        0x6fed0a096e6f04454d38e4fa7a29f3966e5969ca03eee192fe877b253a723a29;
+    bytes32 constant ACTOR_FIXTURE_SHA256 = 0x6fed0a096e6f04454d38e4fa7a29f3966e5969ca03eee192fe877b253a723a29;
     address constant TEST_DEPLOYER = address(0xC0FFEE);
     address constant EXPECTED_CONSUMER = 0xBE48387535e1dE07361eF51B57aaa5758c445D79;
     SchnorrStakeRegistry registry;
@@ -70,12 +77,16 @@ contract PeaceFourReportSchnorrConsumerTest is Test {
         string memory gateFixture = string(gateRaw);
         bytes memory exponent;
         bytes memory modulus;
-        (proofs, exponent, modulus, inputs, ids, requests) = abi.decode(vm.parseJsonBytes(gateFixture, ".abiHex"),
-            (EmailProof[], bytes, bytes, bytes[], uint32[][], LayaRequest.Request[]));
+        (proofs, exponent, modulus, inputs, ids, requests) = abi.decode(
+            vm.parseJsonBytes(gateFixture, ".abiHex"),
+            (EmailProof[], bytes, bytes, bytes[], uint32[][], LayaRequest.Request[])
+        );
         bytes memory actorRaw = fileBytes(actorPath);
         assertEq(sha256(actorRaw), ACTOR_FIXTURE_SHA256, "Actual actor artifact must be immutably pinned");
-        (operators, receipts, certificates) = abi.decode(vm.parseJsonBytes(string(actorRaw), ".abiHex"),
-            (OperatorPoP[], PeaceFourReportSchnorrConsumer.Receipt[], Certificate[]));
+        (operators, receipts, certificates) = abi.decode(
+            vm.parseJsonBytes(string(actorRaw), ".abiHex"),
+            (OperatorPoP[], PeaceFourReportSchnorrConsumer.Receipt[], Certificate[])
+        );
         assertEq(operators.length, 3);
         assertEq(receipts.length, 4);
         assertEq(certificates.length, 4);
@@ -97,8 +108,8 @@ contract PeaceFourReportSchnorrConsumerTest is Test {
         DKIMVerifier verifier = new DKIMVerifier(keys);
         vm.setNonce(TEST_DEPLOYER, 3);
         vm.prank(TEST_DEPLOYER);
-        consumer = new PeaceFourReportSchnorrConsumer(verifier, proofs[0].publicKeyHash, registry,
-            address(0xA55), requests);
+        consumer =
+            new PeaceFourReportSchnorrConsumer(verifier, proofs[0].publicKeyHash, registry, address(0xA55), requests);
         assertEq(address(consumer), EXPECTED_CONSUMER);
         for (uint256 i; i < 4; ++i) {
             requests[i].market = address(consumer);
@@ -123,8 +134,9 @@ contract PeaceFourReportSchnorrConsumerTest is Test {
     function transport(uint256 i) private {
         Certificate memory c = certificates[i];
         assertTrue(registry.isValidSignature(c.digest, c.s, c.Raddr, c.nonSigners, c.refBlock));
-        consumer.verifyAndUpdate(c.digest, c.refBlock, c.payload, c.transitionIndex, c.targetFunction,
-            c.s, c.Raddr, c.nonSigners);
+        consumer.verifyAndUpdate(
+            c.digest, c.refBlock, c.payload, c.transitionIndex, c.targetFunction, c.s, c.Raddr, c.nonSigners
+        );
     }
 
     function signature(uint256 i) private view returns (QuorumSignature memory) {
@@ -146,7 +158,10 @@ contract PeaceFourReportSchnorrConsumerTest is Test {
     }
 
     function recordAll() private {
-        for (uint256 i; i < 4; ++i) { transport(i); recordObservation(i); }
+        for (uint256 i; i < 4; ++i) {
+            transport(i);
+            recordObservation(i);
+        }
     }
 
     function assertAllConsumed() private view {
@@ -163,17 +178,22 @@ contract PeaceFourReportSchnorrConsumerTest is Test {
             Certificate memory c = certificates[i];
             assertTrue(registry.isValidSignature(c.digest, c.s, c.Raddr, c.nonSigners, c.refBlock));
             uint256 gasBefore = gasleft();
-            consumer.verifyAndUpdate(c.digest, c.refBlock, c.payload, c.transitionIndex, c.targetFunction,
-                c.s, c.Raddr, c.nonSigners);
+            consumer.verifyAndUpdate(
+                c.digest, c.refBlock, c.payload, c.transitionIndex, c.targetFunction, c.s, c.Raddr, c.nonSigners
+            );
             console2.log("actual four-report SDK transport caller gas delta", i, gasBefore - gasleft());
-            gasBefore = gasleft(); recordObservation(i);
+            gasBefore = gasleft();
+            recordObservation(i);
             console2.log("complete original report observation caller gas delta", i, gasBefore - gasleft());
             assertEq(consumer.observationCount(), i + 1);
             (bool recorded, bool a, bool b,) = consumer.observations(LayaRequest.key(requests[i]));
-            assertTrue(recorded); assertTrue(a); assertFalse(b);
+            assertTrue(recorded);
+            assertTrue(a);
+            assertFalse(b);
         }
         assertEq(consumer.stateTransitionCount(), 4);
-        assertEq(consumer.supportingSourceMask(), 15); assertFalse(consumer.anyBSupport());
+        assertEq(consumer.supportingSourceMask(), 15);
+        assertFalse(consumer.anyBSupport());
         assertNoConsumption();
         uint256 gasBefore = gasleft();
         consumer.finalize(proofs, inputs, ids);
@@ -198,8 +218,9 @@ contract PeaceFourReportSchnorrConsumerTest is Test {
     function test_RealSignatureTamperRejectedWithoutTransition() public {
         Certificate memory c = certificates[0];
         vm.expectRevert(GasKillerSDK.InvalidQuorumSignature.selector);
-        consumer.verifyAndUpdate(c.digest, c.refBlock, c.payload, c.transitionIndex, c.targetFunction,
-            c.s ^ 1, c.Raddr, c.nonSigners);
+        consumer.verifyAndUpdate(
+            c.digest, c.refBlock, c.payload, c.transitionIndex, c.targetFunction, c.s ^ 1, c.Raddr, c.nonSigners
+        );
         assertEq(consumer.stateTransitionCount(), 0);
         assertNoConsumption();
     }
@@ -211,8 +232,9 @@ contract PeaceFourReportSchnorrConsumerTest is Test {
         bytes memory payload = consumer.receiptPayload(changed);
         bytes32 digest = consumer.receiptDigest(0, changed);
         vm.expectRevert(GasKillerSDK.InvalidQuorumSignature.selector);
-        consumer.verifyAndUpdate(digest, c.refBlock, payload, c.transitionIndex, c.targetFunction,
-            c.s, c.Raddr, c.nonSigners);
+        consumer.verifyAndUpdate(
+            digest, c.refBlock, payload, c.transitionIndex, c.targetFunction, c.s, c.Raddr, c.nonSigners
+        );
         assertEq(consumer.stateTransitionCount(), 0);
         assertNoConsumption();
     }
@@ -222,8 +244,9 @@ contract PeaceFourReportSchnorrConsumerTest is Test {
         bytes memory payload = consumer.receiptPayload(changed);
         bytes32 digest = consumer.receiptDigest(0, changed);
         vm.expectRevert(GasKillerSDK.InvalidQuorumSignature.selector);
-        consumer.verifyAndUpdate(digest, c.refBlock, payload, c.transitionIndex, c.targetFunction,
-            c.s, c.Raddr, c.nonSigners);
+        consumer.verifyAndUpdate(
+            digest, c.refBlock, payload, c.transitionIndex, c.targetFunction, c.s, c.Raddr, c.nonSigners
+        );
         assertEq(consumer.stateTransitionCount(), 0);
         assertEq(consumer.observationCount(), 0);
         assertNoConsumption();
@@ -288,8 +311,9 @@ contract PeaceFourReportSchnorrConsumerTest is Test {
         recordObservation(0);
         Certificate memory c = certificates[0];
         vm.expectRevert(GasKillerSDK.InvalidTransitionIndex.selector);
-        consumer.verifyAndUpdate(c.digest, c.refBlock, c.payload, c.transitionIndex, c.targetFunction,
-            c.s, c.Raddr, c.nonSigners);
+        consumer.verifyAndUpdate(
+            c.digest, c.refBlock, c.payload, c.transitionIndex, c.targetFunction, c.s, c.Raddr, c.nonSigners
+        );
         vm.expectRevert(PeaceFourReportSchnorrConsumer.AlreadyRecorded.selector);
         recordObservation(0);
         assertEq(consumer.observationCount(), 1);
@@ -303,8 +327,7 @@ contract PeaceFourReportSchnorrConsumerTest is Test {
         address b = registry.pointAddress(operators[2].x, operators[2].y);
         (ns[0], ns[1]) = a < b ? (a, b) : (b, a);
         vm.expectRevert(GasKillerSDK.InvalidQuorumSignature.selector);
-        consumer.verifyAndUpdate(c.digest, c.refBlock, c.payload, c.transitionIndex, c.targetFunction,
-            c.s, c.Raddr, ns);
+        consumer.verifyAndUpdate(c.digest, c.refBlock, c.payload, c.transitionIndex, c.targetFunction, c.s, c.Raddr, ns);
         assertEq(consumer.stateTransitionCount(), 0);
         assertNoConsumption();
     }
@@ -313,8 +336,9 @@ contract PeaceFourReportSchnorrConsumerTest is Test {
         vm.roll(410); // ref109 + staleMeasure300 < current410
         Certificate memory c = certificates[0];
         vm.expectRevert(GasKillerSDK.StaleBlockNumber.selector);
-        consumer.verifyAndUpdate(c.digest, c.refBlock, c.payload, c.transitionIndex, c.targetFunction,
-            c.s, c.Raddr, c.nonSigners);
+        consumer.verifyAndUpdate(
+            c.digest, c.refBlock, c.payload, c.transitionIndex, c.targetFunction, c.s, c.Raddr, c.nonSigners
+        );
         assertEq(consumer.stateTransitionCount(), 0);
         assertEq(consumer.observationCount(), 0);
         assertNoConsumption();
@@ -324,12 +348,14 @@ contract PeaceFourReportSchnorrConsumerTest is Test {
         Certificate memory c = certificates[0];
         vm.roll(109); // equal reference block
         vm.expectRevert(GasKillerSDK.FutureBlockNumber.selector);
-        consumer.verifyAndUpdate(c.digest, c.refBlock, c.payload, c.transitionIndex, c.targetFunction,
-            c.s, c.Raddr, c.nonSigners);
+        consumer.verifyAndUpdate(
+            c.digest, c.refBlock, c.payload, c.transitionIndex, c.targetFunction, c.s, c.Raddr, c.nonSigners
+        );
         vm.roll(108); // future reference block
         vm.expectRevert(GasKillerSDK.FutureBlockNumber.selector);
-        consumer.verifyAndUpdate(c.digest, c.refBlock, c.payload, c.transitionIndex, c.targetFunction,
-            c.s, c.Raddr, c.nonSigners);
+        consumer.verifyAndUpdate(
+            c.digest, c.refBlock, c.payload, c.transitionIndex, c.targetFunction, c.s, c.Raddr, c.nonSigners
+        );
         assertEq(consumer.stateTransitionCount(), 0);
         assertEq(consumer.observationCount(), 0);
         assertNoConsumption();
@@ -356,14 +382,18 @@ contract PeaceFourReportSchnorrConsumerTest is Test {
     function test_CrossChainReceiptRejectedByTypedCallback() public {
         vm.chainId(31338);
         Certificate memory c = certificates[0];
-        vm.expectRevert(abi.encodeWithSelector(
-            StateChangeHandlerLib.RevertingContext.selector,
-            uint256(0), address(consumer),
-            abi.encodeWithSelector(PeaceFourReportSchnorrConsumer.BadReceiptContext.selector),
-            abi.encodeCall(consumer.acceptCertifiedReport, (receipts[0]))
-        ));
-        consumer.verifyAndUpdate(c.digest, c.refBlock, c.payload, c.transitionIndex, c.targetFunction,
-            c.s, c.Raddr, c.nonSigners);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                StateChangeHandlerLib.RevertingContext.selector,
+                uint256(0),
+                address(consumer),
+                abi.encodeWithSelector(PeaceFourReportSchnorrConsumer.BadReceiptContext.selector),
+                abi.encodeCall(consumer.acceptCertifiedReport, (receipts[0]))
+            )
+        );
+        consumer.verifyAndUpdate(
+            c.digest, c.refBlock, c.payload, c.transitionIndex, c.targetFunction, c.s, c.Raddr, c.nonSigners
+        );
         assertEq(consumer.stateTransitionCount(), 0);
         assertNoConsumption();
     }
@@ -377,49 +407,71 @@ contract PeaceFourReportSchnorrConsumerTest is Test {
         assertEq(consumer.observationCount(), 0);
         assertNoConsumption();
     }
+
     function test_FinalizeMissingOneActualCertifiedObservationStaysUnresolved() public {
-        for (uint256 i; i < 3; ++i) { transport(i); recordObservation(i); }
+        for (uint256 i; i < 3; ++i) {
+            transport(i);
+            recordObservation(i);
+        }
         vm.expectRevert(PeaceFourReportSchnorrConsumer.IncompleteObservations.selector);
-        consumer.finalize(proofs, inputs, ids); assertNoConsumption();
+        consumer.finalize(proofs, inputs, ids);
+        assertNoConsumption();
     }
 
     function test_FinalizeFreshlyReverifiesCNNExpiryAfterAllEarlierObservations() public {
-        recordAll(); vm.warp(1792599290); // CNN x+1; BBC/ABC/RFI signatures still valid.
+        recordAll(); // CNN x+1; BBC/ABC/RFI signatures still valid.
+        vm.warp(1792599290);
         vm.expectRevert(PeaceFourReportEvidenceGate.SignatureOutsideValidity.selector);
-        consumer.finalize(proofs, inputs, ids); assertNoConsumption();
+        consumer.finalize(proofs, inputs, ids);
+        assertNoConsumption();
     }
 
     function test_FinalizeLastProofTamperRollsBackEntirePacket() public {
-        recordAll(); proofs[3].canonicalBody[100] = bytes1(uint8(proofs[3].canonicalBody[100]) ^ 1);
+        recordAll();
+        proofs[3].canonicalBody[100] = bytes1(uint8(proofs[3].canonicalBody[100]) ^ 1);
         vm.expectRevert(LayaRequest.EvidenceMismatch.selector);
-        consumer.finalize(proofs, inputs, ids); assertNoConsumption();
+        consumer.finalize(proofs, inputs, ids);
+        assertNoConsumption();
     }
 
     function test_FinalizeRejectsWrongOrderWithoutPartialConsumption() public {
-        recordAll(); EmailProof memory first = proofs[0]; proofs[0] = proofs[1]; proofs[1] = first;
+        recordAll();
+        EmailProof memory first = proofs[0];
+        proofs[0] = proofs[1];
+        proofs[1] = first;
         vm.expectRevert(PeaceFourReportEvidenceGate.BadHeaderPolicy.selector);
-        consumer.finalize(proofs, inputs, ids); assertNoConsumption();
+        consumer.finalize(proofs, inputs, ids);
+        assertNoConsumption();
     }
 
     function test_FinalizeRejectsInputAndTokenTamperingWithoutConsumption() public {
-        recordAll(); inputs[3][0] = bytes1(uint8(inputs[3][0]) ^ 1);
+        recordAll();
+        inputs[3][0] = bytes1(uint8(inputs[3][0]) ^ 1);
         vm.expectRevert(LayaRequest.InputMismatch.selector);
-        consumer.finalize(proofs, inputs, ids); assertNoConsumption();
-        inputs[3][0] = bytes1(uint8(inputs[3][0]) ^ 1); ids[3][0] ^= 1;
+        consumer.finalize(proofs, inputs, ids);
+        assertNoConsumption();
+        inputs[3][0] = bytes1(uint8(inputs[3][0]) ^ 1);
+        ids[3][0] ^= 1;
         vm.expectRevert(LayaRequest.InputMismatch.selector);
-        consumer.finalize(proofs, inputs, ids); assertNoConsumption();
+        consumer.finalize(proofs, inputs, ids);
+        assertNoConsumption();
     }
 
     function test_FinalizeCannotReplayAfterActualAtomicConsumption() public {
-        recordAll(); consumer.finalize(proofs, inputs, ids); assertAllConsumed();
+        recordAll();
+        consumer.finalize(proofs, inputs, ids);
+        assertAllConsumed();
         vm.expectRevert(PeaceFourReportSchnorrConsumer.AlreadyRecorded.selector);
-        consumer.finalize(proofs, inputs, ids); assertAllConsumed();
+        consumer.finalize(proofs, inputs, ids);
+        assertAllConsumed();
     }
 
     function test_FinalizeWrongArrayLengthLeavesNoConsumption() public {
-        recordAll(); EmailProof[] memory short = new EmailProof[](3);
+        recordAll();
+        EmailProof[] memory short = new EmailProof[](3);
         vm.expectRevert(PeaceFourReportSchnorrConsumer.BadEvidenceArray.selector);
-        consumer.finalize(short, inputs, ids); assertNoConsumption();
+        consumer.finalize(short, inputs, ids);
+        assertNoConsumption();
     }
 
     function test_SYNTHETIC_STORAGE_FAULT_BSupportBlocksYesNotAnActualModelResult() public {
@@ -427,78 +479,116 @@ contract PeaceFourReportSchnorrConsumerTest is Test {
         // Negative fault injection only. No synthetic positive certificate is used.
         stdstore.target(address(consumer)).sig("anyBSupport()").enable_packed_slots().checked_write(true);
         vm.expectRevert(PeaceFourReportSchnorrConsumer.ConflictingSupport.selector);
-        consumer.finalize(proofs, inputs, ids); assertNoConsumption();
+        consumer.finalize(proofs, inputs, ids);
+        assertNoConsumption();
     }
 
     function test_SYNTHETIC_STORAGE_FAULT_AbstentionBlocksYesNotAnActualModelResult() public {
         recordAll();
         stdstore.target(address(consumer)).sig("supportingSourceMask()").enable_packed_slots().checked_write(uint256(7));
         vm.expectRevert(PeaceFourReportSchnorrConsumer.InsufficientSupport.selector);
-        consumer.finalize(proofs, inputs, ids); assertNoConsumption();
+        consumer.finalize(proofs, inputs, ids);
+        assertNoConsumption();
     }
 
     function test_OriginalCertificateRejectsOldProtocolVersionOrDomain() public {
-        PeaceFourReportSchnorrConsumer.Receipt memory changed = receipts[0]; changed.version = 2;
+        PeaceFourReportSchnorrConsumer.Receipt memory changed = receipts[0];
+        changed.version = 2;
         rejectChangedReceipt(changed);
-        changed = receipts[0]; changed.contextDomain = keccak256("PEACE_BBC_SCHNORR_OBSERVATION_V1");
+        changed = receipts[0];
+        changed.contextDomain = keccak256("PEACE_BBC_SCHNORR_OBSERVATION_V1");
         rejectChangedReceipt(changed);
     }
 
     function test_OriginalCertificateRejectsModelProfileOrRuntimeMismatch() public {
         PeaceFourReportSchnorrConsumer.Receipt memory changed = receipts[0];
-        changed.modelPinsHash = bytes32(uint256(changed.modelPinsHash) ^ 1); rejectChangedReceipt(changed);
-        changed = receipts[0]; changed.profileHash = bytes32(uint256(changed.profileHash) ^ 1); rejectChangedReceipt(changed);
-        transport(0); requests[0].model.runtime = bytes32(uint256(requests[0].model.runtime) ^ 1);
-        vm.expectRevert(PeaceFourReportSchnorrConsumer.MissingReceipt.selector); recordObservation(0); assertNoConsumption();
+        changed.modelPinsHash = bytes32(uint256(changed.modelPinsHash) ^ 1);
+        rejectChangedReceipt(changed);
+        changed = receipts[0];
+        changed.profileHash = bytes32(uint256(changed.profileHash) ^ 1);
+        rejectChangedReceipt(changed);
+        transport(0);
+        requests[0].model.runtime = bytes32(uint256(requests[0].model.runtime) ^ 1);
+        vm.expectRevert(PeaceFourReportSchnorrConsumer.MissingReceipt.selector);
+        recordObservation(0);
+        assertNoConsumption();
     }
 
     function test_UnknownSourcePolicyCannotBeAdmittedByCaller() public {
-        transport(0); requests[0].sourcePolicyHash = bytes32(uint256(requests[0].sourcePolicyHash) ^ 1);
-        vm.expectRevert(PeaceFourReportSchnorrConsumer.MissingReceipt.selector); recordObservation(0); assertNoConsumption();
+        transport(0);
+        requests[0].sourcePolicyHash = bytes32(uint256(requests[0].sourcePolicyHash) ^ 1);
+        vm.expectRevert(PeaceFourReportSchnorrConsumer.MissingReceipt.selector);
+        recordObservation(0);
+        assertNoConsumption();
     }
 
     function test_FinalizeRejectsRegistryDriftAfterAllGenuineObservations() public {
-        recordAll(); vm.roll(111);
+        recordAll();
+        vm.roll(111);
         registry.deregisterOperator(registry.pointAddress(operators[2].x, operators[2].y));
         vm.expectRevert(PeaceFourReportSchnorrConsumer.BadRegistry.selector);
-        consumer.finalize(proofs, inputs, ids); assertNoConsumption();
+        consumer.finalize(proofs, inputs, ids);
+        assertNoConsumption();
     }
 
     function test_FinalizeRejectsDuplicatedGenuineProofWithoutPartialConsumption() public {
-        recordAll(); proofs[3] = proofs[2];
+        recordAll();
+        proofs[3] = proofs[2];
         vm.expectRevert(PeaceFourReportEvidenceGate.BadHeaderPolicy.selector);
-        consumer.finalize(proofs, inputs, ids); assertNoConsumption();
+        consumer.finalize(proofs, inputs, ids);
+        assertNoConsumption();
     }
 
     function test_SourceIndexAliasCannotReuseGenuineCertificate() public {
-        transport(0); requests[0].sourceIndex = 1;
+        transport(0);
+        requests[0].sourceIndex = 1;
         vm.expectRevert(PeaceFourReportSchnorrConsumer.MissingReceipt.selector);
-        recordObservation(0); assertNoConsumption();
+        recordObservation(0);
+        assertNoConsumption();
     }
 
     function test_SYNTHETIC_STORAGE_FAULT_BothFlagsBlockYesNotAnActualModelResult() public {
         recordAll();
-        stdstore.target(address(consumer)).sig("observations(bytes32)").with_key(LayaRequest.key(requests[0]))
-            .depth(2).enable_packed_slots().checked_write(true);
+        stdstore.target(address(consumer))
+            .sig("observations(bytes32)")
+            .with_key(LayaRequest.key(requests[0]))
+            .depth(2)
+            .enable_packed_slots()
+            .checked_write(true);
         vm.expectRevert(PeaceFourReportSchnorrConsumer.ConflictingSupport.selector);
-        consumer.finalize(proofs, inputs, ids); assertNoConsumption();
+        consumer.finalize(proofs, inputs, ids);
+        assertNoConsumption();
     }
 
     function test_SYNTHETIC_STORAGE_FAULT_OppositeOnlyBlocksYesNotAnActualModelResult() public {
         recordAll();
-        stdstore.target(address(consumer)).sig("observations(bytes32)").with_key(LayaRequest.key(requests[0]))
-            .depth(1).enable_packed_slots().checked_write(false);
-        stdstore.target(address(consumer)).sig("observations(bytes32)").with_key(LayaRequest.key(requests[0]))
-            .depth(2).enable_packed_slots().checked_write(true);
+        stdstore.target(address(consumer))
+            .sig("observations(bytes32)")
+            .with_key(LayaRequest.key(requests[0]))
+            .depth(1)
+            .enable_packed_slots()
+            .checked_write(false);
+        stdstore.target(address(consumer))
+            .sig("observations(bytes32)")
+            .with_key(LayaRequest.key(requests[0]))
+            .depth(2)
+            .enable_packed_slots()
+            .checked_write(true);
         vm.expectRevert(PeaceFourReportSchnorrConsumer.ConflictingSupport.selector);
-        consumer.finalize(proofs, inputs, ids); assertNoConsumption();
+        consumer.finalize(proofs, inputs, ids);
+        assertNoConsumption();
     }
 
     function test_SYNTHETIC_STORAGE_FAULT_NeitherBlocksYesNotAnActualModelResult() public {
         recordAll();
-        stdstore.target(address(consumer)).sig("observations(bytes32)").with_key(LayaRequest.key(requests[0]))
-            .depth(1).enable_packed_slots().checked_write(false);
+        stdstore.target(address(consumer))
+            .sig("observations(bytes32)")
+            .with_key(LayaRequest.key(requests[0]))
+            .depth(1)
+            .enable_packed_slots()
+            .checked_write(false);
         vm.expectRevert(PeaceFourReportSchnorrConsumer.ConflictingSupport.selector);
-        consumer.finalize(proofs, inputs, ids); assertNoConsumption();
+        consumer.finalize(proofs, inputs, ids);
+        assertNoConsumption();
     }
 }

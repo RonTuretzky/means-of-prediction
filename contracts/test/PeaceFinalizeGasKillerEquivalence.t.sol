@@ -47,8 +47,10 @@ contract PeaceFinalizeGasKillerEquivalenceTest is Test {
         bytes memory actor = _fileBytes(vm.envString("LAYA_PEACE_RELAY_ACTOR_FIXTURE"));
         assertEq(sha256(actor), ACTOR_FIXTURE_SHA256, "actual actor artifact pin");
         string memory fixture = string(actor);
-        assertEq(vm.parseJsonBytes32(fixture, ".certificate.digest"),
-            0xc259b8318d6f4766703dab491b5841864b63131a5548ea71ff8a913c1156f3f8);
+        assertEq(
+            vm.parseJsonBytes32(fixture, ".certificate.digest"),
+            0xc259b8318d6f4766703dab491b5841864b63131a5548ea71ff8a913c1156f3f8
+        );
         assertEq(vm.parseJsonUint(fixture, ".receipt.anchorBlockNumber"), 129);
         assertEq(vm.parseJsonUint(fixture, ".receipt.executionTimestamp"), 1792546129);
         assertEq(vm.parseJsonBytes32(fixture, ".receipt.preStateHash"), PRESTATE_HASH);
@@ -78,8 +80,14 @@ contract PeaceFinalizeGasKillerEquivalenceTest is Test {
         _assertUnconsumed();
     }
 
-    function _certified() private returns (bool ok) { (ok,) = RELAY.call(certifiedCalldata); }
-    function _direct() private returns (bool ok) { (ok,) = RELAY.call(abi.encodeCall(relay.directExecute, ())); }
+    function _certified() private returns (bool ok) {
+        (ok,) = RELAY.call(certifiedCalldata);
+    }
+
+    function _direct() private returns (bool ok) {
+        (ok,) = RELAY.call(abi.encodeCall(relay.directExecute, ()));
+    }
+
     function _assertUnconsumed() private view {
         assertEq(uint256(consumer.decision()), uint256(PeaceFourReportSchnorrConsumer.Decision.Unresolved));
         assertEq(gate.consumedSourceMask(), 0);
@@ -90,6 +98,7 @@ contract PeaceFinalizeGasKillerEquivalenceTest is Test {
             assertFalse(gate.consumedEmails(relay.emailNullifiers(i)));
         }
     }
+
     function _assertRejectedByBoth() private {
         assertFalse(_direct(), "cached direct must reject");
         _assertUnconsumed();
@@ -108,8 +117,7 @@ contract PeaceFinalizeGasKillerEquivalenceTest is Test {
         assertTrue(vm.revertToState(snap));
         assertTrue(_certified(), "genuine actor certificate positive");
         assertEq(relay.outcomeCommitment(), directOutcome);
-        assertEq(relay.outcomeCommitment(),
-            0x1d471043b19975aab91a1716396ac07850fb22a94c679cb2e5fd109e74de4b55);
+        assertEq(relay.outcomeCommitment(), 0x1d471043b19975aab91a1716396ac07850fb22a94c679cb2e5fd109e74de4b55);
         assertEq(uint256(consumer.decision()), uint256(PeaceFourReportSchnorrConsumer.Decision.Yes));
         assertEq(gate.consumedSourceMask(), 15);
         assertEq(relay.nonce(), 1);
@@ -119,23 +127,43 @@ contract PeaceFinalizeGasKillerEquivalenceTest is Test {
         assertEq(relay.nonce(), 1);
         assertEq(relay.stateTransitionCount(), 1);
     }
-    function test_ExpiredOriginalDKIMAndReceiptRejectBoth() public { vm.warp(NOT_AFTER + 1); _assertRejectedByBoth(); }
+
+    function test_ExpiredOriginalDKIMAndReceiptRejectBoth() public {
+        vm.warp(NOT_AFTER + 1);
+        _assertRejectedByBoth();
+    }
+
     function test_RevokedGoogleKeyRejectsBoth() public {
         address registrar = keys.registrar();
         bytes32 keyHash = gate.googleKeyHash();
-        vm.prank(registrar); keys.revokeKey("google.com", keyHash); _assertRejectedByBoth();
+        vm.prank(registrar);
+        keys.revokeKey("google.com", keyHash);
+        _assertRejectedByBoth();
     }
+
     function test_OperatorRegistryDriftRejectsBoth() public {
         address owner = registry.owner();
         address firstOperator = vm.addr(101);
-        vm.prank(owner); registry.deregisterOperator(firstOperator); _assertRejectedByBoth();
+        vm.prank(owner);
+        registry.deregisterOperator(firstOperator);
+        _assertRejectedByBoth();
     }
-    function test_CorruptedCachedShardRejectsBoth() public { vm.etch(cache.shards(0), hex"00"); _assertRejectedByBoth(); }
-    function test_WrongChainRejectsBoth() public { vm.chainId(block.chainid + 1); _assertRejectedByBoth(); }
+
+    function test_CorruptedCachedShardRejectsBoth() public {
+        vm.etch(cache.shards(0), hex"00");
+        _assertRejectedByBoth();
+    }
+
+    function test_WrongChainRejectsBoth() public {
+        vm.chainId(block.chainid + 1);
+        _assertRejectedByBoth();
+    }
+
     function test_ChangedVerifierCodeRejectsBoth() public {
         vm.etch(address(relay.verifier()), hex"00");
         _assertRejectedByBoth();
     }
+
     function test_AlteredCertificateBytesRejectWithoutConsumption() public {
         bytes memory altered = certifiedCalldata;
         altered[4] = bytes1(uint8(altered[4]) ^ 1); // first signed digest byte
@@ -143,6 +171,7 @@ contract PeaceFinalizeGasKillerEquivalenceTest is Test {
         assertFalse(ok, "mutated certificate calldata cannot settle");
         _assertUnconsumed();
     }
+
     function test_ExpiredSignedAnchorRejectsCertificateButDirectStillValid() public {
         vm.roll(387); // signed anchor 129 is now 258 blocks old
         assertFalse(_certified(), "typed anchor must remain in blockhash window");

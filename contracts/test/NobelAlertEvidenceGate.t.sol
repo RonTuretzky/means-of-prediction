@@ -38,8 +38,7 @@ contract NobelAlertEvidenceGateTest is Test {
         bytes memory exponent;
         bytes memory modulus;
         (proof, exponent, modulus, exactInput, tokenIds, request) = abi.decode(
-            vm.parseJsonBytes(fixture, ".abiHex"),
-            (EmailProof, bytes, bytes, bytes, uint32[], LayaRequest.Request)
+            vm.parseJsonBytes(fixture, ".abiHex"), (EmailProof, bytes, bytes, bytes, uint32[], LayaRequest.Request)
         );
         signedAt = vm.parseJsonUint(fixture, ".signedAtUnix");
         expiresAt = vm.parseJsonUint(fixture, ".expiresAtUnix");

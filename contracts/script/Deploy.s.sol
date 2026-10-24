@@ -62,8 +62,15 @@ contract Deploy is Script {
         LLMJudge judge = new LLMJudge(
             msg.sender, address(0xA5), address(checker), Qwen35Pins.modelConfig(keccak256("local-qwen35"))
         );
-        MarketFactory factory =
-            new MarketFactory(ct, verifier, address(new HeadlineMarket()), address(new FPMM()), ILLMJudge(address(judge)), vm.envOr("PROTOCOL_FEE", uint256(1e16)), vm.envOr("FEE_RECIPIENT", msg.sender));
+        MarketFactory factory = new MarketFactory(
+            ct,
+            verifier,
+            address(new HeadlineMarket()),
+            address(new FPMM()),
+            ILLMJudge(address(judge)),
+            vm.envOr("PROTOCOL_FEE", uint256(1e16)),
+            vm.envOr("FEE_RECIPIENT", msg.sender)
+        );
 
         // Register real DKIM public keys. The demo fixtures are signed by a committed
         // dev key (keys/dev-dkim.pub) registered for the newspaper domains; the REAL
@@ -110,16 +117,10 @@ contract Deploy is Script {
         p2.contentField = HeadlineMarket.ContentField.Subject;
         p2.sources = new HeadlineMarket.Source[](2);
         p2.sources[0] = HeadlineMarket.Source({
-            name: "Reuters",
-            dkimDomain: "email.reuters.com",
-            fromRegex: "@email\\.reuters\\.com$",
-            contentRegex: ""
+            name: "Reuters", dkimDomain: "email.reuters.com", fromRegex: "@email\\.reuters\\.com$", contentRegex: ""
         });
         p2.sources[1] = HeadlineMarket.Source({
-            name: "CNN",
-            dkimDomain: "mail.cnn.com",
-            fromRegex: "@mail\\.cnn\\.com$",
-            contentRegex: ""
+            name: "CNN", dkimDomain: "mail.cnn.com", fromRegex: "@mail\\.cnn\\.com$", contentRegex: ""
         });
         p2.threshold = 1;
         p2.windowStart = 0;
@@ -203,10 +204,7 @@ contract Deploy is Script {
             contentRegex: ""
         });
         sources[2] = HeadlineMarket.Source({
-            name: "Reuters",
-            dkimDomain: "email.reuters.com",
-            fromRegex: "@email\\.reuters\\.com$",
-            contentRegex: ""
+            name: "Reuters", dkimDomain: "email.reuters.com", fromRegex: "@email\\.reuters\\.com$", contentRegex: ""
         });
     }
 }

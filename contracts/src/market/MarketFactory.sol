@@ -82,14 +82,13 @@ contract MarketFactory {
         feeRecipient = _feeRecipient;
     }
 
-    function createMarket(CreateMarketParams calldata params)
-        external
-        returns (HeadlineMarket market, FPMM fpmm)
-    {
+    function createMarket(CreateMarketParams calldata params) external returns (HeadlineMarket market, FPMM fpmm) {
         market = HeadlineMarket(Clones.clone(marketImplementation));
         market.initialize(conditionalTokens, verifier, params.collateralToken, msg.sender, judge, _initConfig(params));
         fpmm = FPMM(Clones.clone(fpmmImplementation));
-        fpmm.initialize(conditionalTokens, params.collateralToken, market.conditionId(), params.fee, protocolFee, feeRecipient);
+        fpmm.initialize(
+            conditionalTokens, params.collateralToken, market.conditionId(), params.fee, protocolFee, feeRecipient
+        );
 
         if (params.initialLiquidity > 0) {
             require(

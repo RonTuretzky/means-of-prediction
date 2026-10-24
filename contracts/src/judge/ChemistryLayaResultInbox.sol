@@ -2,8 +2,10 @@
 pragma solidity ^0.8.28;
 
 import {GasKillerSDK} from "gas-killer-sdk/GasKillerSDK.sol";
-import {IBLSSignatureChecker, IBLSSignatureCheckerTypes} from
-    "@eigenlayer-middleware/interfaces/IBLSSignatureChecker.sol";
+import {
+    IBLSSignatureChecker,
+    IBLSSignatureCheckerTypes
+} from "@eigenlayer-middleware/interfaces/IBLSSignatureChecker.sol";
 import {BN254} from "@eigenlayer-middleware/libraries/BN254.sol";
 import {LayaRequest} from "./LayaRequest.sol";
 
@@ -25,24 +27,34 @@ contract ChemistryNonemptyQuorumChecker is IBLSSignatureChecker {
         upstreamCodeHash = address(checker).codehash;
     }
 
-    function checkSignatures(bytes32 hash, bytes calldata quorums, uint32 referenceBlock,
-        NonSignerStakesAndSignature memory signature)
-        external view returns (QuorumStakeTotals memory totals, bytes32 signatoryRecord)
-    {
-        if (quorums.length == 0 || keccak256(quorums) != expectedQuorumsHash
-            || address(upstream).codehash != upstreamCodeHash) revert EmptyOrInvalidQuorum();
+    function checkSignatures(
+        bytes32 hash,
+        bytes calldata quorums,
+        uint32 referenceBlock,
+        NonSignerStakesAndSignature memory signature
+    ) external view returns (QuorumStakeTotals memory totals, bytes32 signatoryRecord) {
+        if (
+            quorums.length == 0 || keccak256(quorums) != expectedQuorumsHash
+                || address(upstream).codehash != upstreamCodeHash
+        ) revert EmptyOrInvalidQuorum();
         (totals, signatoryRecord) = upstream.checkSignatures(hash, quorums, referenceBlock, signature);
-        if (totals.totalStakeForQuorum.length != quorums.length
-            || totals.signedStakeForQuorum.length != quorums.length) revert EmptyOrInvalidQuorum();
+        if (totals.totalStakeForQuorum.length != quorums.length || totals.signedStakeForQuorum.length != quorums.length)
+        {
+            revert EmptyOrInvalidQuorum();
+        }
         for (uint256 i; i < quorums.length; ++i) {
-            if (totals.totalStakeForQuorum[i] == 0
-                || totals.signedStakeForQuorum[i] > totals.totalStakeForQuorum[i]) revert EmptyOrInvalidQuorum();
+            if (totals.totalStakeForQuorum[i] == 0 || totals.signedStakeForQuorum[i] > totals.totalStakeForQuorum[i]) {
+                revert EmptyOrInvalidQuorum();
+            }
         }
     }
 
-    function trySignatureAndApkVerification(bytes32 hash, BN254.G1Point memory apk,
-        BN254.G2Point memory apkG2, BN254.G1Point memory sigma) external view returns (bool, bool)
-    {
+    function trySignatureAndApkVerification(
+        bytes32 hash,
+        BN254.G1Point memory apk,
+        BN254.G2Point memory apkG2,
+        BN254.G1Point memory sigma
+    ) external view returns (bool, bool) {
         return upstream.trySignatureAndApkVerification(hash, apk, apkG2, sigma);
     }
 }
@@ -66,12 +78,20 @@ contract ChemistryLayaResultInbox is GasKillerSDK {
     error WrongResultContext();
     error AlreadyRecorded();
     error MissingCertificate();
-    event CertifiedResultRecorded(bytes32 indexed requestKey, bytes32 indexed executionRoot,
-        uint32 aPpm, uint32 bPpm, uint256 transition);
+    event CertifiedResultRecorded(
+        bytes32 indexed requestKey, bytes32 indexed executionRoot, uint32 aPpm, uint32 bPpm, uint256 transition
+    );
 
-    constructor(address avs, IBLSSignatureChecker checker, bytes memory expectedQuorums,
-        address consumer_, LayaRequest.Request[] memory requests) {
-        if (avs == address(0) || consumer_ == address(0) || requests.length != 3) revert WrongResultContext();
+    constructor(
+        address avs,
+        IBLSSignatureChecker checker,
+        bytes memory expectedQuorums,
+        address consumer_,
+        LayaRequest.Request[] memory requests
+    ) {
+        if (avs == address(0) || consumer_ == address(0) || requests.length != 3) {
+            revert WrongResultContext();
+        }
         consumer = consumer_;
         contextChainId = block.chainid;
         contextModelPins = keccak256(abi.encode(requests[0].model));
@@ -83,8 +103,10 @@ contract ChemistryLayaResultInbox is GasKillerSDK {
         _setBlsSignatureChecker(address(new ChemistryNonemptyQuorumChecker(checker, expectedQuorums)));
         for (uint256 i; i < requests.length; ++i) {
             LayaRequest.validate(requests[i], block.timestamp, block.chainid, consumer_);
-            if (keccak256(abi.encode(requests[i].model)) != contextModelPins
-                || requests[i].rulesHash != contextRules || requests[i].sourcePolicyHash != contextSources) {
+            if (
+                keccak256(abi.encode(requests[i].model)) != contextModelPins || requests[i].rulesHash != contextRules
+                    || requests[i].sourcePolicyHash != contextSources
+            ) {
                 revert WrongResultContext();
             }
             frozenRequests[LayaRequest.key(requests[i])] = true;
@@ -97,10 +119,14 @@ contract ChemistryLayaResultInbox is GasKillerSDK {
 
     /// @dev Expected as a self-CALL inside a real quorum-signed SDK transition.
     /// The consumer independently verifies the original complete signed email.
-    function acceptCertifiedResult(bytes32 domain, LayaRequest.Request calldata request,
-        LayaRequest.Result calldata result) external
-    {
-        if (msg.sender != address(this) || !inTransition()) revert NotCertifiedTransition();
+    function acceptCertifiedResult(
+        bytes32 domain,
+        LayaRequest.Request calldata request,
+        LayaRequest.Result calldata result
+    ) external {
+        if (msg.sender != address(this) || !inTransition()) {
+            revert NotCertifiedTransition();
+        }
         if (domain != resultDomain() || block.chainid != contextChainId) revert WrongResultContext();
         LayaRequest.validate(request, block.timestamp, block.chainid, consumer);
         bytes32 key = LayaRequest.key(request);

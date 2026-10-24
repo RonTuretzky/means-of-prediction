@@ -17,7 +17,9 @@ contract DKIMVerifier is IDKIMVerifier {
         registry = _registry;
     }
 
-    function bodyParsingVersion() external pure returns (uint256) { return 1; }
+    function bodyParsingVersion() external pure returns (uint256) {
+        return 1;
+    }
 
     function verify(EmailProof calldata p) external view returns (bool) {
         if (p.header.length > 32768) return false;
@@ -62,11 +64,15 @@ contract DKIMVerifier is IDKIMVerifier {
         (bytes memory sig, bool hasSig) = HeaderParser.fieldUnique(header, "dkim-signature");
         (bytes memory domain, bool hasDomain) = BodyParser.tag(sig, "d");
         (bytes memory algo, bool hasAlgo) = BodyParser.tag(sig, "a");
-        if (!hasSig || !hasDomain || !hasAlgo || !BodyParser.same(algo, "rsa-sha256")
-            || keccak256(domain) != keccak256(bytes(p.domainName))) return false;
+        if (
+            !hasSig || !hasDomain || !hasAlgo || !BodyParser.same(algo, "rsa-sha256")
+                || keccak256(domain) != keccak256(bytes(p.domainName))
+        ) return false;
         if (p.canonicalBody.length == 0) {
             if (bytes(p.bodyExcerpt).length != 0 || p.bodyOffset != 0 || p.bodyLength != 0) return false;
-        } else if (!BodyParser.verify(header, p.canonicalBody, p.bodyOffset, p.bodyLength, p.bodyExcerpt)) return false;
+        } else if (!BodyParser.verify(header, p.canonicalBody, p.bodyOffset, p.bodyLength, p.bodyExcerpt)) {
+            return false;
+        }
 
         return true;
     }
@@ -80,15 +86,29 @@ contract DKIMVerifier is IDKIMVerifier {
         bool angle;
         bool closed;
         for (uint256 i; i < from.length; ++i) {
-            if (from[i] == "<") { if (angle) return false; angle = true; start = i + 1; }
-            if (from[i] == ">") { if (!angle || closed) return false; closed = true; end = i; }
+            if (from[i] == "<") {
+                if (angle) return false;
+                angle = true;
+                start = i + 1;
+            }
+            if (from[i] == ">") {
+                if (!angle || closed) return false;
+                closed = true;
+                end = i;
+            }
         }
         if (angle != closed) return false;
-        if (closed) for (uint256 i = end + 1; i < from.length; ++i) if (from[i] != " " && from[i] != "\t") return false;
+        if (closed) {
+            for (uint256 i = end + 1; i < from.length; ++i) {
+                if (from[i] != " " && from[i] != "\t") return false;
+            }
+        }
         if (end < start || end - start != claimed.length) return false;
         uint256 at;
         for (uint256 i; i < claimed.length; ++i) {
-            if (from[start + i] != claimed[i] || claimed[i] <= 0x20 || claimed[i] == "," || claimed[i] == '"') return false;
+            if (from[start + i] != claimed[i] || claimed[i] <= 0x20 || claimed[i] == "," || claimed[i] == '"') {
+                return false;
+            }
             if (claimed[i] == "@") ++at;
         }
         return at == 1;

@@ -30,8 +30,15 @@ contract DeployGnosis is Script {
         DKIMRegistry dkim = new DKIMRegistry();
         DKIMVerifier verifier = new DKIMVerifier(dkim);
         EmailBodyStore bodyStore = new EmailBodyStore();
-        MarketFactory factory =
-            new MarketFactory(ct, verifier, address(new HeadlineMarket()), address(new FPMM()), ILLMJudge(address(0)), vm.envOr("PROTOCOL_FEE", uint256(1e16)), vm.envOr("FEE_RECIPIENT", msg.sender));
+        MarketFactory factory = new MarketFactory(
+            ct,
+            verifier,
+            address(new HeadlineMarket()),
+            address(new FPMM()),
+            ILLMJudge(address(0)),
+            vm.envOr("PROTOCOL_FEE", uint256(1e16)),
+            vm.envOr("FEE_RECIPIENT", msg.sender)
+        );
 
         registerKeysFromFile(dkim);
 

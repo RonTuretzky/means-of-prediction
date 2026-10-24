@@ -55,21 +55,31 @@ contract EmailBodyStore {
         }
     }
 
-    function checkWithChunks(address market, uint256 sourceIndex, EmailProof calldata proof, address[] calldata pointers)
-        external view returns (bool ok, string memory reason)
-    {
+    function checkWithChunks(
+        address market,
+        uint256 sourceIndex,
+        EmailProof calldata proof,
+        address[] calldata pointers
+    ) external view returns (bool ok, string memory reason) {
         EmailProof memory expanded = expand(proof, pointers);
         return HeadlineMarket(market).checkProof(sourceIndex, expanded);
     }
 
-    function submitWithChunks(address market, uint256 sourceIndex, EmailProof calldata proof, address[] calldata pointers)
-        external
-    {
+    function submitWithChunks(
+        address market,
+        uint256 sourceIndex,
+        EmailProof calldata proof,
+        address[] calldata pointers
+    ) external {
         EmailProof memory expanded = expand(proof, pointers);
         HeadlineMarket(market).submitProof(sourceIndex, expanded);
     }
 
-    function expand(EmailProof calldata proof, address[] calldata pointers) private view returns (EmailProof memory expanded) {
+    function expand(EmailProof calldata proof, address[] calldata pointers)
+        private
+        view
+        returns (EmailProof memory expanded)
+    {
         require(proof.canonicalBody.length == 0, "BodyStore: body must be supplied by chunks");
         expanded = proof;
         expanded.canonicalBody = assemble(pointers);

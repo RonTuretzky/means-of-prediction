@@ -40,7 +40,9 @@ contract MarketTestBase is Test {
         usdc = new TestUSDC();
         dkim = new DKIMRegistry();
         verifier = new DKIMVerifier(dkim);
-        factory = new MarketFactory(ct, verifier, address(new HeadlineMarket()), address(new FPMM()), ILLMJudge(address(0)), 0, address(0));
+        factory = new MarketFactory(
+            ct, verifier, address(new HeadlineMarket()), address(new FPMM()), ILLMJudge(address(0)), 0, address(0)
+        );
 
         (devModulus, devExponent) = devPubKey();
         devKeyHash = keccak256(devModulus);
@@ -85,8 +87,12 @@ contract MarketTestBase is Test {
     ) internal returns (EmailProof memory p) {
         // A real signed header carries `date:`, and the verifier binds proof.timestamp to
         // it, so the fixture must sign the date it claims.
-        p.header = bytes.concat(signedHeader(from, subject, timestamp, nullifier),
-            bytes(string.concat("\r\ndkim-signature:v=1; a=rsa-sha256; c=relaxed/relaxed; d=", domain, "; s=dev2026; b=")));
+        p.header = bytes.concat(
+            signedHeader(from, subject, timestamp, nullifier),
+            bytes(
+                string.concat("\r\ndkim-signature:v=1; a=rsa-sha256; c=relaxed/relaxed; d=", domain, "; s=dev2026; b=")
+            )
+        );
         p.signature = rsaSign(p.header);
         p.domainName = domain;
         p.publicKeyHash = devKeyHash;
@@ -104,10 +110,15 @@ contract MarketTestBase is Test {
         returns (bytes memory)
     {
         return abi.encodePacked(
-            "from:", from,
-            "\r\nsubject:", subject,
-            "\r\ndate:", rfc2822.format(timestamp),
-            "\r\nmessage-id:<", vm.toString(nullifier), ">"
+            "from:",
+            from,
+            "\r\nsubject:",
+            subject,
+            "\r\ndate:",
+            rfc2822.format(timestamp),
+            "\r\nmessage-id:<",
+            vm.toString(nullifier),
+            ">"
         );
     }
 
@@ -144,10 +155,7 @@ contract MarketTestBase is Test {
             contentRegex: ""
         });
         sources[2] = HeadlineMarket.Source({
-            name: "Reuters",
-            dkimDomain: "email.reuters.com",
-            fromRegex: "@email\\.reuters\\.com$",
-            contentRegex: ""
+            name: "Reuters", dkimDomain: "email.reuters.com", fromRegex: "@email\\.reuters\\.com$", contentRegex: ""
         });
     }
 
@@ -155,7 +163,7 @@ contract MarketTestBase is Test {
         params = MarketFactory.CreateMarketParams({
             question: "Will the Fed cut rates before October 2026?",
             description: "Resolves YES if 2 of 3 sources (NYT, WaPo, Reuters) email a breaking-news"
-                " alert matching the pattern before the deadline.",
+            " alert matching the pattern before the deadline.",
             contentRegex: "(?i)fed (cuts|lowers|slashes) (interest )?rates",
             criteria: "",
             contentField: HeadlineMarket.ContentField.SubjectOrBody,

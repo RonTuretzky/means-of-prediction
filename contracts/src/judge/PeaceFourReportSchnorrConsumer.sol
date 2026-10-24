@@ -23,8 +23,7 @@ import {PeaceFourReportEvidenceGate} from "./PeaceFourReportEvidenceGate.sol";
 /// against a malicious authorized quorum signing arbitrary storage writes.
 contract PeaceFourReportSchnorrConsumer is GasKillerSDK {
     uint256 public constant MARKET_ID = 5371292;
-    bytes32 public constant PROFILE_HASH =
-        0x8570a1c2237024cc17a383ed73de6578d8215b800f3a1ef2a30eeeab88b28835;
+    bytes32 public constant PROFILE_HASH = 0x8570a1c2237024cc17a383ed73de6578d8215b800f3a1ef2a30eeeab88b28835;
 
     struct Receipt {
         uint32 version;
@@ -44,8 +43,17 @@ contract PeaceFourReportSchnorrConsumer is GasKillerSDK {
         uint64 expiresAt;
         uint256 nonce;
     }
-    struct Observation { bool recorded; bool a; bool b; bytes32 receiptHash; }
-    enum Decision { Unresolved, Yes }
+
+    struct Observation {
+        bool recorded;
+        bool a;
+        bool b;
+        bytes32 receiptHash;
+    }
+    enum Decision {
+        Unresolved,
+        Yes
+    }
     bytes32 public constant DOMAIN_VERSION = keccak256("PEACE_FOUR_REPORT_SCHNORR_CONSENSUS_V1");
     bytes32 public constant SOURCE_POLICY_FILE_SHA256 =
         0x464871658b2543c7cfd2fac61ecaf84ec32e437a06265dd12e648ea2750ea3a2;
@@ -79,18 +87,26 @@ contract PeaceFourReportSchnorrConsumer is GasKillerSDK {
     event ObservationRecorded(bytes32 indexed requestKey, bool a, bool b);
     event LocalYesDecision(uint256 indexed marketId, bytes32 indexed bundleReceipt);
 
-    constructor(DKIMVerifier verifier, bytes32 googleKeyHash, SchnorrStakeRegistry registry,
-        address avs, LayaRequest.Request[] memory requests)
-    {
-        if (address(registry).code.length == 0 || registry.totalWeight() == 0
-            || registry.thresholdNum() != 2 || registry.thresholdDen() != 3 || requests.length != 4) revert BadRegistry();
+    constructor(
+        DKIMVerifier verifier,
+        bytes32 googleKeyHash,
+        SchnorrStakeRegistry registry,
+        address avs,
+        LayaRequest.Request[] memory requests
+    ) {
+        if (
+            address(registry).code.length == 0 || registry.totalWeight() == 0 || registry.thresholdNum() != 2
+                || registry.thresholdDen() != 3 || requests.length != 4
+        ) revert BadRegistry();
         realRegistry = registry;
         registryCodeHash = address(registry).codehash;
         registrySnapshotHash = snapshot(registry);
         contextChainId = block.chainid;
         _setAvsAddress(avs);
         _setSchnorrRegistry(address(registry));
-        for (uint256 i; i < 4; ++i) requests[i].market = address(this);
+        for (uint256 i; i < 4; ++i) {
+            requests[i].market = address(this);
+        }
         evidenceGate = new PeaceFourReportEvidenceGate(verifier, address(this), googleKeyHash, PROFILE_HASH, requests);
         for (uint256 i; i < 4; ++i) {
             bytes32 key = LayaRequest.key(requests[i]);
@@ -104,8 +120,16 @@ contract PeaceFourReportSchnorrConsumer is GasKillerSDK {
     }
 
     function snapshot(SchnorrStakeRegistry registry) private view returns (bytes32) {
-        return keccak256(abi.encode(registry.aggX(), registry.aggY(), registry.totalWeight(),
-            registry.effectiveBlock(), registry.thresholdNum(), registry.thresholdDen()));
+        return keccak256(
+            abi.encode(
+                registry.aggX(),
+                registry.aggY(),
+                registry.totalWeight(),
+                registry.effectiveBlock(),
+                registry.thresholdNum(),
+                registry.thresholdDen()
+            )
+        );
     }
 
     function validateRegistry() private view {
@@ -116,13 +140,15 @@ contract PeaceFourReportSchnorrConsumer is GasKillerSDK {
 
     function validateReceipt(Receipt memory receipt) private view returns (LayaRequest.Request memory request) {
         request = admittedRequests[receipt.requestKey];
-        if (request.version == 0 || receipt.version != 3 || receipt.chainId != contextChainId
-            || block.chainid != contextChainId || receipt.consumer != address(this) || receipt.marketId != MARKET_ID
-            || receipt.contextDomain != receiptContextDomain()
-            || receipt.inputHash != request.inputBytesHash || receipt.tokenIdsHash != request.tokenIdsHash
-            || receipt.modelPinsHash != keccak256(abi.encode(request.model)) || receipt.profileHash != PROFILE_HASH
-            || receipt.executionRoot == 0 || receipt.qPpm > 1_000_000 || receipt.aPpm > 1_000_000
-            || receipt.bPpm > 1_000_000 || receipt.expiresAt != request.expiresAt || receipt.nonce != request.nonce) {
+        if (
+            request.version == 0 || receipt.version != 3 || receipt.chainId != contextChainId
+                || block.chainid != contextChainId || receipt.consumer != address(this) || receipt.marketId != MARKET_ID
+                || receipt.contextDomain != receiptContextDomain() || receipt.inputHash != request.inputBytesHash
+                || receipt.tokenIdsHash != request.tokenIdsHash
+                || receipt.modelPinsHash != keccak256(abi.encode(request.model)) || receipt.profileHash != PROFILE_HASH
+                || receipt.executionRoot == 0 || receipt.qPpm > 1_000_000 || receipt.aPpm > 1_000_000
+                || receipt.bPpm > 1_000_000 || receipt.expiresAt != request.expiresAt || receipt.nonce != request.nonce
+        ) {
             revert BadReceiptContext();
         }
         LayaRequest.validate(request, block.timestamp, block.chainid, address(this));
@@ -138,7 +164,9 @@ contract PeaceFourReportSchnorrConsumer is GasKillerSDK {
     }
 
     function receiptDigest(uint256 transitionIndex, Receipt memory receipt) public view returns (bytes32) {
-        return sha256(abi.encode(transitionIndex, address(this), this.acceptCertifiedReport.selector, receiptPayload(receipt)));
+        return sha256(
+            abi.encode(transitionIndex, address(this), this.acceptCertifiedReport.selector, receiptPayload(receipt))
+        );
     }
 
     /// @dev A second immutable-registry signature check precedes the typed
@@ -157,9 +185,14 @@ contract PeaceFourReportSchnorrConsumer is GasKillerSDK {
         return receipts[key];
     }
 
-    function recordAuthenticatedObservation(LayaRequest.Request calldata request, EmailProof calldata proof,
-        bytes calldata exactInput, uint32[] calldata tokenIds, uint256 transitionIndex, QuorumSignature calldata sig) external
-    {
+    function recordAuthenticatedObservation(
+        LayaRequest.Request calldata request,
+        EmailProof calldata proof,
+        bytes calldata exactInput,
+        uint32[] calldata tokenIds,
+        uint256 transitionIndex,
+        QuorumSignature calldata sig
+    ) external {
         if (inTransition()) revert NotCertifiedTransition();
         bytes32 key = LayaRequest.key(request);
         if (observations[key].recorded) revert AlreadyRecorded();
@@ -167,9 +200,12 @@ contract PeaceFourReportSchnorrConsumer is GasKillerSDK {
         if (receipt.version == 0) revert MissingReceipt();
         validateRegistry();
         validateReceipt(receipt);
-        if (sig.refBlock > type(uint32).max || sig.refBlock >= block.number || sig.refBlock + 300 < block.number
-            || !realRegistry.isValidSignature(receiptDigest(transitionIndex, receipt), sig.s, sig.Raddr,
-                sig.nonSigners, sig.refBlock)) revert InvalidExecutionCertificate();
+        if (
+            sig.refBlock > type(uint32).max || sig.refBlock >= block.number || sig.refBlock + 300 < block.number
+                || !realRegistry.isValidSignature(
+                    receiptDigest(transitionIndex, receipt), sig.s, sig.Raddr, sig.nonSigners, sig.refBlock
+                )
+        ) revert InvalidExecutionCertificate();
         evidenceGate.verifyEvidence(evidenceGate.requestDomain(), request, proof, exactInput, tokenIds);
         LayaRequest.Result memory result = LayaRequest.Result(1, key, receipt.executionRoot, receipt.aPpm, receipt.bPpm);
         LayaRequest.SupportFlags memory flags = LayaRequest.supportFlags(request, result);

@@ -97,7 +97,8 @@ contract LLMJudgeTest is MarketTestBase {
         }
 
         judge = new LLMJudge(address(this), address(0xA5), address(checker), modelConfig());
-        judgedFactory = new MarketFactory(ct, verifier, address(new HeadlineMarket()), address(new FPMM()), judge, 0, address(0));
+        judgedFactory =
+            new MarketFactory(ct, verifier, address(new HeadlineMarket()), address(new FPMM()), judge, 0, address(0));
         (market, fpmm) = judgedFactory.createMarket(judgedParams());
     }
 

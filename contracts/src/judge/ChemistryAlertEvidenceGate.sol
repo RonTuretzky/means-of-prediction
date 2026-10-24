@@ -17,22 +17,16 @@ import {LayaRequest} from "./LayaRequest.sol";
 contract ChemistryAlertEvidenceGate {
     uint256 public constant MARKET_ID = 5371179;
     bytes32 public constant DOMAIN_VERSION = keccak256("CHEMISTRY_ALERT_EVIDENCE_GATE_V1");
-    bytes32 public constant ORIGINAL_RULES_SHA256 =
-        0xef16b628bacdaa608c9eb199e068d077f296f02849ee0e52173f57191eb9a4ad;
-    bytes32 public constant PROFILE_SHA256 =
-        0x8570a1c2237024cc17a383ed73de6578d8215b800f3a1ef2a30eeeab88b28835;
-    bytes32 public constant WEIGHTS_SHA256 =
-        0x5ed8ce354cb1bf9f313fb4791f74601acbf955598d74f8d6742da3497aee5169;
-    bytes32 public constant FROZEN_RULES_HASH =
-        0x524db508ccd38b526e22ab660df7f225e5ab2ab37ec7580226ccfff382656478;
+    bytes32 public constant ORIGINAL_RULES_SHA256 = 0xef16b628bacdaa608c9eb199e068d077f296f02849ee0e52173f57191eb9a4ad;
+    bytes32 public constant PROFILE_SHA256 = 0x8570a1c2237024cc17a383ed73de6578d8215b800f3a1ef2a30eeeab88b28835;
+    bytes32 public constant WEIGHTS_SHA256 = 0x5ed8ce354cb1bf9f313fb4791f74601acbf955598d74f8d6742da3497aee5169;
+    bytes32 public constant FROZEN_RULES_HASH = 0x524db508ccd38b526e22ab660df7f225e5ab2ab37ec7580226ccfff382656478;
     bytes32 public constant FROZEN_SOURCE_POLICY_HASH =
         0x078a7261fd4c3cf83448317cd568a7b7694f84ac67a19ca7e3162034800b69c3;
-    bytes32 public constant FROZEN_MODEL_PINS_HASH =
-        0xf28716c11d301227998ad94c010196df6285d47dd6f56915bf0da59f4edab878;
+    bytes32 public constant FROZEN_MODEL_PINS_HASH = 0xf28716c11d301227998ad94c010196df6285d47dd6f56915bf0da59f4edab878;
     bytes32 public constant FROZEN_PARSER_POLICY_HASH =
         0xd31bd5f78c2145769fccf8447693162d86841c9167f624684874244bf2ab45d7;
-    bytes32 public constant FROZEN_GOOGLE_KEY_HASH =
-        0xf970943fe89bae0dde33dcef7dba4398d6cc1ac5c04a3a7e4160b4d4ea82b0fa;
+    bytes32 public constant FROZEN_GOOGLE_KEY_HASH = 0xf970943fe89bae0dde33dcef7dba4398d6cc1ac5c04a3a7e4160b4d4ea82b0fa;
     string public constant GOOGLE_DOMAIN = "google.com";
     string public constant GOOGLE_SENDER = "googlealerts-noreply@google.com";
     string public constant GOOGLE_SELECTOR = "20251104";
@@ -65,19 +59,31 @@ contract ChemistryAlertEvidenceGate {
     error DuplicateSource();
     error BadConfiguration();
 
-    event EvidenceConsumed(bytes32 indexed receipt, bytes32 indexed requestKey, bytes32 indexed emailNullifier,
-        uint8 sourceGroup, uint8 queryVariant);
+    event EvidenceConsumed(
+        bytes32 indexed receipt,
+        bytes32 indexed requestKey,
+        bytes32 indexed emailNullifier,
+        uint8 sourceGroup,
+        uint8 queryVariant
+    );
 
     /// @dev The whole request is frozen, not just nonzero model/policy hashes. The
     /// original-rule SHA above and the richer question/A/B/rules bundle hash below have
     /// different meanings. Both are explicit; do not relabel one as the other.
     constructor(
-        DKIMVerifier verifier_, address consumer_, bytes32 keyHash_, bytes32 profile_,
-        bytes32 rulesHash_, bytes32 sourcePolicyHash_, LayaRequest.Request[] memory frozen
+        DKIMVerifier verifier_,
+        address consumer_,
+        bytes32 keyHash_,
+        bytes32 profile_,
+        bytes32 rulesHash_,
+        bytes32 sourcePolicyHash_,
+        LayaRequest.Request[] memory frozen
     ) {
-        if (address(verifier_) == address(0) || consumer_ == address(0) || keyHash_ != FROZEN_GOOGLE_KEY_HASH
-            || profile_ != PROFILE_SHA256 || rulesHash_ != FROZEN_RULES_HASH
-            || sourcePolicyHash_ != FROZEN_SOURCE_POLICY_HASH || frozen.length != 3) {
+        if (
+            address(verifier_) == address(0) || consumer_ == address(0) || keyHash_ != FROZEN_GOOGLE_KEY_HASH
+                || profile_ != PROFILE_SHA256 || rulesHash_ != FROZEN_RULES_HASH
+                || sourcePolicyHash_ != FROZEN_SOURCE_POLICY_HASH || frozen.length != 3
+        ) {
             revert BadConfiguration();
         }
         verifier = verifier_;
@@ -92,9 +98,11 @@ contract ChemistryAlertEvidenceGate {
             LayaRequest.Request memory r = frozen[i];
             LayaRequest.validate(r, block.timestamp, block.chainid, consumer_);
             uint8 group = i == 1 ? 1 : 0;
-            if (r.rulesHash != rulesHash_ || r.sourcePolicyHash != sourcePolicyHash_ || r.sourceIndex != group
-                || r.model.weights != WEIGHTS_SHA256 || keccak256(abi.encode(r.model)) != pins
-                || r.parserPolicyHash != FROZEN_PARSER_POLICY_HASH) {
+            if (
+                r.rulesHash != rulesHash_ || r.sourcePolicyHash != sourcePolicyHash_ || r.sourceIndex != group
+                    || r.model.weights != WEIGHTS_SHA256 || keccak256(abi.encode(r.model)) != pins
+                    || r.parserPolicyHash != FROZEN_PARSER_POLICY_HASH
+            ) {
                 revert BadConfiguration();
             }
             bytes32 key = LayaRequest.key(r);
@@ -110,10 +118,13 @@ contract ChemistryAlertEvidenceGate {
 
     /// @notice Verification remains available for abstaining score receipts and consumed
     /// evidence alike. It does not accumulate sources or accept a caller's model scores.
-    function verifyEvidence(bytes32 domain, LayaRequest.Request calldata request, EmailProof calldata proof,
-        bytes calldata exactInput, uint32[] calldata tokenIds)
-        public view returns (bytes32 requestKey, uint8 sourceGroup)
-    {
+    function verifyEvidence(
+        bytes32 domain,
+        LayaRequest.Request calldata request,
+        EmailProof calldata proof,
+        bytes calldata exactInput,
+        uint32[] calldata tokenIds
+    ) public view returns (bytes32 requestKey, uint8 sourceGroup) {
         if (domain != requestDomain()) revert WrongDomain();
         LayaRequest.validate(request, block.timestamp, block.chainid, authorizedConsumer);
         requestKey = LayaRequest.key(request);
@@ -136,10 +147,13 @@ contract ChemistryAlertEvidenceGate {
 
     /// @dev Consumer calls only after its separately authenticated result admits support.
     /// Later certificate/consumer failure in the same transaction rolls these writes back.
-    function consumeEvidence(bytes32 domain, LayaRequest.Request calldata request, EmailProof calldata proof,
-        bytes calldata exactInput, uint32[] calldata tokenIds)
-        external returns (bytes32 receipt, uint8 sourceGroup)
-    {
+    function consumeEvidence(
+        bytes32 domain,
+        LayaRequest.Request calldata request,
+        EmailProof calldata proof,
+        bytes calldata exactInput,
+        uint32[] calldata tokenIds
+    ) external returns (bytes32 receipt, uint8 sourceGroup) {
         if (msg.sender != authorizedConsumer) revert NotConsumer();
         bytes32 key;
         (key, sourceGroup) = verifyEvidence(domain, request, proof, exactInput, tokenIds);
@@ -172,8 +186,15 @@ contract ChemistryAlertEvidenceGate {
         ) revert BadHeaderPolicy();
         (bytes memory names, bool hasNames) = BodyParser.tag(sig, "h");
         if (!hasNames) revert BadHeaderPolicy();
-        bytes[7] memory required =
-            [bytes("from"), bytes("subject"), bytes("date"), bytes("content-type"), bytes("to"), bytes("message-id"), bytes("mime-version")];
+        bytes[7] memory required = [
+            bytes("from"),
+            bytes("subject"),
+            bytes("date"),
+            bytes("content-type"),
+            bytes("to"),
+            bytes("message-id"),
+            bytes("mime-version")
+        ];
         for (uint256 i; i < required.length; ++i) {
             (, bool unique) = HeaderParser.fieldUnique(header, required[i]);
             if (!unique || !listed(names, required[i])) revert BadHeaderPolicy();

@@ -33,8 +33,5 @@ interface IDKIMVerifier {
 
 interface IDKIMRegistry {
     /// @notice Returns true iff `publicKeyHash` is a valid DKIM key for `domainName`.
-    function isDKIMPublicKeyHashValid(string calldata domainName, bytes32 publicKeyHash)
-        external
-        view
-        returns (bool);
+    function isDKIMPublicKeyHashValid(string calldata domainName, bytes32 publicKeyHash) external view returns (bool);
 }

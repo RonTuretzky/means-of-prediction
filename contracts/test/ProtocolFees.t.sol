@@ -13,8 +13,9 @@ contract ProtocolFeesTest is MarketTestBase {
 
     function setUp() public override {
         super.setUp();
-        factory = new MarketFactory(ct, verifier, address(new HeadlineMarket()), address(new FPMM()),
-            ILLMJudge(address(0)), 1e16, treasury);
+        factory = new MarketFactory(
+            ct, verifier, address(new HeadlineMarket()), address(new FPMM()), ILLMJudge(address(0)), 1e16, treasury
+        );
         (, pool) = createFundedMarket(10_000e6);
     }
 

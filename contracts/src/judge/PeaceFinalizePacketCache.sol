@@ -20,19 +20,34 @@ contract PeaceFinalizePacketCache {
     uint256 public writtenBytes;
     bool public isSealed;
     bytes32 public manifestHash;
-    error NotBuilder(); error AlreadySealed(); error BadChunk(); error BadPacket(); error NotSealed(); error ShardChanged();
+    error NotBuilder();
+    error AlreadySealed();
+    error BadChunk();
+    error BadPacket();
+    error NotSealed();
+    error ShardChanged();
 
     constructor(bytes32 expectedHash, uint256 expectedLength, address builder_) {
-        if (expectedHash == 0 || expectedLength == 0 || expectedLength > 1_048_576 || builder_ == address(0)) revert BadPacket();
-        packetHash = expectedHash; packetLength = expectedLength; builder = builder_;
+        if (expectedHash == 0 || expectedLength == 0 || expectedLength > 1_048_576 || builder_ == address(0)) {
+            revert BadPacket();
+        }
+        packetHash = expectedHash;
+        packetLength = expectedLength;
+        builder = builder_;
     }
+
     function appendChunk(bytes calldata chunk) external {
         if (msg.sender != builder) revert NotBuilder();
         if (isSealed) revert AlreadySealed();
-        if (chunk.length == 0 || chunk.length > MAX_CHUNK_BYTES || writtenBytes + chunk.length > packetLength) revert BadChunk();
+        if (chunk.length == 0 || chunk.length > MAX_CHUNK_BYTES || writtenBytes + chunk.length > packetLength) {
+            revert BadChunk();
+        }
         address shard = address(new PeaceFinalizeDataShard(chunk));
-        shards.push(shard); shardCodeHashes.push(shard.codehash); writtenBytes += chunk.length;
+        shards.push(shard);
+        shardCodeHashes.push(shard.codehash);
+        writtenBytes += chunk.length;
     }
+
     function seal() external {
         if (msg.sender != builder) revert NotBuilder();
         if (isSealed) revert AlreadySealed();
@@ -40,12 +55,17 @@ contract PeaceFinalizePacketCache {
         manifestHash = keccak256(abi.encode(packetHash, packetLength, shards, shardCodeHashes));
         isSealed = true;
     }
-    function shardCount() external view returns (uint256) { return shards.length; }
+
+    function shardCount() external view returns (uint256) {
+        return shards.length;
+    }
+
     function read() external view returns (bytes memory packet) {
         if (!isSealed) revert NotSealed();
         packet = _read();
         if (keccak256(packet) != packetHash) revert BadPacket();
     }
+
     function _read() private view returns (bytes memory packet) {
         packet = new bytes(writtenBytes);
         uint256 offset;

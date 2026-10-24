@@ -16,39 +16,35 @@ import {LayaRequest} from "./LayaRequest.sol";
 contract PeaceBBCAlertEvidenceGate {
     uint256 public constant MARKET_ID = 5371292;
     bytes32 public constant DOMAIN_VERSION = keccak256("PEACE_BBC_ALERT_OBSERVATION_V1");
-    bytes32 public constant ORIGINAL_RULES_SHA256 =
-        0xf1ba951f9767de4eae4f2562b22bc4ad43db741fe3d30cecc5112a93eafece6d;
-    bytes32 public constant PROFILE_SHA256 =
-        0x8570a1c2237024cc17a383ed73de6578d8215b800f3a1ef2a30eeeab88b28835;
-    bytes32 public constant WEIGHTS_SHA256 =
-        0x5ed8ce354cb1bf9f313fb4791f74601acbf955598d74f8d6742da3497aee5169;
-    bytes32 public constant RAW_MESSAGE_SHA256 =
-        0x8d6693baaf144f1366db221b970639e5f6028218f5dce91b492c17a4b49dc167;
+    bytes32 public constant ORIGINAL_RULES_SHA256 = 0xf1ba951f9767de4eae4f2562b22bc4ad43db741fe3d30cecc5112a93eafece6d;
+    bytes32 public constant PROFILE_SHA256 = 0x8570a1c2237024cc17a383ed73de6578d8215b800f3a1ef2a30eeeab88b28835;
+    bytes32 public constant WEIGHTS_SHA256 = 0x5ed8ce354cb1bf9f313fb4791f74601acbf955598d74f8d6742da3497aee5169;
+    bytes32 public constant RAW_MESSAGE_SHA256 = 0x8d6693baaf144f1366db221b970639e5f6028218f5dce91b492c17a4b49dc167;
     bytes32 public constant CANONICAL_HEADER_SHA256 =
         0x21d51e434d69f0e402759041b46d92fc792cf4953425243169ee8bae3645fa43;
-    bytes32 public constant CANONICAL_BODY_SHA256 =
-        0xef09cd6700414ff97c243c6c7b564b457c19db3efdc26a0e84033bd033e939b4;
+    bytes32 public constant CANONICAL_BODY_SHA256 = 0xef09cd6700414ff97c243c6c7b564b457c19db3efdc26a0e84033bd033e939b4;
     uint256 public constant CANONICAL_BODY_BYTES = 20461;
     uint32 public constant BODY_OFFSET = 8078;
     uint32 public constant ENCODED_WINDOW_BYTES = 1265;
     uint256 public constant GOOGLE_SIGNED_AT = 1792292308;
     uint256 public constant GOOGLE_EXPIRES_AT = 1792897108;
     // Exact new Peace freeze and source policy; never reuse Chemistry request pins.
-    bytes32 public constant FROZEN_RULES_HASH =
-        0x462459c8c26ce29e120e38fdf3f702eb9529ff5c78771149ba248c1d74d0830e;
+    bytes32 public constant FROZEN_RULES_HASH = 0x462459c8c26ce29e120e38fdf3f702eb9529ff5c78771149ba248c1d74d0830e;
     bytes32 public constant FROZEN_SOURCE_POLICY_HASH =
         0xc2ef2530c40fccf7d0ea05380b084df8975d4e86a7452606f0ca0956142bdf94;
-    bytes32 public constant FROZEN_MODEL_PINS_HASH =
-        0xb5d1d4e25d6eac84cfc3cc6e8b5f80ad015e1267ebc8ac7fc51db48f5b833c3d;
+    bytes32 public constant FROZEN_MODEL_PINS_HASH = 0xb5d1d4e25d6eac84cfc3cc6e8b5f80ad015e1267ebc8ac7fc51db48f5b833c3d;
     bytes32 public constant FROZEN_PARSER_POLICY_HASH =
         0xccec8f85d8bca9d872c45f8e104e361f5f65b64b37b35251950fcd3142beaa4c;
-    bytes32 public constant FROZEN_GOOGLE_KEY_HASH =
-        0xf970943fe89bae0dde33dcef7dba4398d6cc1ac5c04a3a7e4160b4d4ea82b0fa;
+    bytes32 public constant FROZEN_GOOGLE_KEY_HASH = 0xf970943fe89bae0dde33dcef7dba4398d6cc1ac5c04a3a7e4160b4d4ea82b0fa;
     string public constant GOOGLE_DOMAIN = "google.com";
     string public constant GOOGLE_SENDER = "googlealerts-noreply@google.com";
     string public constant GOOGLE_SELECTOR = "20251104";
 
-    struct Admission { bool allowed; uint8 sourceGroup; uint8 queryVariant; }
+    struct Admission {
+        bool allowed;
+        uint8 sourceGroup;
+        uint8 queryVariant;
+    }
     DKIMVerifier public immutable verifier;
     address public immutable authorizedConsumer;
     bytes32 public immutable googleKeyHash;
@@ -71,19 +67,27 @@ contract PeaceBBCAlertEvidenceGate {
 
     event ObservationConsumed(bytes32 indexed receipt, bytes32 indexed requestKey, bytes32 indexed emailNullifier);
 
-    constructor(DKIMVerifier verifier_, address consumer_, bytes32 keyHash_, bytes32 profile_,
-        LayaRequest.Request memory frozen)
-    {
-        if (address(verifier_) == address(0) || consumer_ == address(0) || keyHash_ != FROZEN_GOOGLE_KEY_HASH
-            || profile_ != PROFILE_SHA256 || FROZEN_RULES_HASH == 0 || FROZEN_SOURCE_POLICY_HASH == 0
-            || FROZEN_MODEL_PINS_HASH == 0 || FROZEN_PARSER_POLICY_HASH == 0) revert BadConfiguration();
+    constructor(
+        DKIMVerifier verifier_,
+        address consumer_,
+        bytes32 keyHash_,
+        bytes32 profile_,
+        LayaRequest.Request memory frozen
+    ) {
+        if (
+            address(verifier_) == address(0) || consumer_ == address(0) || keyHash_ != FROZEN_GOOGLE_KEY_HASH
+                || profile_ != PROFILE_SHA256 || FROZEN_RULES_HASH == 0 || FROZEN_SOURCE_POLICY_HASH == 0
+                || FROZEN_MODEL_PINS_HASH == 0 || FROZEN_PARSER_POLICY_HASH == 0
+        ) revert BadConfiguration();
         LayaRequest.validate(frozen, block.timestamp, block.chainid, consumer_);
-        if (frozen.rulesHash != FROZEN_RULES_HASH || frozen.sourcePolicyHash != FROZEN_SOURCE_POLICY_HASH
-            || frozen.sourceIndex != 0 || frozen.model.weights != WEIGHTS_SHA256
-            || keccak256(abi.encode(frozen.model)) != FROZEN_MODEL_PINS_HASH
-            || frozen.parserPolicyHash != FROZEN_PARSER_POLICY_HASH
-            || frozen.canonicalBodySha256 != CANONICAL_BODY_SHA256 || frozen.bodyOffset != BODY_OFFSET
-            || frozen.bodyLength != ENCODED_WINDOW_BYTES) revert BadConfiguration();
+        if (
+            frozen.rulesHash != FROZEN_RULES_HASH || frozen.sourcePolicyHash != FROZEN_SOURCE_POLICY_HASH
+                || frozen.sourceIndex != 0 || frozen.model.weights != WEIGHTS_SHA256
+                || keccak256(abi.encode(frozen.model)) != FROZEN_MODEL_PINS_HASH
+                || frozen.parserPolicyHash != FROZEN_PARSER_POLICY_HASH
+                || frozen.canonicalBodySha256 != CANONICAL_BODY_SHA256 || frozen.bodyOffset != BODY_OFFSET
+                || frozen.bodyLength != ENCODED_WINDOW_BYTES
+        ) revert BadConfiguration();
         verifier = verifier_;
         authorizedConsumer = consumer_;
         googleKeyHash = keyHash_;
@@ -98,12 +102,17 @@ contract PeaceBBCAlertEvidenceGate {
 
     /// @notice Explicit source boundary: one BBC observation is not the original rule's
     /// official first announcement or a reporting consensus, regardless of model scores.
-    function originalRuleSourceAdmissionEstablished() external pure returns (bool) { return false; }
+    function originalRuleSourceAdmissionEstablished() external pure returns (bool) {
+        return false;
+    }
 
-    function verifyEvidence(bytes32 domain, LayaRequest.Request calldata request, EmailProof calldata proof,
-        bytes calldata exactInput, uint32[] calldata tokenIds)
-        public view returns (bytes32 requestKey, uint8 sourceGroup)
-    {
+    function verifyEvidence(
+        bytes32 domain,
+        LayaRequest.Request calldata request,
+        EmailProof calldata proof,
+        bytes calldata exactInput,
+        uint32[] calldata tokenIds
+    ) public view returns (bytes32 requestKey, uint8 sourceGroup) {
         if (domain != requestDomain()) revert WrongDomain();
         LayaRequest.validate(request, block.timestamp, block.chainid, authorizedConsumer);
         requestKey = LayaRequest.key(request);
@@ -118,8 +127,9 @@ contract PeaceBBCAlertEvidenceGate {
         headerOnly.bodyLength = 0;
         if (!verifier.verify(headerOnly)) revert BadRSA();
         LayaRequest.validateEvidence(request, proof);
-        if (sha256(proof.header) != CANONICAL_HEADER_SHA256
-            || proof.canonicalBody.length != CANONICAL_BODY_BYTES) revert WrongFrozenCandidate();
+        if (sha256(proof.header) != CANONICAL_HEADER_SHA256 || proof.canonicalBody.length != CANONICAL_BODY_BYTES) {
+            revert WrongFrozenCandidate();
+        }
         // Equality to frozen commitments, not onchain extraction/serialization/tokenization.
         LayaRequest.validateInput(request, exactInput, tokenIds);
         return (requestKey, 0);
@@ -127,10 +137,13 @@ contract PeaceBBCAlertEvidenceGate {
 
     /// @dev Receipt consumption is only a replay-protected observation. It establishes
     /// no original-rule source admission. Later consumer failures roll back these writes.
-    function consumeEvidence(bytes32 domain, LayaRequest.Request calldata request, EmailProof calldata proof,
-        bytes calldata exactInput, uint32[] calldata tokenIds)
-        external returns (bytes32 receipt, uint8 sourceGroup)
-    {
+    function consumeEvidence(
+        bytes32 domain,
+        LayaRequest.Request calldata request,
+        EmailProof calldata proof,
+        bytes calldata exactInput,
+        uint32[] calldata tokenIds
+    ) external returns (bytes32 receipt, uint8 sourceGroup) {
         if (msg.sender != authorizedConsumer) revert NotConsumer();
         bytes32 key;
         (key, sourceGroup) = verifyEvidence(domain, request, proof, exactInput, tokenIds);
@@ -160,8 +173,15 @@ contract PeaceBBCAlertEvidenceGate {
         ) revert BadHeaderPolicy();
         (bytes memory names, bool hasNames) = BodyParser.tag(sig, "h");
         if (!hasNames) revert BadHeaderPolicy();
-        bytes[7] memory required =
-            [bytes("from"), bytes("subject"), bytes("date"), bytes("content-type"), bytes("to"), bytes("message-id"), bytes("mime-version")];
+        bytes[7] memory required = [
+            bytes("from"),
+            bytes("subject"),
+            bytes("date"),
+            bytes("content-type"),
+            bytes("to"),
+            bytes("message-id"),
+            bytes("mime-version")
+        ];
         for (uint256 i; i < required.length; ++i) {
             (, bool unique) = HeaderParser.fieldUnique(header, required[i]);
             if (!unique || !listed(names, required[i])) revert BadHeaderPolicy();
@@ -170,8 +190,10 @@ contract PeaceBBCAlertEvidenceGate {
         (bytes memory x, bool hasX) = BodyParser.tag(sig, "x");
         (uint256 signedAt, bool tOk) = decimal(t);
         (uint256 expiresAt, bool xOk) = decimal(x);
-        if (!hasT || !hasX || !tOk || !xOk || expiresAt <= signedAt
-            || signedAt != GOOGLE_SIGNED_AT || expiresAt != GOOGLE_EXPIRES_AT) revert BadHeaderPolicy();
+        if (
+            !hasT || !hasX || !tOk || !xOk || expiresAt <= signedAt || signedAt != GOOGLE_SIGNED_AT
+                || expiresAt != GOOGLE_EXPIRES_AT
+        ) revert BadHeaderPolicy();
         if (signedAt > block.timestamp || expiresAt < block.timestamp || proof.timestamp > block.timestamp) {
             revert SignatureOutsideValidity();
         }

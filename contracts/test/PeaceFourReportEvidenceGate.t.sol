@@ -12,8 +12,7 @@ import {PeaceFourReportEvidenceGate} from "../src/judge/PeaceFourReportEvidenceG
 /// Historical vm.warp is explicit. No live deployment, inference certificate or payout.
 contract PeaceFourReportEvidenceGateTest is Test {
     bytes32 private constant PROFILE = 0x8570a1c2237024cc17a383ed73de6578d8215b800f3a1ef2a30eeeab88b28835;
-    bytes32 private constant FIXTURE_SHA256 =
-        0x0c409ee7a6c16f4629f42101d0c9aa99135b7ce4ec7176e7d3a816ac28d33d7b;
+    bytes32 private constant FIXTURE_SHA256 = 0x0c409ee7a6c16f4629f42101d0c9aa99135b7ce4ec7176e7d3a816ac28d33d7b;
     DKIMRegistry private registry;
     DKIMVerifier private verifier;
     PeaceFourReportEvidenceGate private gate;
@@ -74,7 +73,9 @@ contract PeaceFourReportEvidenceGateTest is Test {
             assertEq(keccak256(abi.encode(ids[i])), requests[i].tokenIdsHash);
         }
         uint256[4] memory sizes = [uint256(20461), 44557, 28521, 39678];
-        for (uint256 i; i < 4; ++i) assertEq(proofs[i].canonicalBody.length, sizes[i]);
+        for (uint256 i; i < 4; ++i) {
+            assertEq(proofs[i].canonicalBody.length, sizes[i]);
+        }
         registry = new DKIMRegistry();
         assertEq(registry.registerKey("google.com", "20251104", exponent, modulus), proofs[0].publicKeyHash);
         verifier = new DKIMVerifier(registry);
@@ -83,7 +84,9 @@ contract PeaceFourReportEvidenceGateTest is Test {
     }
 
     function maxExpiry() private view returns (uint256 n) {
-        for (uint256 i; i < expiresAt.length; ++i) if (expiresAt[i] > n) n = expiresAt[i];
+        for (uint256 i; i < expiresAt.length; ++i) {
+            if (expiresAt[i] > n) n = expiresAt[i];
+        }
     }
 
     function newGate(DKIMVerifier v, LayaRequest.Request[] memory r) private returns (PeaceFourReportEvidenceGate) {
@@ -97,10 +100,16 @@ contract PeaceFourReportEvidenceGateTest is Test {
     function consumeBundle() private returns (bytes32 receipt) {
         return gate.consumeBundle(gateDomain, requests, proofs, inputs, ids);
     }
+
     function verifyBundle() private view returns (bytes32 receipt) {
         return gate.verifyBundle(gateDomain, requests, proofs, inputs, ids);
     }
-    function rebind(LayaRequest.Request memory r, EmailProof memory p) private pure returns (LayaRequest.Request memory) {
+
+    function rebind(LayaRequest.Request memory r, EmailProof memory p)
+        private
+        pure
+        returns (LayaRequest.Request memory)
+    {
         r.emailHash = keccak256(abi.encode(p));
         r.emailNullifier = p.emailNullifier;
         r.canonicalBodySha256 = sha256(p.canonicalBody);
@@ -122,7 +131,9 @@ contract PeaceFourReportEvidenceGateTest is Test {
             emit log_named_uint(string.concat("Peace report RSA header gas index ", vm.toString(i)), before - gasleft());
             before = gasleft();
             (bytes32 key, uint8 group) = verifyAt(i);
-            emit log_named_uint(string.concat("Peace report full-body view gas index ", vm.toString(i)), before - gasleft());
+            emit log_named_uint(
+                string.concat("Peace report full-body view gas index ", vm.toString(i)), before - gasleft()
+            );
             assertEq(key, LayaRequest.key(requests[i]));
             assertEq(group, i);
             (bool allowed, uint8 storedGroup, uint8 variant) = gate.frozenRequestKeys(key);
@@ -135,39 +146,57 @@ contract PeaceFourReportEvidenceGateTest is Test {
 
     /// @dev Control-flow harness only: no caller-supplied scores or inference claim.
     function test_ExactReviewedPacketCanBeConsumedOnlyAsOneAtomicBundle() public {
-        assertEq(gate.SOURCE_POLICY_FILE_SHA256(),
-            0x464871658b2543c7cfd2fac61ecaf84ec32e437a06265dd12e648ea2750ea3a2);
+        assertEq(gate.SOURCE_POLICY_FILE_SHA256(), 0x464871658b2543c7cfd2fac61ecaf84ec32e437a06265dd12e648ea2750ea3a2);
         uint256 before = gasleft();
         bytes32 receipt = consumeBundle();
         emit log_named_uint("Peace exact four-report consumeBundle gas", before - gasleft());
-        assertTrue(receipt != 0); assertEq(gate.consumedSourceMask(), 15);
+        assertTrue(receipt != 0);
+        assertEq(gate.consumedSourceMask(), 15);
         for (uint256 i; i < 4; ++i) {
             assertTrue(gate.consumedRequests(LayaRequest.key(requests[i])));
             assertTrue(gate.consumedEmails(proofs[i].emailNullifier));
         }
         verifyBundle(); // View authentication remains available after consumption.
     }
+
     function test_MissingUnknownDuplicateAndReorderedPacketRejected() public {
         LayaRequest.Request[] memory short = new LayaRequest.Request[](3);
-        for (uint256 i; i < 3; ++i) short[i] = requests[i];
+        for (uint256 i; i < 3; ++i) {
+            short[i] = requests[i];
+        }
         vm.expectRevert(PeaceFourReportEvidenceGate.BadBundle.selector);
         gate.verifyBundle(gateDomain, short, proofs, inputs, ids);
-        LayaRequest.Request[] memory rr = requests; ++rr[3].nonce;
+        LayaRequest.Request[] memory rr = requests;
+        ++rr[3].nonce;
         vm.expectRevert(PeaceFourReportEvidenceGate.WrongFrozenRequest.selector);
         gate.verifyBundle(gateDomain, rr, proofs, inputs, ids);
-        rr = requests; EmailProof[] memory pp = proofs; bytes[] memory ii = inputs; uint32[][] memory tt = ids;
-        rr[1] = rr[0]; pp[1] = pp[0]; ii[1] = ii[0]; tt[1] = tt[0];
+        rr = requests;
+        EmailProof[] memory pp = proofs;
+        bytes[] memory ii = inputs;
+        uint32[][] memory tt = ids;
+        rr[1] = rr[0];
+        pp[1] = pp[0];
+        ii[1] = ii[0];
+        tt[1] = tt[0];
         vm.expectRevert(PeaceFourReportEvidenceGate.BadBundle.selector);
         gate.verifyBundle(gateDomain, rr, pp, ii, tt);
-        rr = requests; pp = proofs; ii = inputs; tt = ids;
-        (rr[0],rr[1])=(rr[1],rr[0]); (pp[0],pp[1])=(pp[1],pp[0]);
-        (ii[0],ii[1])=(ii[1],ii[0]); (tt[0],tt[1])=(tt[1],tt[0]);
+        rr = requests;
+        pp = proofs;
+        ii = inputs;
+        tt = ids;
+        (rr[0], rr[1]) = (rr[1], rr[0]);
+        (pp[0], pp[1]) = (pp[1], pp[0]);
+        (ii[0], ii[1]) = (ii[1], ii[0]);
+        (tt[0], tt[1]) = (tt[1], tt[0]);
         vm.expectRevert(PeaceFourReportEvidenceGate.BadBundle.selector);
         gate.verifyBundle(gateDomain, rr, pp, ii, tt);
         assertEq(gate.consumedSourceMask(), 0);
     }
+
     function test_ReplayRejected() public {
-        consumeBundle(); vm.expectRevert(PeaceFourReportEvidenceGate.AlreadyConsumed.selector); consumeBundle();
+        consumeBundle();
+        vm.expectRevert(PeaceFourReportEvidenceGate.AlreadyConsumed.selector);
+        consumeBundle();
     }
 
     function test_OnlyConsumerCanConsume() public {
@@ -191,7 +220,8 @@ contract PeaceFourReportEvidenceGateTest is Test {
     }
 
     function test_FailedLastProofDoesNotPartiallyConsumePacket() public {
-        EmailProof[] memory pp = proofs; pp[3].canonicalBody[pp[3].canonicalBody.length - 8] ^= 0x01;
+        EmailProof[] memory pp = proofs;
+        pp[3].canonicalBody[pp[3].canonicalBody.length - 8] ^= 0x01;
         vm.expectRevert(LayaRequest.EvidenceMismatch.selector);
         gate.consumeBundle(gateDomain, requests, pp, inputs, ids);
         assertEq(gate.consumedSourceMask(), 0);
@@ -200,11 +230,15 @@ contract PeaceFourReportEvidenceGateTest is Test {
             assertFalse(gate.consumedEmails(proofs[i].emailNullifier));
         }
     }
+
     function test_FailedInputDoesNotConsumeThenValidInputSucceeds() public {
-        bytes[] memory bad = inputs; bad[2] = bytes("bad input");
+        bytes[] memory bad = inputs;
+        bad[2] = bytes("bad input");
         vm.expectRevert(LayaRequest.InputMismatch.selector);
         gate.consumeBundle(gateDomain, requests, proofs, bad, ids);
-        assertEq(gate.consumedSourceMask(), 0); consumeBundle(); assertEq(gate.consumedSourceMask(), 15);
+        assertEq(gate.consumedSourceMask(), 0);
+        consumeBundle();
+        assertEq(gate.consumedSourceMask(), 15);
     }
 
     function test_ChangedHeaderAndIndependentSubjectRejected() public {
@@ -221,18 +255,26 @@ contract PeaceFourReportEvidenceGateTest is Test {
     }
 
     function test_ChangedBodyOutsideWindowRejectedEvenWhenRecommitted() public {
-        EmailProof memory p = proofs[1]; p.canonicalBody[p.canonicalBody.length - 8] ^= 0x01;
+        EmailProof memory p = proofs[1];
+        p.canonicalBody[p.canonicalBody.length - 8] ^= 0x01;
         vm.expectRevert(LayaRequest.EvidenceMismatch.selector);
         gate.verifyEvidence(gateDomain, requests[1], p, inputs[1], ids[1]);
-        LayaRequest.Request[] memory rr = requests; rr[1] = rebind(rr[1], p);
-        vm.expectRevert(PeaceFourReportEvidenceGate.BadConfiguration.selector); newGate(verifier, rr);
+        LayaRequest.Request[] memory rr = requests;
+        rr[1] = rebind(rr[1], p);
+        vm.expectRevert(PeaceFourReportEvidenceGate.BadConfiguration.selector);
+        newGate(verifier, rr);
     }
+
     function test_CrossEmailBodyCannotBorrowGenuineHeader() public {
-        EmailProof memory p = proofs[0]; p.canonicalBody = proofs[1].canonicalBody;
-        p.bodyExcerpt = proofs[1].bodyExcerpt; p.bodyOffset = proofs[1].bodyOffset; p.bodyLength = proofs[1].bodyLength;
+        EmailProof memory p = proofs[0];
+        p.canonicalBody = proofs[1].canonicalBody;
+        p.bodyExcerpt = proofs[1].bodyExcerpt;
+        p.bodyOffset = proofs[1].bodyOffset;
+        p.bodyLength = proofs[1].bodyLength;
         vm.expectRevert(LayaRequest.EvidenceMismatch.selector);
         gate.verifyEvidence(gateDomain, requests[0], p, inputs[0], ids[0]);
     }
+
     function test_ChangedExcerptOffsetAndLengthRejected() public {
         for (uint256 i; i < 3; ++i) {
             EmailProof memory p = proofs[2];
@@ -243,11 +285,17 @@ contract PeaceFourReportEvidenceGateTest is Test {
             gate.verifyEvidence(gateDomain, requests[2], p, inputs[2], ids[2]);
         }
     }
+
     function test_OversizedAndCroppedBodyRejectedWithoutFallback() public {
         for (uint256 i; i < 2; ++i) {
             EmailProof memory p = proofs[3];
-            if (i == 0) p.canonicalBody = new bytes(196609);
-            else {bytes memory body = p.canonicalBody; assembly ("memory-safe") {mstore(body, sub(mload(body), 8))} p.canonicalBody = body;}
+            if (i == 0) {
+                p.canonicalBody = new bytes(196609);
+            } else {
+                bytes memory body = p.canonicalBody;
+                assembly ("memory-safe") { mstore(body, sub(mload(body), 8)) }
+                p.canonicalBody = body;
+            }
             vm.expectRevert(LayaRequest.EvidenceMismatch.selector);
             gate.verifyEvidence(gateDomain, requests[3], p, inputs[3], ids[3]);
         }
@@ -319,20 +367,32 @@ contract PeaceFourReportEvidenceGateTest is Test {
     }
 
     function test_AllFourMustBeValidAtOneClockIncludingExpiryBoundaries() public {
-        uint256 commonStart; uint256 commonEnd = type(uint256).max;
+        uint256 commonStart;
+        uint256 commonEnd = type(uint256).max;
         for (uint256 i; i < 4; ++i) {
             if (signedAt[i] > commonStart) commonStart = signedAt[i];
             if (expiresAt[i] < commonEnd) commonEnd = expiresAt[i];
         }
-        assertEq(commonStart, 1792292308); assertEq(commonEnd, 1792599289);
-        vm.warp(commonStart); verifyBundle(); vm.warp(commonEnd); verifyBundle();
-        vm.warp(commonStart - 1); vm.expectRevert(PeaceFourReportEvidenceGate.SignatureOutsideValidity.selector); verifyBundle();
-        vm.warp(commonEnd + 1); vm.expectRevert(PeaceFourReportEvidenceGate.SignatureOutsideValidity.selector); verifyBundle();
+        assertEq(commonStart, 1792292308);
+        assertEq(commonEnd, 1792599289);
+        vm.warp(commonStart);
+        verifyBundle();
+        vm.warp(commonEnd);
+        verifyBundle();
+        vm.warp(commonStart - 1);
+        vm.expectRevert(PeaceFourReportEvidenceGate.SignatureOutsideValidity.selector);
+        verifyBundle();
+        vm.warp(commonEnd + 1);
+        vm.expectRevert(PeaceFourReportEvidenceGate.SignatureOutsideValidity.selector);
+        verifyBundle();
     }
+
     function test_CurrentSnapshotValidButLaterFinalizationCannotUseStaleObservation() public {
-        vm.warp(currentTime); verifyBundle();
+        vm.warp(currentTime);
+        verifyBundle();
         vm.warp(expiresAt[1] + 1);
-        vm.expectRevert(PeaceFourReportEvidenceGate.SignatureOutsideValidity.selector); consumeBundle();
+        vm.expectRevert(PeaceFourReportEvidenceGate.SignatureOutsideValidity.selector);
+        consumeBundle();
         assertEq(gate.consumedSourceMask(), 0);
     }
 
@@ -342,15 +402,27 @@ contract PeaceFourReportEvidenceGateTest is Test {
         verifyAt(0);
     }
 
-    function replaced(bytes memory source, bytes memory needle, bytes memory replacement) private pure returns (bytes memory) {
+    function replaced(bytes memory source, bytes memory needle, bytes memory replacement)
+        private
+        pure
+        returns (bytes memory)
+    {
         for (uint256 i; i + needle.length <= source.length; ++i) {
             bool equal = true;
-            for (uint256 j; j < needle.length; ++j) if (source[i + j] != needle[j]) equal = false;
+            for (uint256 j; j < needle.length; ++j) {
+                if (source[i + j] != needle[j]) equal = false;
+            }
             if (!equal) continue;
             bytes memory result = new bytes(source.length - needle.length + replacement.length);
-            for (uint256 j; j < i; ++j) result[j] = source[j];
-            for (uint256 j; j < replacement.length; ++j) result[i + j] = replacement[j];
-            for (uint256 j = i + needle.length; j < source.length; ++j) result[i + replacement.length + j - i - needle.length] = source[j];
+            for (uint256 j; j < i; ++j) {
+                result[j] = source[j];
+            }
+            for (uint256 j; j < replacement.length; ++j) {
+                result[i + j] = replacement[j];
+            }
+            for (uint256 j = i + needle.length; j < source.length; ++j) {
+                result[i + replacement.length + j - i - needle.length] = source[j];
+            }
             return result;
         }
         revert("fixture needle missing");

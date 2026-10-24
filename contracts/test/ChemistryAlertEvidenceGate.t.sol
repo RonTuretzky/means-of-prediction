@@ -85,12 +85,15 @@ contract ChemistryAlertEvidenceGateTest is Test {
     }
 
     function maxExpiry() private view returns (uint256 n) {
-        for (uint256 i; i < expiresAt.length; ++i) if (expiresAt[i] > n) n = expiresAt[i];
+        for (uint256 i; i < expiresAt.length; ++i) {
+            if (expiresAt[i] > n) n = expiresAt[i];
+        }
     }
 
     function newGate(DKIMVerifier v, LayaRequest.Request[] memory r) private returns (ChemistryAlertEvidenceGate) {
-        return new ChemistryAlertEvidenceGate(v, address(this), proofs[0].publicKeyHash, PROFILE,
-            r[0].rulesHash, r[0].sourcePolicyHash, r);
+        return new ChemistryAlertEvidenceGate(
+            v, address(this), proofs[0].publicKeyHash, PROFILE, r[0].rulesHash, r[0].sourcePolicyHash, r
+        );
     }
 
     function verifyAt(uint256 i) private view returns (bytes32 key, uint8 group) {
@@ -101,7 +104,11 @@ contract ChemistryAlertEvidenceGateTest is Test {
         return gate.consumeEvidence(gateDomain, requests[i], proofs[i], inputs[i], ids[i]);
     }
 
-    function rebind(LayaRequest.Request memory r, EmailProof memory p) private pure returns (LayaRequest.Request memory) {
+    function rebind(LayaRequest.Request memory r, EmailProof memory p)
+        private
+        pure
+        returns (LayaRequest.Request memory)
+    {
         r.emailHash = keccak256(abi.encode(p));
         r.emailNullifier = p.emailNullifier;
         r.canonicalBodySha256 = sha256(p.canonicalBody);
@@ -123,7 +130,9 @@ contract ChemistryAlertEvidenceGateTest is Test {
             emit log_named_uint(string.concat("Chemistry RSA header gas variant ", vm.toString(i)), before - gasleft());
             before = gasleft();
             (bytes32 key, uint8 group) = verifyAt(i);
-            emit log_named_uint(string.concat("Chemistry full-body gate view gas variant ", vm.toString(i)), before - gasleft());
+            emit log_named_uint(
+                string.concat("Chemistry full-body gate view gas variant ", vm.toString(i)), before - gasleft()
+            );
             assertEq(key, LayaRequest.key(requests[i]));
             assertEq(group, i == 1 ? 1 : 0);
             (bool allowed, uint8 storedGroup, uint8 variant) = gate.frozenRequestKeys(key);
@@ -247,8 +256,9 @@ contract ChemistryAlertEvidenceGateTest is Test {
     function test_OversizedAndCroppedBodyRejectedWithoutFallback() public {
         for (uint256 i; i < 2; ++i) {
             EmailProof memory p = proofs[0];
-            if (i == 0) p.canonicalBody = new bytes(196609);
-            else {
+            if (i == 0) {
+                p.canonicalBody = new bytes(196609);
+            } else {
                 bytes memory cropped = p.canonicalBody;
                 assembly ("memory-safe") { mstore(cropped, sub(mload(cropped), 8)) }
                 p.canonicalBody = cropped;
@@ -347,15 +357,27 @@ contract ChemistryAlertEvidenceGateTest is Test {
         verifyAt(0);
     }
 
-    function replaced(bytes memory source, bytes memory needle, bytes memory replacement) private pure returns (bytes memory) {
+    function replaced(bytes memory source, bytes memory needle, bytes memory replacement)
+        private
+        pure
+        returns (bytes memory)
+    {
         for (uint256 i; i + needle.length <= source.length; ++i) {
             bool equal = true;
-            for (uint256 j; j < needle.length; ++j) if (source[i + j] != needle[j]) equal = false;
+            for (uint256 j; j < needle.length; ++j) {
+                if (source[i + j] != needle[j]) equal = false;
+            }
             if (!equal) continue;
             bytes memory result = new bytes(source.length - needle.length + replacement.length);
-            for (uint256 j; j < i; ++j) result[j] = source[j];
-            for (uint256 j; j < replacement.length; ++j) result[i + j] = replacement[j];
-            for (uint256 j = i + needle.length; j < source.length; ++j) result[i + replacement.length + j - i - needle.length] = source[j];
+            for (uint256 j; j < i; ++j) {
+                result[j] = source[j];
+            }
+            for (uint256 j; j < replacement.length; ++j) {
+                result[i + j] = replacement[j];
+            }
+            for (uint256 j = i + needle.length; j < source.length; ++j) {
+                result[i + replacement.length + j - i - needle.length] = source[j];
+            }
             return result;
         }
         revert("fixture needle missing");
@@ -386,8 +408,15 @@ contract ChemistryAlertEvidenceGateTest is Test {
 
     function test_ConfigurationRejectsWrongProfileModelSourceGroupOrPolicy() public {
         vm.expectRevert(ChemistryAlertEvidenceGate.BadConfiguration.selector);
-        new ChemistryAlertEvidenceGate(verifier, address(this), proofs[0].publicKeyHash, bytes32(uint256(1)),
-            requests[0].rulesHash, requests[0].sourcePolicyHash, requests);
+        new ChemistryAlertEvidenceGate(
+            verifier,
+            address(this),
+            proofs[0].publicKeyHash,
+            bytes32(uint256(1)),
+            requests[0].rulesHash,
+            requests[0].sourcePolicyHash,
+            requests
+        );
         LayaRequest.Request[] memory rr = requests;
         rr[2].sourceIndex = 1;
         vm.expectRevert(ChemistryAlertEvidenceGate.BadConfiguration.selector);

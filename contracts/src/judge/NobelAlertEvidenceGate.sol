@@ -14,10 +14,8 @@ import {LayaRequest} from "./LayaRequest.sol";
 /// A local historical block timestamp is a retrospective test, not current admissibility.
 contract NobelAlertEvidenceGate {
     bytes32 public constant DOMAIN_VERSION = keccak256("NOBEL_ALERT_EVIDENCE_RECEIPT_V1");
-    bytes32 public constant PROFILE_SHA256 =
-        0x8570a1c2237024cc17a383ed73de6578d8215b800f3a1ef2a30eeeab88b28835;
-    bytes32 public constant WEIGHTS_SHA256 =
-        0x5ed8ce354cb1bf9f313fb4791f74601acbf955598d74f8d6742da3497aee5169;
+    bytes32 public constant PROFILE_SHA256 = 0x8570a1c2237024cc17a383ed73de6578d8215b800f3a1ef2a30eeeab88b28835;
+    bytes32 public constant WEIGHTS_SHA256 = 0x5ed8ce354cb1bf9f313fb4791f74601acbf955598d74f8d6742da3497aee5169;
     string public constant GOOGLE_DOMAIN = "google.com";
     string public constant GOOGLE_SENDER = "googlealerts-noreply@google.com";
     string public constant GOOGLE_SELECTOR = "20251104";
@@ -37,7 +35,9 @@ contract NobelAlertEvidenceGate {
     error BadRSA();
     error AlreadyConsumed();
 
-    event RetrospectiveEvidenceReceived(bytes32 indexed receipt, bytes32 indexed requestKey, bytes32 indexed emailNullifier);
+    event RetrospectiveEvidenceReceived(
+        bytes32 indexed receipt, bytes32 indexed requestKey, bytes32 indexed emailNullifier
+    );
 
     /// @dev Constructor arguments are trusted research configuration, not submitter inputs.
     /// The entire request pins rules, demo source policy, market, profile components,
@@ -109,8 +109,15 @@ contract NobelAlertEvidenceGate {
         ) revert BadHeaderPolicy();
         (bytes memory names, bool hasNames) = BodyParser.tag(sig, "h");
         if (!hasNames) revert BadHeaderPolicy();
-        bytes[7] memory required =
-            [bytes("from"), bytes("subject"), bytes("date"), bytes("content-type"), bytes("to"), bytes("message-id"), bytes("mime-version")];
+        bytes[7] memory required = [
+            bytes("from"),
+            bytes("subject"),
+            bytes("date"),
+            bytes("content-type"),
+            bytes("to"),
+            bytes("message-id"),
+            bytes("mime-version")
+        ];
         for (uint256 i; i < required.length; ++i) {
             (, bool unique) = HeaderParser.fieldUnique(header, required[i]);
             if (!unique || !listed(names, required[i])) revert BadHeaderPolicy();

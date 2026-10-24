@@ -13,7 +13,9 @@ import {IDKIMRegistry} from "./IDKIMVerifier.sol";
 contract DKIMRegistry is IDKIMRegistry {
     address public immutable registrar;
 
-    constructor() { registrar = msg.sender; }
+    constructor() {
+        registrar = msg.sender;
+    }
 
     modifier onlyRegistrar() {
         require(msg.sender == registrar, "DKIM: not registrar");
@@ -32,22 +34,19 @@ contract DKIMRegistry is IDKIMRegistry {
     // keccak(domain) => keccak(modulus) => key
     mapping(bytes32 => mapping(bytes32 => Key)) private _keys;
 
-    function isDKIMPublicKeyHashValid(string calldata domainName, bytes32 publicKeyHash)
-        external
-        view
-        returns (bool)
-    {
+    function isDKIMPublicKeyHashValid(string calldata domainName, bytes32 publicKeyHash) external view returns (bool) {
         return _keys[keccak256(bytes(domainName))][publicKeyHash].valid;
     }
 
     /// @notice Register a real DKIM public key for a domain.
     /// @param exponent big-endian public exponent (e.g. hex"010001" for 65537)
     /// @param modulus big-endian RSA modulus (the DNS `p=` key)
-    function registerKey(string calldata domainName, string calldata selector, bytes calldata exponent, bytes calldata modulus)
-        external
-        onlyRegistrar
-        returns (bytes32 publicKeyHash)
-    {
+    function registerKey(
+        string calldata domainName,
+        string calldata selector,
+        bytes calldata exponent,
+        bytes calldata modulus
+    ) external onlyRegistrar returns (bytes32 publicKeyHash) {
         require(modulus.length >= 128, "DKIM: modulus too short"); // >= 1024-bit
         require(exponent.length > 0 && exponent.length <= 8, "DKIM: bad exponent");
         publicKeyHash = keccak256(modulus);
