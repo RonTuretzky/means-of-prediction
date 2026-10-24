@@ -85,7 +85,8 @@ contract NobelAlertEvidenceGateTest is Test {
         assertTrue(gate.consumedEmails(proof.emailNullifier));
     }
 
-    function test_ReplayRejectedOnlyAfterSuccess() public {
+    function test_WrongInputRejected() public {
+        vm.expectRevert(LayaRequest.InputMismatch.selector);
         gate.receiveEvidence(gate.requestDomain(), request, proof, bytes("wrong input"), tokenIds);
     }
 
