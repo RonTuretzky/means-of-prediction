@@ -1,0 +1,131 @@
+{
+  "scope": "Minimal local Schnorr SDK/registry source dependency closure only, no unrelated examples/tests/broadcasts. Upstream SPDX preserved. Not a production AVS registration claim.",
+  "files": [
+    {
+      "upstream": "/Users/wk/Documents/Codex/2026-10-21/task-3/example-contracts/lib/solidity-sdk/src/GasKillerSDK.sol",
+      "local": "/Users/wk/conductor/workspaces/means-of-prediction/newport-beach/contracts/lib/chemistry-schnorr-sdk/src/GasKillerSDK.sol",
+      "upstreamSHA256": "281e49d4b071a936cc30d94023349a8ebde5ee3e99826ca57503ae39040ce23f",
+      "localSHA256": "d87061aa9682cd20b702594e76740dbff88e4a0cd37f3d023c7d0e2a4d9c3173",
+      "change": "Only OpenZeppelin import paths relocated where necessary; implementation and license unchanged."
+    },
+    {
+      "upstream": "/Users/wk/Documents/Codex/2026-10-21/task-3/example-contracts/lib/solidity-sdk/src/SchnorrStakeRegistry.sol",
+      "local": "/Users/wk/conductor/workspaces/means-of-prediction/newport-beach/contracts/lib/chemistry-schnorr-sdk/src/SchnorrStakeRegistry.sol",
+      "upstreamSHA256": "687a7affd4575919c8223c5d15a6a25cadf9b55e0e017a4f4167daf72ac50316",
+      "localSHA256": "3e63b9e5da8e4d596f64957ba2a262af356ee3fbe3ec9536ca35bebca9eacb9a",
+      "change": "Only OpenZeppelin import paths relocated where necessary; implementation and license unchanged."
+    },
+    {
+      "upstream": "/Users/wk/Documents/Codex/2026-10-21/task-3/example-contracts/lib/solidity-sdk/src/StateTracker.sol",
+      "local": "/Users/wk/conductor/workspaces/means-of-prediction/newport-beach/contracts/lib/chemistry-schnorr-sdk/src/StateTracker.sol",
+      "upstreamSHA256": "2554e994474b2bd6d50360c8bd4809191ade6efc71d8c4db52e07da5f5ed52c8",
+      "localSHA256": "2554e994474b2bd6d50360c8bd4809191ade6efc71d8c4db52e07da5f5ed52c8",
+      "change": "Only OpenZeppelin import paths relocated where necessary; implementation and license unchanged."
+    },
+    {
+      "upstream": "/Users/wk/Documents/Codex/2026-10-21/task-3/example-contracts/lib/solidity-sdk/src/TransitionGuard.sol",
+      "local": "/Users/wk/conductor/workspaces/means-of-prediction/newport-beach/contracts/lib/chemistry-schnorr-sdk/src/TransitionGuard.sol",
+      "upstreamSHA256": "cee5f9bf097c03ac1123a32870f816ee7e9cf7d148044e36e3fddac54da957f6",
+      "localSHA256": "cee5f9bf097c03ac1123a32870f816ee7e9cf7d148044e36e3fddac54da957f6",
+      "change": "Only OpenZeppelin import paths relocated where necessary; implementation and license unchanged."
+    },
+    {
+      "upstream": "/Users/wk/Documents/Codex/2026-10-21/task-3/example-contracts/lib/solidity-sdk/src/StateChangeHandlerLib.sol",
+      "local": "/Users/wk/conductor/workspaces/means-of-prediction/newport-beach/contracts/lib/chemistry-schnorr-sdk/src/StateChangeHandlerLib.sol",
+      "upstreamSHA256": "0266fc889f0eb252434cef040904e7580fc065a19b3be31567f7a7b81bd4bb2a",
+      "localSHA256": "0266fc889f0eb252434cef040904e7580fc065a19b3be31567f7a7b81bd4bb2a",
+      "change": "Only OpenZeppelin import paths relocated where necessary; implementation and license unchanged."
+    },
+    {
+      "upstream": "/Users/wk/Documents/Codex/2026-10-21/task-3/example-contracts/lib/solidity-sdk/src/libraries/Secp256k1.sol",
+      "local": "/Users/wk/conductor/workspaces/means-of-prediction/newport-beach/contracts/lib/chemistry-schnorr-sdk/src/libraries/Secp256k1.sol",
+      "upstreamSHA256": "8bcaa2090f173b95273c19565c561dda6a54d3fcf54e3b5f8fc09d4407ec8fde",
+      "localSHA256": "8bcaa2090f173b95273c19565c561dda6a54d3fcf54e3b5f8fc09d4407ec8fde",
+      "change": "Only OpenZeppelin import paths relocated where necessary; implementation and license unchanged."
+    },
+    {
+      "upstream": "/Users/wk/Documents/Codex/2026-10-21/task-3/example-contracts/lib/solidity-sdk/src/libraries/SchnorrVerify.sol",
+      "local": "/Users/wk/conductor/workspaces/means-of-prediction/newport-beach/contracts/lib/chemistry-schnorr-sdk/src/libraries/SchnorrVerify.sol",
+      "upstreamSHA256": "91d4b6c81fe83bd1725dd457912075baf94787fc62c50806b754fb1852058100",
+      "localSHA256": "91d4b6c81fe83bd1725dd457912075baf94787fc62c50806b754fb1852058100",
+      "change": "Only OpenZeppelin import paths relocated where necessary; implementation and license unchanged."
+    },
+    {
+      "upstream": "/Users/wk/Documents/Codex/2026-10-21/task-3/example-contracts/lib/solidity-sdk/src/libraries/NestedFrames.sol",
+      "local": "/Users/wk/conductor/workspaces/means-of-prediction/newport-beach/contracts/lib/chemistry-schnorr-sdk/src/libraries/NestedFrames.sol",
+      "upstreamSHA256": "9f026ec57013d6a28497581b6c03819a78d4efdb207a043cd92f4003eb1d8c72",
+      "localSHA256": "359ceaa6bfe213063841f3b57a5b9bce833fe51130165f6fa270004a6813b8a0",
+      "change": "Only OpenZeppelin import paths relocated where necessary; implementation and license unchanged."
+    },
+    {
+      "upstream": "/Users/wk/Documents/Codex/2026-10-21/task-3/example-contracts/lib/solidity-sdk/src/interface/IGasKillerSDK.sol",
+      "local": "/Users/wk/conductor/workspaces/means-of-prediction/newport-beach/contracts/lib/chemistry-schnorr-sdk/src/interface/IGasKillerSDK.sol",
+      "upstreamSHA256": "4eb979e0a0f78aeb67aea51a0bb453ee49606410873e5981399e9651d98719a1",
+      "localSHA256": "87add8572c1e559d00025ff23346f95a4cff4f3934e708842a585cddbc7c988d",
+      "change": "Only OpenZeppelin import paths relocated where necessary; implementation and license unchanged."
+    },
+    {
+      "upstream": "/Users/wk/Documents/Codex/2026-10-21/task-3/example-contracts/lib/solidity-sdk/src/interface/IGasKillerSDKBatch.sol",
+      "local": "/Users/wk/conductor/workspaces/means-of-prediction/newport-beach/contracts/lib/chemistry-schnorr-sdk/src/interface/IGasKillerSDKBatch.sol",
+      "upstreamSHA256": "e22144c9f3d83f968825d60a6e18a1948589fd1c839fe78c45c0b49aaeba7cc9",
+      "localSHA256": "e22144c9f3d83f968825d60a6e18a1948589fd1c839fe78c45c0b49aaeba7cc9",
+      "change": "Only OpenZeppelin import paths relocated where necessary; implementation and license unchanged."
+    },
+    {
+      "upstream": "/Users/wk/Documents/Codex/2026-10-21/task-3/example-contracts/lib/solidity-sdk/src/interface/IGasKillerValueBound.sol",
+      "local": "/Users/wk/conductor/workspaces/means-of-prediction/newport-beach/contracts/lib/chemistry-schnorr-sdk/src/interface/IGasKillerValueBound.sol",
+      "upstreamSHA256": "8ca5687a6eaa2fc2faf3cf1b1fd7b9208ed3380422f0ed6958de041ead576586",
+      "localSHA256": "8ca5687a6eaa2fc2faf3cf1b1fd7b9208ed3380422f0ed6958de041ead576586",
+      "change": "Only OpenZeppelin import paths relocated where necessary; implementation and license unchanged."
+    },
+    {
+      "upstream": "/Users/wk/Documents/Codex/2026-10-21/task-3/example-contracts/lib/solidity-sdk/src/interface/IStateUpdateTypes.sol",
+      "local": "/Users/wk/conductor/workspaces/means-of-prediction/newport-beach/contracts/lib/chemistry-schnorr-sdk/src/interface/IStateUpdateTypes.sol",
+      "upstreamSHA256": "2ec4bf9a83b41e778b8013f41369fd9e80f289adfca75fbe6d8175cf631ff97f",
+      "localSHA256": "2ec4bf9a83b41e778b8013f41369fd9e80f289adfca75fbe6d8175cf631ff97f",
+      "change": "Only OpenZeppelin import paths relocated where necessary; implementation and license unchanged."
+    },
+    {
+      "upstream": "/Users/wk/Documents/Codex/2026-10-21/task-3/example-contracts/lib/solidity-sdk/src/interface/ISchnorrStakeRegistry.sol",
+      "local": "/Users/wk/conductor/workspaces/means-of-prediction/newport-beach/contracts/lib/chemistry-schnorr-sdk/src/interface/ISchnorrStakeRegistry.sol",
+      "upstreamSHA256": "a01fceaa1bc4e157864cde61c112cde4f6bb10586e15a48395afe39f9b77d354",
+      "localSHA256": "a01fceaa1bc4e157864cde61c112cde4f6bb10586e15a48395afe39f9b77d354",
+      "change": "Only OpenZeppelin import paths relocated where necessary; implementation and license unchanged."
+    },
+    {
+      "upstream": "/Users/wk/Documents/Codex/2026-10-21/task-3/example-contracts/lib/solidity-sdk/src/interface/ISchnorrApprovalRegistry.sol",
+      "local": "/Users/wk/conductor/workspaces/means-of-prediction/newport-beach/contracts/lib/chemistry-schnorr-sdk/src/interface/ISchnorrApprovalRegistry.sol",
+      "upstreamSHA256": "be7c4c3f76022bf22fb188947c20098f0fa36aea8e3d7fcab68fa7e8ec34e294",
+      "localSHA256": "be7c4c3f76022bf22fb188947c20098f0fa36aea8e3d7fcab68fa7e8ec34e294",
+      "change": "Only OpenZeppelin import paths relocated where necessary; implementation and license unchanged."
+    },
+    {
+      "upstream": "/Users/wk/Documents/Codex/2026-10-21/task-3/example-contracts/lib/solidity-sdk/src/interface/IGasKillerNested.sol",
+      "local": "/Users/wk/conductor/workspaces/means-of-prediction/newport-beach/contracts/lib/chemistry-schnorr-sdk/src/interface/IGasKillerNested.sol",
+      "upstreamSHA256": "30e17c537a2e160116184aabfc67aca53f411987a8e4c19bf55c04253012b5e8",
+      "localSHA256": "30e17c537a2e160116184aabfc67aca53f411987a8e4c19bf55c04253012b5e8",
+      "change": "Only OpenZeppelin import paths relocated where necessary; implementation and license unchanged."
+    },
+    {
+      "upstream": "/Users/wk/Documents/Codex/2026-10-21/task-3/example-contracts/lib/solidity-sdk/lib/openzeppelin-contracts/contracts/utils/introspection/IERC165.sol",
+      "local": "/Users/wk/conductor/workspaces/means-of-prediction/newport-beach/contracts/lib/chemistry-schnorr-sdk/oz/utils/introspection/IERC165.sol",
+      "upstreamSHA256": "701e025d13ec6be09ae892eb029cd83b3064325801d73654847a5fb11c58b1e5",
+      "localSHA256": "701e025d13ec6be09ae892eb029cd83b3064325801d73654847a5fb11c58b1e5",
+      "change": "Unmodified dependency copy."
+    },
+    {
+      "upstream": "/Users/wk/Documents/Codex/2026-10-21/task-3/example-contracts/lib/solidity-sdk/lib/openzeppelin-contracts/contracts/utils/introspection/ERC165.sol",
+      "local": "/Users/wk/conductor/workspaces/means-of-prediction/newport-beach/contracts/lib/chemistry-schnorr-sdk/oz/utils/introspection/ERC165.sol",
+      "upstreamSHA256": "8806a632d7b656cadb8133ff8f2acae4405b3a64d8709d93b0fa6a216a8a6154",
+      "localSHA256": "8806a632d7b656cadb8133ff8f2acae4405b3a64d8709d93b0fa6a216a8a6154",
+      "change": "Unmodified dependency copy."
+    },
+    {
+      "upstream": "/Users/wk/Documents/Codex/2026-10-21/task-3/example-contracts/lib/solidity-sdk/lib/openzeppelin-contracts/contracts/utils/cryptography/MerkleProof.sol",
+      "local": "/Users/wk/conductor/workspaces/means-of-prediction/newport-beach/contracts/lib/chemistry-schnorr-sdk/oz/utils/cryptography/MerkleProof.sol",
+      "upstreamSHA256": "6b187173f18599658e6c333b1829615cd10487b52c14b3e4adf6a583d29ff2ad",
+      "localSHA256": "6b187173f18599658e6c333b1829615cd10487b52c14b3e4adf6a583d29ff2ad",
+      "change": "Unmodified dependency copy."
+    }
+  ]
+}

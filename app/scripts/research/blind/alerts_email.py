@@ -20,7 +20,8 @@ def parse(raw):
     q = re.search(r'new results? for \[(.*?)\]', (m.get_body(preferencelist=('plain',)).get_content() if m.get_body(preferencelist=('plain',)) is not None else ''))
     if q: out['query'] = q.group(1)
     clean = lambda t: re.sub(r'\s+', ' ', html.unescape(re.sub(r'<[^>]+>', '', t)).replace('\xa0', ' ')).strip()
-    # The HTML part marks every result as a schema.org Article row: url, name (headline), publisher name, description (snippet).
+    # News results carry schema.org Article fields. Automatic-source Web results
+    # use ordinary visible HTML instead, without any schema attributes.
     rows = re.split(r'<tr[^>]*itemtype="http://schema.org/Article"[^>]*>', page)
     for i, row in enumerate(rows[1:]):
         before = rows[i] if i == 0 else rows[i]; labels = re.findall(r'<span[^>]*color:#737373[^>]*>\s*([A-Z]{3,12})\s*</span>', rows[0] if i == 0 else rows[i])
@@ -30,6 +31,27 @@ def parse(raw):
         if not (href and name): continue
         url = urllib.parse.parse_qs(urllib.parse.urlparse(html.unescape(href.group(1))).query).get('url', [''])[0]
         out['results'].append({'section': section, 'headline': clean(name.group(1)), 'publisher': clean(pub.group(1)) if pub else '', 'snippet': clean(desc.group(1)) if desc else '', 'url': url, 'host': registrable(urllib.parse.urlparse(url).netloc)})
+    # Read only visible result anchors; embedded notification JSON and the query
+    # banner are not independent article evidence. Preserve existing News indexes.
+    visible = re.sub(r'<script\b[^>]*>.*?</script>', '', page, flags=re.S | re.I)
+    links = list(re.finditer(r'<a\b(?=[^>]*\bhref="([^"]+)")(?=[^>]*\bstyle="[^"]*font-size:\s*16px)[^>]*>(.*?)</a>', visible, re.S | re.I))
+    for idx, match in enumerate(links):
+        if re.search(r'\bitemprop="url"', match.group(0).split('>', 1)[0]):
+            continue
+        redirect = urllib.parse.urlparse(html.unescape(match.group(1)))
+        if redirect.hostname not in {'google.com', 'www.google.com'} or redirect.path != '/url':
+            continue
+        url = urllib.parse.parse_qs(redirect.query).get('url', [''])[0]
+        target = urllib.parse.urlparse(url)
+        if target.scheme not in {'http', 'https'} or not target.hostname:
+            continue
+        following = visible[match.end():links[idx + 1].start() if idx + 1 < len(links) else len(visible)]
+        pub = re.search(r'<div\b[^>]*style="[^"]*color:\s*#737373[^"]*"[^>]*>(.*?)</div>', following, re.S | re.I)
+        desc = re.search(r'<div\b[^>]*style="[^"]*color:\s*#252525[^"]*"[^>]*>(.*?)</div>', following, re.S | re.I)
+        labels = re.findall(r'<span[^>]*color:\s*#737373[^>]*>\s*([A-Z]{3,12})\s*</span>', visible[:match.start()])
+        out['results'].append({'section': labels[-1].title() if labels else None, 'headline': clean(match.group(2)),
+                               'publisher': clean(pub.group(1)) if pub else '', 'snippet': clean(desc.group(1)) if desc else '',
+                               'url': url, 'host': registrable(target.hostname)})
     return out
 
 def unit_text(result):

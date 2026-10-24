@@ -1,0 +1,112 @@
+{
+  "checkedAt": "2026-10-15T10:11:07.328002+00:00",
+  "kind": "offline unchanged-original verification and case-specific evidence replay",
+  "notGeneralResolver": true,
+  "onchainExecuted": false,
+  "mailboxContacted": false,
+  "networkUsed": false,
+  "marketID": "5371292",
+  "question": "Nobel Peace Prize 2026 awarded to an individual?",
+  "eventURL": "https://polymarket.com/event/nobel-peace-prize-2026-awarded-to-an-individual",
+  "signatureKeyPolicy": "Retained DNS snapshot; no DNSSEC or historical authorization proof.",
+  "items": [
+    {
+      "rawSha256": "a64e85f42325e6423ef6068eca1fb1de21b686d4de03cb7e754156a183476b0b",
+      "resultIndex": 0,
+      "query": "\"Nobel Peace Prize\" 2026",
+      "subject": "Google Alert - \"Nobel Peace Prize\" 2026",
+      "signedAtUTC": "2026-10-11T02:50:16+00:00",
+      "signedEmailDate": "Sat, 10 Oct 2026 19:50:15 -0700",
+      "rawBytes": 252263,
+      "signingDomain": "google.com",
+      "validNowUsingSavedKey": true,
+      "validAtDeclaredSigningTimeUsingSavedKey": true,
+      "fullBodyVerified": true,
+      "partialBodySignature": false,
+      "tamperedBodyRejected": true,
+      "mimeProfile": "multipart/alternative",
+      "extraction": "existing off-chain MIME/HTML parser; not a Solidity proof",
+      "dnsSnapshotAt": "2026-10-15T02:07:33.687462+00:00",
+      "dnsRecordSha256": "358d16cd1f66f6fb5f53bc3daf7adba12ab424f1cb10ab1d305e48015acf5e94",
+      "url": "https://www.nobelpeaceprize.org/press/press-releases/nobel-peace-prize-for-2026",
+      "exactHost": "www.nobelpeaceprize.org",
+      "caseSpecificFactChecks": {
+        "namedPerson": true,
+        "peaceCategory": true,
+        "year2026": true,
+        "completedAward": true
+      }
+    },
+    {
+      "rawSha256": "4929f2b5dbc07dd6d4395a93ecee54643bcee585880286385e44bc406082aff3",
+      "resultIndex": 0,
+      "query": "site:reuters.com Nobel 2026",
+      "subject": "Google Alert - site:reuters.com Nobel 2026",
+      "signedAtUTC": "2026-10-10T07:55:23+00:00",
+      "signedEmailDate": "Sat, 10 Oct 2026 00:55:22 -0700",
+      "rawBytes": 151487,
+      "signingDomain": "google.com",
+      "validNowUsingSavedKey": true,
+      "validAtDeclaredSigningTimeUsingSavedKey": true,
+      "fullBodyVerified": true,
+      "partialBodySignature": false,
+      "tamperedBodyRejected": true,
+      "mimeProfile": "multipart/alternative",
+      "extraction": "existing off-chain MIME/HTML parser; not a Solidity proof",
+      "dnsSnapshotAt": "2026-10-15T02:07:33.687462+00:00",
+      "dnsRecordSha256": "358d16cd1f66f6fb5f53bc3daf7adba12ab424f1cb10ab1d305e48015acf5e94",
+      "url": "https://www.reuters.com/world/navanethem-navi-pillay-wins-2026-nobel-peace-prize-2026-10-09/",
+      "exactHost": "www.reuters.com",
+      "caseSpecificFactChecks": {
+        "namedPerson": true,
+        "peaceCategory": true,
+        "year2026": true,
+        "completedAward": true
+      }
+    },
+    {
+      "rawSha256": "ba2aee3e7bc241e760556b2cc166b3f84057ef029e35c1759bb12aba3c1be39e",
+      "resultIndex": 0,
+      "query": "site:nytimes.com Nobel 2026",
+      "subject": "Google Alert - site:nytimes.com Nobel 2026",
+      "signedAtUTC": "2026-10-10T14:44:08+00:00",
+      "signedEmailDate": "Sat, 10 Oct 2026 07:44:08 -0700",
+      "rawBytes": 92069,
+      "signingDomain": "google.com",
+      "validNowUsingSavedKey": true,
+      "validAtDeclaredSigningTimeUsingSavedKey": true,
+      "fullBodyVerified": true,
+      "partialBodySignature": false,
+      "tamperedBodyRejected": true,
+      "mimeProfile": "multipart/alternative",
+      "extraction": "existing off-chain MIME/HTML parser; not a Solidity proof",
+      "dnsSnapshotAt": "2026-10-15T02:07:33.687462+00:00",
+      "dnsRecordSha256": "358d16cd1f66f6fb5f53bc3daf7adba12ab424f1cb10ab1d305e48015acf5e94",
+      "url": "https://www.nytimes.com/live/2026/10/09/world/nobel-peace-prize-winner-2026",
+      "exactHost": "www.nytimes.com",
+      "caseSpecificFactChecks": {
+        "namedPerson": true,
+        "peaceCategory": true,
+        "year2026": true,
+        "completedAward": true
+      }
+    }
+  ],
+  "overlap": {
+    "targetedReutersURLAlreadyInBroadAlert": true,
+    "targetedNYTURLAlreadyInBroadAlert": true,
+    "demonstratesNecessaryComplementaryFacts": false
+  },
+  "conclusion": {
+    "supportedOutcome": "YES",
+    "status": "offchain evidence candidate",
+    "reviewBasis": "Named human is reported as the 2026 Peace laureate. Exact rule permits a credible-reporting consensus fallback. This is an analyst assessment, not automated final adjudication.",
+    "limitations": [
+      "Google authenticated the relay; publishers did not sign these emails.",
+      "Primary-source path names nobelprize.org; the captured committee item links to nobelpeaceprize.org. Do not silently equate the hosts.",
+      "The reporting-consensus fallback and acceptance of relayed snippets require an explicit adjudication policy.",
+      "No independent-reporting audit, general semantic verifier or new bundle contract is demonstrated.",
+      "Targeted results duplicate items already in the broad alert; no increase in eventual rule completeness is established."
+    ]
+  }
+}

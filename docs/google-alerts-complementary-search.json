@@ -1,0 +1,119 @@
+{
+  "checkedAt": "2026-10-15T14:23:55.803772+00:00",
+  "status": "no verified necessary complementary bundle found",
+  "scope": {
+    "mappedMessages": 1097,
+    "resultUnits": 13530,
+    "distinctQueries": 69,
+    "freshMessages": 192,
+    "savedHistoricalCryptoValidMessages": 1097,
+    "collectionStartedAt": "2026-10-15T14:13:51.628565+00:00",
+    "collectionBounded": false,
+    "collectionFailures": [],
+    "mappingManifests": [
+      {
+        "name": "alerts-expansion-20261006",
+        "sha256": "8d919c6824ec53c982fffaca4723cba4a979d20aaecf154db5875943fa11a609"
+      },
+      {
+        "name": "alerts-expansion-20261007",
+        "sha256": "9644b2144beef4477488d616c8cd2c7b23d672b49e19511b013b2e6bc3a6fa1b"
+      }
+    ],
+    "reviewMethod": "Targeted analyst review of candidate bundles across mapped sports, Nobel, elections, weather, economic, product and legal markets, plus public and saved market discovery. Not exhaustive subset enumeration or an accuracy evaluation."
+  },
+  "market": {
+    "id": "5162571",
+    "question": "Will Tampa Bay Rays vs Milwaukee Brewers be the 2026 World Series matchup?",
+    "url": "https://polymarket.com/event/mlb-playoffs-world-series-exact-matchup",
+    "savedRulesSha256": "db106158b29952e64005065fc835adc122b1b6a4fcc82ba47b3e741c7ae755b0",
+    "ruleSummary": "YES when Tampa Bay is the officially determined ALCS champion and Milwaukee is the officially determined NLCS champion for 2026. Official MLB designation by another method also counts. An impossible listed pairing resolves NO. Cancellation before both champions or missing determination by 2026-11-03 23:59 ET resolves listed pairings NO. Subsequent World Series changes do not alter the matchup outcome.",
+    "sources": "Official MLB information, or consensus of credible reporting."
+  },
+  "items": [
+    {
+      "rawSha256": "e2533e7c2f5113393b4009943cc6269209b8c675529b3b7c3924f0c868ae69ce",
+      "query": "\"MLB\" \"ALCS\"",
+      "resultIndex": 0,
+      "allResultUnitsReparsed": 10,
+      "signedAtUTC": "2026-10-14T03:12:30+00:00",
+      "signedEmailDate": "Tue, 13 Oct 2026 20:12:30 -0700",
+      "independentDeliveryTimeVerified": false,
+      "signingDomain": "google.com",
+      "rawBytes": 67677,
+      "mimeType": "multipart/alternative",
+      "fullBodyVerified": true,
+      "validNowUsingSavedKey": true,
+      "validAtDeclaredSigningTimeUsingSavedKey": true,
+      "partialBodySignature": false,
+      "tamperedBodyRejected": true,
+      "dnsSnapshotAt": "2026-10-15T14:13:51.628565+00:00",
+      "dnsRecordSha256": "358d16cd1f66f6fb5f53bc3daf7adba12ab424f1cb10ab1d305e48015acf5e94",
+      "headline": "Rays create havoc on basepaths, get stellar start from Peralta to even ALCS - MLB.com",
+      "snippet": "ST. PETERSBURG -- The Rays landed their counterpunch Tuesday night in Game 2 and the ALCS is headed back to Cleveland as a best-of-five series.",
+      "url": "https://www.mlb.com/news/rays-win-alcs-game-2-2026",
+      "exactHost": "www.mlb.com"
+    },
+    {
+      "rawSha256": "9c083ea6ab3be6ea8884d64a5b30c619a31ee8cd84fb855a8f269ef868ef69cb",
+      "query": "\"World Series\" matchup 2026",
+      "resultIndex": 4,
+      "allResultUnitsReparsed": 10,
+      "signedAtUTC": "2026-10-15T12:23:00+00:00",
+      "signedEmailDate": "Thu, 15 Oct 2026 05:22:59 -0700",
+      "independentDeliveryTimeVerified": false,
+      "signingDomain": "google.com",
+      "rawBytes": 59900,
+      "mimeType": "multipart/alternative",
+      "fullBodyVerified": true,
+      "validNowUsingSavedKey": true,
+      "validAtDeclaredSigningTimeUsingSavedKey": true,
+      "partialBodySignature": false,
+      "tamperedBodyRejected": true,
+      "dnsSnapshotAt": "2026-10-15T14:13:51.628565+00:00",
+      "dnsRecordSha256": "358d16cd1f66f6fb5f53bc3daf7adba12ab424f1cb10ab1d305e48015acf5e94",
+      "headline": "Brewers-Dodgers NLCS Game 4 FAQ (8 ET, FS1/FOX One) - MLB.com",
+      "snippet": "LOS ANGELES -- It's been 44 years since the Brewers last reached the World Series. They're one win away. Milwaukee brings a commanding 3-0 lead ...",
+      "url": "https://www.mlb.com/news/brewers-dodgers-nl-championship-series-game-4-starting-lineups-and-pitching-matchup",
+      "exactHost": "www.mlb.com"
+    }
+  ],
+  "wholeMessageAssessment": {
+    "method": "Analyst assessment of all extracted result blocks in each original. No general semantic resolver is claimed.",
+    "A_alone": "insufficient; ALCS is level, champion not determined",
+    "B_alone": "insufficient; Brewers remain one win short",
+    "A_plus_B": "insufficient; neither required champion is established",
+    "newSettlementSupported": false,
+    "futureSufficiency": "If separate authenticated, admissible messages establish both official 2026 champions as Tampa Bay and Milwaukee, their union could support YES. Recheck each whole email alone before claiming combination was necessary."
+  },
+  "rejectedLeads": [
+    {
+      "case": "Peace Nobel / earlier three-email example",
+      "reason": "Broad email already contained the matching Reuters and NYT reports."
+    },
+    {
+      "case": "Singapore GP winner",
+      "reason": "The email containing a final-classification headline also names the winner. Adding another winner email does not supply a missing fact. Explicit first FIA classification linkage still requires care."
+    },
+    {
+      "case": "MLB 2+ postseason walk-offs",
+      "reason": "Repeated Chourio coverage is one game. ABS challenge snippet lacks qualifying home-team final-at-bat evidence. Completion/cancellation override also prevents treating the threshold alone as unconditional early YES."
+    },
+    {
+      "case": "Gemini Pro",
+      "reason": "Argon availability and Pro subscription eligibility do not establish the model itself is officially labeled Pro."
+    },
+    {
+      "case": "Nobel negative outcomes",
+      "reason": "Inspected complete winner-list messages already contain names and count together; splitting their snippets would manufacture complementarity."
+    }
+  ],
+  "authenticationLimits": [
+    "Google signs its relay, not the publisher itself or the truth of the news.",
+    "Retained DNS key snapshot; no DNSSEC or historical key-authorization proof.",
+    "Query and Subject used only to route, never as outcome evidence.",
+    "Multipart MIME extraction is off-chain; current contract parser cannot consume these examples."
+  ],
+  "onchainExecuted": false,
+  "trainingPerformed": false
+}
