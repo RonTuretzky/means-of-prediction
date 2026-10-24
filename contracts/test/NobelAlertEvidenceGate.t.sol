@@ -18,6 +18,8 @@ contract NobelAlertEvidenceGateTest is Test {
     LayaRequest.Request private request;
     bytes private exactInput;
     uint32[] private tokenIds;
+    bytes private exponent;
+    bytes private modulus;
     uint256 private signedAt;
     uint256 private expiresAt;
 
@@ -35,8 +37,6 @@ contract NobelAlertEvidenceGateTest is Test {
         bytes memory raw = vm.ffi(command);
         emit log_named_bytes32("genuine gate fixture JSON SHA256", sha256(raw));
         string memory fixture = string(raw);
-        bytes memory exponent;
-        bytes memory modulus;
         (proof, exponent, modulus, exactInput, tokenIds, request) = abi.decode(
             vm.parseJsonBytes(fixture, ".abiHex"), (EmailProof, bytes, bytes, bytes, uint32[], LayaRequest.Request)
         );
