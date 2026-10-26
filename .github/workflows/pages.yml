@@ -8,6 +8,7 @@ on:
     branches: [main]
     paths:
       - "app/**"
+      - "services/rule-generator/src/schema.ts"
       - "contracts/src/**"
       - "contracts/deployments/gnosis.json"
       - "contracts/deployments/sepolia.json"
@@ -54,11 +55,16 @@ jobs:
         working-directory: app
         run: pnpm test:compute-demos
 
+      - name: Check generated rule validation and commitments
+        working-directory: app
+        run: pnpm test:rule-studio
+
       - name: Build the static site (Gnosis deployment)
         working-directory: app
         env:
           DEPLOYMENT: gnosis
           VITE_BASE: /${{ github.event.repository.name }}/
+          VITE_RULE_API_URL: https://means-of-prediction-rule-generator.ronturetzky.workers.dev
         run: pnpm build
 
       - uses: actions/upload-pages-artifact@v3

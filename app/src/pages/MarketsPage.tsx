@@ -6,6 +6,8 @@ import { MarketCardSkeleton } from "../components/Skeleton";
 import { Resolution, useMarkets } from "../hooks/useMarkets";
 import { CATEGORIES, parseCategory, type Category } from "../data/categories";
 import { CHAIN_LABEL, IS_LOCAL } from "../config";
+import { PEACE_DEMO } from "../data/peace-demo";
+import { ArrowRight } from "@phosphor-icons/react";
 
 type Sort = "newest" | "volume" | "liquidity" | "ending";
 type Filter = "all" | "live" | "resolved";
@@ -46,19 +48,16 @@ export function MarketsPage() {
         <div>
           <Heading1>Markets</Heading1>
           <p className="max-w-2xl text-body text-surface-grey-2">
-            Settled by the newspapers themselves. Anyone can open a market over any set of newspapers
-            and any headline condition; anyone can settle one by submitting a DKIM-signed
-            breaking-news alert. <Link to="/" className="font-semibold text-core-orange underline">How it works →</Link>
+            Explore the recorded evidence replay or browse existing on-chain markets.
+            Start a new question with rules drafted inside the product. <Link to="/" className="font-semibold text-core-orange underline">How it works →</Link>
           </p>
         </div>
-        <Link to="/create">
-          <Button data-testid="nav-create">Create market</Button>
+        <Link to="/create/ai">
+          <Button data-testid="nav-create">Draft rules with DeepSeek</Button>
         </Link>
       </div>
 
-      <Link to="/demos" className="bread-card mb-6 block p-4 font-semibold underline underline-offset-4">
-        View the Laya × GasKiller computation demo on Sepolia →
-      </Link>
+      <div className="mp-product"><Link to="/demo/peace-2026" className="mp-index-demo" data-testid="peace-replay-card"><div><span className="mp-eyebrow">Featured historical local replay</span><h2>{PEACE_DEMO.question}</h2><p>Four reporting sources · imported Polymarket rules · no public market settlement</p></div><div><strong>Resolved YES</strong><span className="mp-text-link">Inspect evidence <ArrowRight size={16} aria-hidden="true" /></span></div></Link><p className="mb-6 text-sm text-surface-grey-2">Looking for the public computation receipt? <Link to="/demos" className="mp-inline-link">View the separate Sepolia component →</Link></p></div>
 
       <div className="mb-3 flex flex-wrap gap-1.5" data-testid="category-tabs">
         {(["all", ...CATEGORIES] as const).map((c) => (

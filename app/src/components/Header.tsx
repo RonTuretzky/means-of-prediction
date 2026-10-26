@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { Link, NavLink } from "react-router-dom";
-import { Button, Chip, Logo } from "@breadcoop/ui";
-import { Newspaper, Wallet } from "@phosphor-icons/react";
+import { Link, NavLink, useLocation } from "react-router-dom";
+import { Button } from "@breadcoop/ui";
+import { Wallet } from "@phosphor-icons/react";
 import {
   AVAILABLE_NETWORKS,
   CHAIN_LABEL,
@@ -19,6 +19,8 @@ import { fmtAmount } from "../lib/format";
 import { useToast } from "./Toast";
 
 export function Header() {
+  const { pathname } = useLocation();
+  const showWallet = pathname === "/create" || pathname === "/markets" || pathname === "/portfolio" || pathname.startsWith("/market/");
   const wallet = useWallet();
   const toast = useToast();
   const { data: cash } = useCash(wallet.address);
@@ -46,41 +48,30 @@ export function Header() {
   };
 
   const navClass = ({ isActive }: { isActive: boolean }) =>
-    `font-breadDisplay font-bold uppercase tracking-wide px-2 py-1 ${
-      isActive ? "text-core-orange underline underline-offset-4" : "text-surface-ink hover:text-core-orange"
-    }`;
+    `mp-nav-link${isActive ? " active" : ""}`;
 
   return (
-    <header className="sticky top-0 z-40 border-b-2 border-surface-ink bg-paper-0/95 backdrop-blur">
-      <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-3 px-4 py-3">
-        <Link to="/" className="flex items-center gap-2">
-          <Logo size={30} color="orange" />
-          <span className="font-breadDisplay text-xl font-black uppercase tracking-tight">
-            Means of <span className="text-core-orange">Prediction</span>
-          </span>
-          <Chip size="small">
-            <span className="flex items-center gap-1">
-              <Newspaper size={12} /> {IS_LOCAL ? "DKIM settled" : `on ${CHAIN_LABEL}`}
-            </span>
-          </Chip>
-        </Link>
-
-        <nav className="ml-2 flex flex-wrap items-center gap-1 text-sm">
+    <header className="mp-site-header">
+      <div className="mp-header-inner">
+        <Link to="/" className="mp-brand"><span className="mp-brand-mark" aria-hidden="true">↗</span>Means of Prediction</Link>
+        <nav className="mp-site-nav" aria-label="Main navigation">
           <NavLink to="/markets" className={navClass}>
             Markets
           </NavLink>
-          <NavLink to="/create" className={navClass}>
-            Create
+          <NavLink to="/create/ai" className={navClass}>
+            Draft rules
           </NavLink>
-          <NavLink to="/portfolio" className={navClass}>
-            Portfolio
+          <NavLink to="/demo/peace-2026" className={navClass}>
+            Market replay
           </NavLink>
           <NavLink to="/demos" className={navClass}>
             Compute demos
           </NavLink>
+          <details className="mp-more-nav"><summary aria-label="More navigation">More ▾</summary><div><NavLink to="/create" onClick={event => event.currentTarget.closest("details")?.removeAttribute("open")}>On-chain markets</NavLink><NavLink to="/portfolio" onClick={event => event.currentTarget.closest("details")?.removeAttribute("open")}>Portfolio</NavLink></div></details>
         </nav>
 
-        <div className="ml-auto flex items-center gap-3">
+        {showWallet && <div className="mp-wallet-strip">
+          <span className="mr-auto text-xs text-surface-grey-2">Market network: {CHAIN_LABEL}</span>
           {!IS_LOCAL && AVAILABLE_NETWORKS.filter((n) => n !== "local").length > 1 && (
             <select
               aria-label="Network"
@@ -140,7 +131,7 @@ export function Header() {
               Connect wallet
             </Button>
           )}
-        </div>
+        </div>}
       </div>
     </header>
   );

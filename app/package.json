@@ -16,7 +16,8 @@
     "sync:gnosis": "DEPLOYMENT=gnosis node scripts/sync-contracts.mjs",
     "build:gnosis": "DEPLOYMENT=gnosis node scripts/sync-contracts.mjs && tsc -b && vite build",
     "test:fees": "node --experimental-strip-types --test tests/fees.test.mjs",
-    "test:compute-demos": "node --experimental-strip-types --test scripts/compute-demos.test.mjs"
+    "test:compute-demos": "node --experimental-strip-types --test scripts/compute-demos.test.mjs",
+    "test:rule-studio": "node --experimental-strip-types --test scripts/rule-studio.test.mjs"
   },
   "dependencies": {
     "@breadcoop/ui": "^2.0.4",

@@ -1,0 +1,25 @@
+name: Rule generator checks
+on:
+  push:
+    paths: ["services/rule-generator/**", ".github/workflows/rule-generator.yml"]
+  pull_request:
+    paths: ["services/rule-generator/**", ".github/workflows/rule-generator.yml"]
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: services/rule-generator/package-lock.json
+      - run: npm ci --include=optional
+        working-directory: services/rule-generator
+      - run: npm run types && npm run check && npm test && npm run dry-run
+        working-directory: services/rule-generator
+        env:
+          DEEPSEEK_API_KEY: test-only-not-a-provider-key
+          RULE_GENERATOR_TOKEN: test-only-operator-token-not-a-credential-32chars

@@ -1,0 +1,26 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "means-of-prediction-rule-generator",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-26",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": true,
+  "preview_urls": false,
+  "vars": {
+    "DEEPSEEK_MODEL": "deepseek-flash",
+    "ALLOWED_ORIGINS": "https://ronturetzky.github.io,http://localhost:5173,http://localhost:5201,http://127.0.0.1:5173,http://127.0.0.1:5201"
+  },
+  "secrets": { "required": ["DEEPSEEK_API_KEY", "RULE_GENERATOR_TOKEN"] },
+  "ratelimits": [
+    {
+      "name": "RULES_RATE_LIMITER",
+      "namespace_id": "53712921",
+      "simple": { "limit": 6, "period": 60 }
+    }
+  ],
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 0.1,
+    "logs": { "invocation_logs": false }
+  }
+}
