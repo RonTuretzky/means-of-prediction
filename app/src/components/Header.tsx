@@ -60,12 +60,12 @@ export function Header() {
           </span>
           <Chip size="small">
             <span className="flex items-center gap-1">
-              <Newspaper size={12} /> {IS_LOCAL ? "zkEmail settled" : `on ${CHAIN_LABEL}`}
+              <Newspaper size={12} /> {IS_LOCAL ? "DKIM settled" : `on ${CHAIN_LABEL}`}
             </span>
           </Chip>
         </Link>
 
-        <nav className="ml-2 flex items-center gap-1 text-sm">
+        <nav className="ml-2 flex flex-wrap items-center gap-1 text-sm">
           <NavLink to="/markets" className={navClass}>
             Markets
           </NavLink>
@@ -74,6 +74,9 @@ export function Header() {
           </NavLink>
           <NavLink to="/portfolio" className={navClass}>
             Portfolio
+          </NavLink>
+          <NavLink to="/demos" className={navClass}>
+            Compute demos
           </NavLink>
         </nav>
 

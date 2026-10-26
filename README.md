@@ -29,6 +29,20 @@ real NYT email verify end to end.
                           └──────────────────┘                     └───────────────────┘
 ```
 
+## Compute demos
+
+[Open the Laya × GasKiller demo](https://ronturetzky.github.io/means-of-prediction/#/demos)
+from the **Compute demos** navigation item. It indexes the completed Sepolia
+component using its deployment and verification receipts, the `Projected` event,
+and current contract state. No wallet or operator API key is needed. Live checks
+are shown separately from the dated recorded result, with explicit mismatch and
+unavailable states.
+
+This demo covers 32 layer-0 QKV outputs from one fixed initial token. Full-model
+inference and market settlement are unfinished. Add future public deployments to
+`app/src/data/compute-demos.ts`; verification lives in `app/src/lib/compute-demos.ts`.
+Run `cd app && pnpm test:compute-demos` for the reader checks.
+
 ## Live on Gnosis mainnet (chain 100)
 
 **App: https://ronturetzky.github.io/means-of-prediction/** — a static GitHub Pages

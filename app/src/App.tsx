@@ -10,6 +10,7 @@ import { LandingPage } from "./pages/LandingPage";
 import { MarketPage } from "./pages/MarketPage";
 import { MarketsPage } from "./pages/MarketsPage";
 import { PortfolioPage } from "./pages/PortfolioPage";
+import { ComputeDemosPage } from "./pages/ComputeDemosPage";
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 1000 } },
@@ -38,6 +39,7 @@ export default function App() {
               <Route path="/market/:id" element={<Page><MarketPage /></Page>} />
               <Route path="/create" element={<Page><CreatePage /></Page>} />
               <Route path="/portfolio" element={<Page><PortfolioPage /></Page>} />
+              <Route path="/demos" element={<Page><ComputeDemosPage /></Page>} />
             </Routes>
             <footer className="mt-12 border-t-2 border-surface-ink bg-paper-0 px-4 py-6 text-center text-caption text-surface-grey-2">
               Means of Prediction — markets settled by real DKIM (RSA-SHA256) signatures verified onchain,

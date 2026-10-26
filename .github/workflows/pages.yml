@@ -50,6 +50,10 @@ jobs:
         working-directory: app
         run: pnpm install --frozen-lockfile
 
+      - name: Check computation receipt indexing
+        working-directory: app
+        run: pnpm test:compute-demos
+
       - name: Build the static site (Gnosis deployment)
         working-directory: app
         env:

@@ -56,6 +56,10 @@ export function MarketsPage() {
         </Link>
       </div>
 
+      <Link to="/demos" className="bread-card mb-6 block p-4 font-semibold underline underline-offset-4">
+        View the Laya × GasKiller computation demo on Sepolia →
+      </Link>
+
       <div className="mb-3 flex flex-wrap gap-1.5" data-testid="category-tabs">
         {(["all", ...CATEGORIES] as const).map((c) => (
           <button
