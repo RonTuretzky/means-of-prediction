@@ -42,12 +42,15 @@ export default async function globalSetup() {
   if (!(await rpcReady())) throw new Error("anvil (e2e, :8548) did not come up");
 
   // real DKIM keys the deploy registers (dev key for fixtures + real NYT key)
-  execSync("node scripts/dkim-keys.mjs", { cwd: join(__dirname, ".."), stdio: "pipe" });
+  console.log("[e2e] Preparing fixture DKIM keys");
+  execSync("node scripts/dkim-keys.mjs", { cwd: join(__dirname, ".."), stdio: "inherit", timeout: 30_000 });
   // Local-only deployment: cached compiler/artifacts, no external explorer or
   // selector lookups. Forge's offline mode still allows the explicit Anvil RPC.
+  console.log("[e2e] Deploying fixtures to the isolated Anvil chain");
   execSync(
     `forge script script/Deploy.s.sol --offline --rpc-url ${RPC} --broadcast ` +
       "--private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
-    { cwd: join(__dirname, "..", "..", "contracts"), stdio: "pipe" },
+    { cwd: join(__dirname, "..", "..", "contracts"), stdio: "inherit", timeout: 120_000 },
   );
+  console.log("[e2e] Local chain deployment complete");
 }
